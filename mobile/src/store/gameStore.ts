@@ -7,20 +7,35 @@ import type {
   LogEntry,
   PartnerStatus,
   Person,
-  PersonRole,
   Stats,
 } from '../types'
 import { EVENTS } from '../data/events'
 import { JOBS } from '../data/jobs'
+import { GRADUATION_EVENT } from '../data/specialEvents'
+import {
+  DATE_COST,
+  GIFT_COST,
+  MAX_FRIENDS,
+  PROPOSAL_MIN_RELATIONSHIP,
+  TUITION_PER_YEAR,
+  UNIVERSITY_MIN_SMARTS,
+  UNIVERSITY_YEARS,
+  WEDDING_COST,
+} from './constants'
+
+export {
+  DATE_COST,
+  GIFT_COST,
+  MAX_FRIENDS,
+  PROPOSAL_MIN_RELATIONSHIP,
+  TUITION_PER_YEAR,
+  UNIVERSITY_MIN_SMARTS,
+  UNIVERSITY_YEARS,
+  WEDDING_COST,
+}
 
 const START_YEAR_BASE = 2026
 const MAX_AGE = 100
-export const TUITION_PER_YEAR = 5000
-export const UNIVERSITY_YEARS = 4
-export const UNIVERSITY_MIN_SMARTS = 30
-export const GIFT_COST = 100
-export const WEDDING_COST = 2000
-export const PROPOSAL_MIN_RELATIONSHIP = 70
 
 const FIRST_NAMES = [
   'Alex', 'Billie', 'Casey', 'Dana', 'Eli', 'Frankie', 'Georgie', 'Harper',
@@ -99,6 +114,11 @@ export function getJob(jobId: string | null): Job | null {
   return jobId ? (JOBS.find((j) => j.id === jobId) ?? null) : null
 }
 
+/** True while the character is in mandatory schooling. */
+export function isInSchool(age: number): boolean {
+  return age >= 6 && age < 18
+}
+
 interface GameState {
   /** 'creation' shows the character creation screen; 'life' is the game. */
   screen: 'creation' | 'life'
@@ -115,6 +135,11 @@ interface GameState {
   nextLogId: number
   /** True once the persisted save has been loaded from AsyncStorage. */
   hasHydrated: boolean
+  /** Once-per-year action keys, cleared on every Age Up. */
+  usedActions: string[]
+
+  // Settings (survive new lives)
+  sfxVolume: number
 
   // Career
   jobId: string | null
@@ -125,6 +150,9 @@ interface GameState {
   // Relationships
   relationships: Person[]
   partnerStatus: PartnerStatus | null
+  nextFriendId: number
+
+  setSfxVolume: (volume: number) => void
 
   rerollStats: () => void
   startLife: (firstName: string, lastName: string) => void
@@ -132,12 +160,23 @@ interface GameState {
   chooseOption: (choiceIndex: number) => void
   startNewLife: () => void
 
+  // School (ages 6-17, once per year each)
+  studyHarder: () => void
+  hangWithClassmates: () => void
+  askTeacherForHelp: () => void
+
+  // Career
   applyForJob: (jobId: string) => void
+  failInterview: (jobId: string) => void
   quitJob: () => void
   enrollUniversity: () => void
 
-  spendTime: (personId: PersonRole) => void
-  giveGift: (personId: PersonRole) => void
+  // Relationships
+  spendTime: (personId: string) => void
+  giveGift: (personId: string) => void
+  askForMoney: (personId: string) => void
+  goOnDate: () => void
+  makeFriend: () => void
   findLove: () => void
   propose: () => void
   marry: () => void
@@ -158,12 +197,14 @@ function newLifeState() {
     usedEventIds: [] as string[],
     nextLogId: 1,
     log: [] as LogEntry[],
+    usedActions: [] as string[],
     jobId: null,
     hasDegree: false,
     inUniversity: false,
     uniYearsLeft: 0,
     relationships: makeFamily(),
     partnerStatus: null as PartnerStatus | null,
+    nextFriendId: 1,
   }
 }
 
@@ -190,10 +231,8 @@ function familyDeathRoll(age: number): boolean {
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => {
-      /** Append log entries, advancing the id counter. */
-      const addLog = (
-        entries: Array<Pick<LogEntry, 'text' | 'kind'>>,
-      ) => {
+      /** Append log entries stamped with the current age/year. */
+      const addLog = (entries: Array<Pick<LogEntry, 'text' | 'kind'>>) => {
         const s = get()
         let logId = s.nextLogId
         const stamped = entries.map((e) => ({
@@ -205,7 +244,7 @@ export const useGameStore = create<GameState>()(
         set({ log: [...s.log, ...stamped], nextLogId: logId })
       }
 
-      const updatePerson = (personId: PersonRole, change: Partial<Person>) => {
+      const updatePerson = (personId: string, change: Partial<Person>) => {
         set({
           relationships: get().relationships.map((p) =>
             p.id === personId ? { ...p, ...change } : p,
@@ -213,9 +252,43 @@ export const useGameStore = create<GameState>()(
         })
       }
 
+      /** Consume a once-per-year action slot; false if already used. */
+      const useYearlyAction = (key: string): boolean => {
+        const s = get()
+        if (s.usedActions.includes(key)) return false
+        set({ usedActions: [...s.usedActions, key] })
+        return true
+      }
+
+      const doEnrollUniversity = () => {
+        const s = get()
+        if (s.age < 18 || s.hasDegree || s.inUniversity) return
+        if (s.stats.smarts < UNIVERSITY_MIN_SMARTS) {
+          addLog([
+            {
+              text: `Your university application was rejected — they want ${UNIVERSITY_MIN_SMARTS}+ smarts.`,
+              kind: 'career',
+            },
+          ])
+          return
+        }
+        set({ inUniversity: true, uniYearsLeft: UNIVERSITY_YEARS })
+        addLog([
+          {
+            text: `You were accepted into university! Tuition is $${TUITION_PER_YEAR.toLocaleString()}/year for ${UNIVERSITY_YEARS} years.`,
+            kind: 'career',
+          },
+        ])
+      }
+
       return {
         ...newLifeState(),
         hasHydrated: false,
+        sfxVolume: 1,
+
+        setSfxVolume: (volume: number) => {
+          set({ sfxVolume: Math.max(0, Math.min(1, volume)) })
+        },
 
         rerollStats: () => {
           if (get().screen !== 'creation') return
@@ -297,7 +370,7 @@ export const useGameStore = create<GameState>()(
             6: 'You started primary school.',
             12: 'You moved up to middle school.',
             15: 'You started high school.',
-            18: 'You graduated from high school.',
+            18: 'You graduated from high school. 🎉',
           }
           if (milestone[age]) {
             entries.push({ id: logId++, age, year, text: milestone[age], kind: 'career' })
@@ -347,13 +420,18 @@ export const useGameStore = create<GameState>()(
               partnerStatus,
               alive: false,
               currentEvent: null,
+              usedActions: [],
               log: [...s.log, ...entries],
               nextLogId: logId,
             })
             return
           }
 
-          const event = drawEvent(age, s.usedEventIds)
+          // At 18 the graduation decision pops instead of a random event.
+          const event =
+            age === 18 && !hasDegree && !inUniversity
+              ? GRADUATION_EVENT
+              : drawEvent(age, s.usedEventIds)
           set({
             age,
             year,
@@ -365,7 +443,11 @@ export const useGameStore = create<GameState>()(
             relationships,
             partnerStatus,
             currentEvent: event,
-            usedEventIds: event ? [...s.usedEventIds, event.id] : s.usedEventIds,
+            usedEventIds:
+              event && event !== GRADUATION_EVENT
+                ? [...s.usedEventIds, event.id]
+                : s.usedEventIds,
+            usedActions: [],
             log: [...s.log, ...entries],
             nextLogId: logId,
           })
@@ -409,9 +491,74 @@ export const useGameStore = create<GameState>()(
             log: [...s.log, ...entries],
             nextLogId: logId,
           })
+
+          if (!died && choice.action === 'enrollUniversity') {
+            doEnrollUniversity()
+          }
         },
 
         startNewLife: () => set(newLifeState()),
+
+        // ----- School -----
+
+        studyHarder: () => {
+          const s = get()
+          if (!s.alive || !(isInSchool(s.age) || s.inUniversity)) return
+          if (!useYearlyAction('study')) return
+          set({
+            stats: {
+              ...s.stats,
+              smarts: clampStat(s.stats.smarts + randomInt(2, 5)),
+              happiness: clampStat(s.stats.happiness - randomInt(0, 2)),
+            },
+          })
+          addLog([{ text: 'You hit the books and studied extra hard this year.', kind: 'career' }])
+        },
+
+        hangWithClassmates: () => {
+          const s = get()
+          if (!s.alive || !(isInSchool(s.age) || s.inUniversity)) return
+          if (!useYearlyAction('classmates')) return
+          const friends = s.relationships.filter((p) => p.role === 'friend' && p.alive)
+          const madeFriend = friends.length < MAX_FRIENDS && Math.random() < 0.5
+          set({
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + randomInt(3, 6)) },
+          })
+          if (madeFriend) {
+            const { first, last } = randomNameParts()
+            const friend: Person = {
+              id: `friend-${get().nextFriendId}`,
+              role: 'friend',
+              name: `${first} ${last}`,
+              age: Math.max(5, s.age + randomInt(-2, 2)),
+              alive: true,
+              relationship: randomInt(50, 75),
+            }
+            set({
+              relationships: [...get().relationships, friend],
+              nextFriendId: get().nextFriendId + 1,
+            })
+            addLog([
+              { text: `You hung out with your classmates and became friends with ${friend.name}!`, kind: 'relationship' },
+            ])
+          } else {
+            addLog([
+              { text: 'You goofed around with your classmates between lessons.', kind: 'relationship' },
+            ])
+          }
+        },
+
+        askTeacherForHelp: () => {
+          const s = get()
+          if (!s.alive || !(isInSchool(s.age) || s.inUniversity)) return
+          if (!useYearlyAction('teacher')) return
+          set({
+            stats: { ...s.stats, smarts: clampStat(s.stats.smarts + randomInt(1, 3)) },
+          })
+          addLog([
+            { text: 'You stayed after class for extra help. The teacher was delighted someone asked.', kind: 'career' },
+          ])
+        },
 
         // ----- Career -----
 
@@ -429,9 +576,18 @@ export const useGameStore = create<GameState>()(
           set({ jobId })
           addLog([
             {
-              text: `You were hired as a ${job.title} ${job.emoji} earning $${job.salary.toLocaleString()}/year.`,
+              text: `You aced the interview and were hired as a ${job.title} ${job.emoji} earning $${job.salary.toLocaleString()}/year!`,
               kind: 'career',
             },
+          ])
+        },
+
+        failInterview: (jobId: string) => {
+          const s = get()
+          const job = getJob(jobId)
+          if (!job || !s.alive) return
+          addLog([
+            { text: `You flubbed the interview question for the ${job.title} job. Awkward.`, kind: 'career' },
           ])
         },
 
@@ -445,28 +601,13 @@ export const useGameStore = create<GameState>()(
 
         enrollUniversity: () => {
           const s = get()
-          if (
-            !s.alive ||
-            s.screen !== 'life' ||
-            s.age < 18 ||
-            s.hasDegree ||
-            s.inUniversity ||
-            s.stats.smarts < UNIVERSITY_MIN_SMARTS
-          ) {
-            return
-          }
-          set({ inUniversity: true, uniYearsLeft: UNIVERSITY_YEARS })
-          addLog([
-            {
-              text: `You enrolled in university. Tuition is $${TUITION_PER_YEAR.toLocaleString()}/year for ${UNIVERSITY_YEARS} years.`,
-              kind: 'career',
-            },
-          ])
+          if (!s.alive || s.screen !== 'life') return
+          doEnrollUniversity()
         },
 
         // ----- Relationships -----
 
-        spendTime: (personId: PersonRole) => {
+        spendTime: (personId: string) => {
           const s = get()
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive) return
@@ -477,7 +618,7 @@ export const useGameStore = create<GameState>()(
           addLog([{ text: `You spent quality time with ${person.name}.`, kind: 'relationship' }])
         },
 
-        giveGift: (personId: PersonRole) => {
+        giveGift: (personId: string) => {
           const s = get()
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive || s.money < GIFT_COST) return
@@ -486,6 +627,68 @@ export const useGameStore = create<GameState>()(
           })
           set({ money: s.money - GIFT_COST })
           addLog([{ text: `You gave ${person.name} a thoughtful gift.`, kind: 'relationship' }])
+        },
+
+        askForMoney: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive) return
+          if (person.role !== 'mother' && person.role !== 'father') return
+          if (s.age >= 18) return
+          if (!useYearlyAction(`ask-money-${personId}`)) return
+          if (person.relationship >= 40) {
+            const amount = randomInt(20, 100)
+            set({ money: s.money + amount })
+            addLog([
+              { text: `You asked ${person.name} for pocket money and got $${amount}.`, kind: 'relationship' },
+            ])
+          } else {
+            addLog([
+              { text: `${person.name} said money doesn't grow on trees. Request denied.`, kind: 'relationship' },
+            ])
+          }
+        },
+
+        goOnDate: () => {
+          const s = get()
+          const partner = s.relationships.find((p) => p.id === 'partner')
+          if (!partner?.alive || !s.alive || s.money < DATE_COST) return
+          updatePerson('partner', {
+            relationship: clampRelationship(partner.relationship + randomInt(5, 11)),
+          })
+          set({
+            money: get().money - DATE_COST,
+            stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 4) },
+          })
+          addLog([{ text: `You took ${partner.name} on a lovely date.`, kind: 'relationship' }])
+        },
+
+        makeFriend: () => {
+          const s = get()
+          if (!s.alive || s.age < 5) return
+          const friends = s.relationships.filter((p) => p.role === 'friend' && p.alive)
+          if (friends.length >= MAX_FRIENDS) return
+          if (!useYearlyAction('make-friend')) return
+          if (Math.random() < 0.8) {
+            const { first, last } = randomNameParts()
+            const friend: Person = {
+              id: `friend-${s.nextFriendId}`,
+              role: 'friend',
+              name: `${first} ${last}`,
+              age: Math.max(5, s.age + randomInt(-3, 3)),
+              alive: true,
+              relationship: randomInt(45, 70),
+            }
+            set({
+              relationships: [...s.relationships, friend],
+              nextFriendId: s.nextFriendId + 1,
+            })
+            addLog([{ text: `You made a new friend: ${friend.name}!`, kind: 'relationship' }])
+          } else {
+            addLog([
+              { text: 'You tried to make a new friend, but the small talk fizzled out.', kind: 'relationship' },
+            ])
+          }
         },
 
         findLove: () => {
@@ -567,7 +770,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -594,6 +797,12 @@ export const useGameStore = create<GameState>()(
             alive: true,
             relationship: randomInt(55, 85),
           }))
+        }
+        // v2 saves predate friends, yearly actions, and settings.
+        if (version < 3) {
+          state.usedActions = []
+          state.nextFriendId = 1
+          state.sfxVolume = 1
         }
         return state as GameState
       },

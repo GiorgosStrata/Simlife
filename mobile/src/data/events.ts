@@ -133,31 +133,6 @@ export const EVENTS: GameEvent[] = [
     ],
   },
   {
-    id: 'job-offer',
-    title: 'A Job Offer',
-    description:
-      'A recruiter offers you a well-paid corporate job with long hours, just as a friend invites you to join their scrappy startup.',
-    minAge: 20,
-    maxAge: 55,
-    choices: [
-      {
-        label: 'Take the corporate job',
-        outcome: 'You took the corporate job. The pay is great; the meetings are eternal.',
-        effects: { money: 2500, happiness: -4, smarts: 3 },
-      },
-      {
-        label: 'Join the startup',
-        outcome: 'You joined the startup. Low pay, free snacks, and you learn something new daily.',
-        effects: { money: 800, happiness: 6, smarts: 8 },
-      },
-      {
-        label: 'Decline both',
-        outcome: 'You held out for something better. Freedom is nice, rent is due.',
-        effects: { money: -300, happiness: 2 },
-      },
-    ],
-  },
-  {
     id: 'street-food',
     title: 'Mystery Street Food',
     description:
@@ -494,6 +469,251 @@ export const EVENTS: GameEvent[] = [
         label: 'Master chess at the park',
         outcome: 'The park regulars stopped going easy on you. You consider this a great honor.',
         effects: { smarts: 8, happiness: 4 },
+      },
+    ],
+  },
+  {
+    id: 'sleepover',
+    title: 'Sleepover!',
+    description:
+      'Your best friend invites you to a sleepover. Their parents have promised pizza and exactly one scary movie.',
+    minAge: 6,
+    maxAge: 13,
+    choices: [
+      {
+        label: 'Go and stay up all night',
+        outcome: 'You watched the scary movie through your fingers and laughed until 3am.',
+        effects: { happiness: 10, health: -2 },
+      },
+      {
+        label: 'Go but sleep at a reasonable hour',
+        outcome: 'You fell asleep first. You woke up with a mustache drawn on your face.',
+        effects: { happiness: 6 },
+      },
+      {
+        label: 'Stay home',
+        outcome: 'You stayed home. The group chat was very loud the next morning.',
+        effects: { happiness: -4 },
+      },
+    ],
+  },
+  {
+    id: 'new-kid',
+    title: 'The New Kid',
+    description:
+      'A new kid joins your class mid-year. At lunch, they’re sitting alone, poking at a sandwich.',
+    minAge: 6,
+    maxAge: 17,
+    choices: [
+      {
+        label: 'Sit with them',
+        outcome: 'You sat down and said hi. Turns out you like all the same things. Instant friend.',
+        effects: { happiness: 8 },
+      },
+      {
+        label: 'Wave from across the room',
+        outcome: 'You waved. They waved back. A solid foundation, probably.',
+        effects: { happiness: 2 },
+      },
+      {
+        label: 'Mind your own lunch',
+        outcome: 'You focused on your fries. Somebody else made the first move.',
+        effects: {},
+      },
+    ],
+  },
+  {
+    id: 'group-project',
+    title: 'The Group Project',
+    description:
+      'You’ve been assigned a big group project. One teammate has vanished and the deadline is Friday.',
+    minAge: 10,
+    maxAge: 17,
+    choices: [
+      {
+        label: 'Carry the whole team',
+        outcome: 'You did 80% of the work. The grade was great. Your soul aged slightly.',
+        effects: { smarts: 7, happiness: -4 },
+      },
+      {
+        label: 'Track down the missing teammate',
+        outcome: 'You found them, split the work fairly, and finished with a day to spare.',
+        effects: { smarts: 4, happiness: 4 },
+      },
+      {
+        label: 'Let the project sink',
+        outcome: 'The presentation was four blank slides. The teacher was not amused.',
+        effects: { smarts: -5, happiness: -3 },
+      },
+    ],
+  },
+  {
+    id: 'first-crush',
+    title: 'The Crush',
+    description:
+      'You have a crush on someone in your class, and your friends have noticed. They are being extremely unsubtle about it.',
+    minAge: 11,
+    maxAge: 17,
+    choices: [
+      {
+        label: 'Tell them how you feel',
+        outcome: 'You said it. They smiled. You floated home three feet off the ground.',
+        effects: { happiness: 10 },
+      },
+      {
+        label: 'Write a note and chicken out',
+        outcome: 'The note lives in your pocket forever. The mystery remains.',
+        effects: { happiness: -2, smarts: 1 },
+      },
+      {
+        label: 'Deny everything',
+        outcome: 'You denied it so hard that everyone became more convinced.',
+        effects: { happiness: -3 },
+      },
+    ],
+  },
+  {
+    id: 'video-game-marathon',
+    title: 'One More Level',
+    description:
+      'A friend lends you the game everyone is talking about. It is 11pm on a school night and you just reached a save point.',
+    minAge: 9,
+    maxAge: 18,
+    choices: [
+      {
+        label: 'Play until sunrise',
+        outcome: 'You beat the game. School the next day happened to someone else entirely.',
+        effects: { happiness: 8, health: -3, smarts: -2 },
+      },
+      {
+        label: 'Save and sleep',
+        outcome: 'You went to bed like a responsible person. The final boss can wait.',
+        effects: { happiness: 3, health: 1 },
+      },
+    ],
+  },
+  {
+    id: 'friend-moving-away',
+    title: 'Moving Trucks',
+    description:
+      'One of your closest friends tells you their family is moving to another city next month.',
+    minAge: 7,
+    maxAge: 20,
+    choices: [
+      {
+        label: 'Plan one last epic day together',
+        outcome: 'You packed a whole summer into one day. You promised to call every week.',
+        effects: { happiness: 6 },
+      },
+      {
+        label: 'Help them pack',
+        outcome: 'You packed boxes and told old stories. Somehow it made it easier.',
+        effects: { happiness: 4 },
+      },
+      {
+        label: 'Avoid the goodbye',
+        outcome: 'You never said goodbye. The empty house on the corner stares at you.',
+        effects: { happiness: -8 },
+      },
+    ],
+  },
+  {
+    id: 'prom-night',
+    title: 'Prom Night',
+    description:
+      'Prom is coming up. Tickets are pricey, the dress code is strict, and everyone is talking about it.',
+    minAge: 16,
+    maxAge: 18,
+    choices: [
+      {
+        label: 'Go all out',
+        outcome: 'You danced until your feet gave up. The photos are legendary.',
+        effects: { happiness: 12, money: -200, looks: 2 },
+      },
+      {
+        label: 'Go casual with friends',
+        outcome: 'You went in sneakers, laughed all night, and spent almost nothing.',
+        effects: { happiness: 8, money: -40 },
+      },
+      {
+        label: 'Skip it entirely',
+        outcome: 'You stayed home. The pizza was good. The FOMO was real.',
+        effects: { happiness: -5, money: 0 },
+      },
+    ],
+  },
+  {
+    id: 'surprise-party',
+    title: 'Surprise!',
+    description:
+      'Your friends are throwing a surprise party for someone you all know — and you’ve been put in charge of the cake.',
+    minAge: 15,
+    maxAge: 70,
+    choices: [
+      {
+        label: 'Bake it yourself',
+        outcome: 'The cake leaned like a tower in Italy, and everyone loved it.',
+        effects: { happiness: 8, money: -30 },
+      },
+      {
+        label: 'Buy the fanciest one in town',
+        outcome: 'The bakery cake was flawless. Your wallet is lighter, your conscience heavier.',
+        effects: { happiness: 5, money: -120 },
+      },
+      {
+        label: 'Forget until the last minute',
+        outcome: 'You arrived with a supermarket muffin and a candle. It became the stuff of legend.',
+        effects: { happiness: 3, money: -5 },
+      },
+    ],
+  },
+  {
+    id: 'friend-in-trouble',
+    title: 'A Friend in Need',
+    description:
+      'A good friend calls you late at night. They’re in a rough patch and ask to borrow some money.',
+    minAge: 18,
+    maxAge: 80,
+    choices: [
+      {
+        label: 'Lend it, no questions',
+        outcome: 'You sent the money. They paid you back in gratitude, if not in cash.',
+        effects: { money: -300, happiness: 6 },
+      },
+      {
+        label: 'Offer help instead of cash',
+        outcome: 'You spent the weekend helping them sort things out properly.',
+        effects: { happiness: 5, health: -1 },
+      },
+      {
+        label: 'Say no',
+        outcome: 'You said you couldn’t. The calls got shorter after that.',
+        effects: { happiness: -6 },
+      },
+    ],
+  },
+  {
+    id: 'reunion',
+    title: 'The Reunion',
+    description:
+      'An invitation arrives: your old school class is having a reunion. Everyone will be there. Everyone.',
+    minAge: 28,
+    maxAge: 80,
+    choices: [
+      {
+        label: 'Attend and mingle',
+        outcome: 'Old jokes, older stories, and one teacher who still remembers your name.',
+        effects: { happiness: 9, money: -50 },
+      },
+      {
+        label: 'Attend, but hover by the snacks',
+        outcome: 'You held a plate of tiny sandwiches like a shield. Two people found you anyway. It was nice.',
+        effects: { happiness: 4, money: -50 },
+      },
+      {
+        label: 'Toss the invitation',
+        outcome: 'You skipped it. The photo album online was full of faces you almost remembered.',
+        effects: { happiness: -3 },
       },
     ],
   },

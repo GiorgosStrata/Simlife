@@ -2,12 +2,14 @@ import { StatusBar } from 'expo-status-bar'
 import { useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+import { playSfx } from './src/audio/sfx'
 import { CareerScreen } from './src/components/CareerScreen'
 import { CharacterCreation } from './src/components/CharacterCreation'
 import { EventModal } from './src/components/EventModal'
 import { GameOverModal } from './src/components/GameOverModal'
 import { LifeLog } from './src/components/LifeLog'
 import { RelationshipsScreen } from './src/components/RelationshipsScreen'
+import { SettingsModal } from './src/components/SettingsModal'
 import { StatsPanel } from './src/components/StatsPanel'
 import { TabBar, type TabKey } from './src/components/TabBar'
 import { useGameStore } from './src/store/gameStore'
@@ -15,6 +17,7 @@ import { colors } from './src/theme'
 
 function Game() {
   const [tab, setTab] = useState<TabKey>('life')
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const hasHydrated = useGameStore((s) => s.hasHydrated)
   const screen = useGameStore((s) => s.screen)
   const name = useGameStore((s) => s.name)
@@ -51,8 +54,18 @@ function Game() {
             <Text style={styles.headerBrand}>Simlife</Text>
           </View>
           <View style={styles.headerRight}>
-            <Text style={styles.headerAge}>Age {age}</Text>
-            <Text style={styles.headerYear}>Year {year}</Text>
+            <View>
+              <Text style={styles.headerAge}>Age {age}</Text>
+              <Text style={styles.headerYear}>Year {year}</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+              onPress={() => setSettingsOpen(true)}
+              style={({ pressed }) => [styles.settingsButton, pressed && styles.settingsButtonPressed]}
+            >
+              <Text style={styles.settingsIcon}>⚙️</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -67,7 +80,10 @@ function Game() {
 
       {/* Fixed Age Up button: never moves, like BitLife's age button. */}
       <Pressable
-        onPress={ageUp}
+        onPress={() => {
+          playSfx('click')
+          ageUp()
+        }}
         disabled={ageUpDisabled}
         style={({ pressed }) => [
           styles.ageUpButton,
@@ -82,6 +98,7 @@ function Game() {
 
       <EventModal />
       <GameOverModal />
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </SafeAreaView>
   )
 }
@@ -130,18 +147,36 @@ const styles = StyleSheet.create({
     color: colors.cyan100,
   },
   headerRight: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   headerAge: {
     fontSize: 17,
     fontWeight: '700',
     color: colors.white,
+    textAlign: 'right',
     fontVariant: ['tabular-nums'],
   },
   headerYear: {
     fontSize: 11,
     color: colors.cyan100,
+    textAlign: 'right',
     fontVariant: ['tabular-nums'],
+  },
+  settingsButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.cyan500,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsButtonPressed: {
+    backgroundColor: colors.cyan400,
+  },
+  settingsIcon: {
+    fontSize: 16,
   },
   ageUpButton: {
     position: 'absolute',

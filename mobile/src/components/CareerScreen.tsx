@@ -1,14 +1,18 @@
+import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { playSfx } from '../audio/sfx'
 import { JOBS } from '../data/jobs'
 import {
   TUITION_PER_YEAR,
   UNIVERSITY_MIN_SMARTS,
   UNIVERSITY_YEARS,
   getJob,
+  isInSchool,
   useGameStore,
 } from '../store/gameStore'
 import { colors } from '../theme'
-import type { Job } from '../types'
+import type { Job, JobQuestion } from '../types'
+import { InterviewModal } from './InterviewModal'
 
 function educationLabel(
   age: number,
@@ -32,6 +36,11 @@ function jobBlocker(job: Job, age: number, smarts: number, hasDegree: boolean): 
   return null
 }
 
+interface Interview {
+  job: Job
+  question: JobQuestion
+}
+
 export function CareerScreen() {
   const age = useGameStore((s) => s.age)
   const stats = useGameStore((s) => s.stats)
@@ -39,26 +48,103 @@ export function CareerScreen() {
   const hasDegree = useGameStore((s) => s.hasDegree)
   const inUniversity = useGameStore((s) => s.inUniversity)
   const uniYearsLeft = useGameStore((s) => s.uniYearsLeft)
+  const usedActions = useGameStore((s) => s.usedActions)
   const applyForJob = useGameStore((s) => s.applyForJob)
+  const failInterview = useGameStore((s) => s.failInterview)
   const quitJob = useGameStore((s) => s.quitJob)
   const enrollUniversity = useGameStore((s) => s.enrollUniversity)
+  const studyHarder = useGameStore((s) => s.studyHarder)
+  const hangWithClassmates = useGameStore((s) => s.hangWithClassmates)
+  const askTeacherForHelp = useGameStore((s) => s.askTeacherForHelp)
+
+  const [interview, setInterview] = useState<Interview | null>(null)
 
   const currentJob = getJob(jobId)
+  const inSchool = isInSchool(age) || inUniversity
   const canEnroll =
     age >= 18 && !hasDegree && !inUniversity && stats.smarts >= UNIVERSITY_MIN_SMARTS
+
+  const startInterview = (job: Job) => {
+    playSfx('click')
+    const question = job.questions[Math.floor(Math.random() * job.questions.length)]
+    setInterview({ job, question })
+  }
+
+  const answerInterview = (correct: boolean) => {
+    if (!interview) return
+    if (correct) {
+      playSfx('success')
+      applyForJob(interview.job.id)
+    } else {
+      playSfx('fail')
+      failInterview(interview.job.id)
+    }
+    setInterview(null)
+  }
+
+  const schoolAction = (key: string, run: () => void) => () => {
+    playSfx('click')
+    run()
+  }
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <View style={styles.card}>
-        <Text style={styles.heading}>EDUCATION</Text>
+        <Text style={styles.heading}>{inSchool ? 'SCHOOL' : 'EDUCATION'}</Text>
         <Text style={styles.bodyText}>
           {educationLabel(age, hasDegree, inUniversity, uniYearsLeft)}
         </Text>
+
+        {inSchool && (
+          <View style={styles.actions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={schoolAction('study', studyHarder)}
+              disabled={usedActions.includes('study')}
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && styles.actionButtonPressed,
+                usedActions.includes('study') && styles.buttonDisabled,
+              ]}
+            >
+              <Text style={styles.actionText}>📖 Study harder</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={schoolAction('classmates', hangWithClassmates)}
+              disabled={usedActions.includes('classmates')}
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && styles.actionButtonPressed,
+                usedActions.includes('classmates') && styles.buttonDisabled,
+              ]}
+            >
+              <Text style={styles.actionText}>🎒 Hang out with classmates</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={schoolAction('teacher', askTeacherForHelp)}
+              disabled={usedActions.includes('teacher')}
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && styles.actionButtonPressed,
+                usedActions.includes('teacher') && styles.buttonDisabled,
+              ]}
+            >
+              <Text style={styles.actionText}>🍎 Ask a teacher for help</Text>
+            </Pressable>
+            <Text style={styles.hint}>Each school action can be done once per year.</Text>
+          </View>
+        )}
+
         {age >= 18 && !hasDegree && !inUniversity && (
           <>
             <Pressable
               accessibilityRole="button"
-              onPress={enrollUniversity}
+              onPress={() => {
+                playSfx('click')
+                enrollUniversity()
+              }}
               disabled={!canEnroll}
               style={({ pressed }) => [
                 styles.primaryButton,
@@ -85,7 +171,10 @@ export function CareerScreen() {
             </Text>
             <Pressable
               accessibilityRole="button"
-              onPress={quitJob}
+              onPress={() => {
+                playSfx('click')
+                quitJob()
+              }}
               style={({ pressed }) => [styles.dangerButton, pressed && styles.dangerButtonPressed]}
             >
               <Text style={styles.dangerButtonText}>Quit Job</Text>
@@ -100,6 +189,7 @@ export function CareerScreen() {
 
       <View style={styles.card}>
         <Text style={styles.heading}>JOB LISTINGS</Text>
+        <Text style={styles.hint}>Applying means one interview question. Don’t blow it.</Text>
         {JOBS.map((job) => {
           const blocker = jobBlocker(job, age, stats.smarts, hasDegree)
           const isCurrent = job.id === jobId
@@ -116,7 +206,7 @@ export function CareerScreen() {
               </View>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => applyForJob(job.id)}
+                onPress={() => startInterview(job)}
                 disabled={blocker !== null || isCurrent}
                 style={({ pressed }) => [
                   styles.applyButton,
@@ -130,6 +220,15 @@ export function CareerScreen() {
           )
         })}
       </View>
+
+      {interview && (
+        <InterviewModal
+          job={interview.job}
+          question={interview.question}
+          onAnswer={answerInterview}
+          onCancel={() => setInterview(null)}
+        />
+      )}
     </ScrollView>
   )
 }
@@ -163,6 +262,24 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 12,
     color: colors.slate500,
+  },
+  actions: {
+    marginTop: 12,
+    gap: 8,
+  },
+  actionButton: {
+    backgroundColor: colors.slate100,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  actionButtonPressed: {
+    backgroundColor: colors.slate200,
+  },
+  actionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.slate600,
   },
   primaryButton: {
     marginTop: 12,
@@ -204,6 +321,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.slate200,
     gap: 10,
+    marginTop: 6,
   },
   jobInfo: {
     flex: 1,

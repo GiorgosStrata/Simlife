@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { playSfx } from '../audio/sfx'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 
@@ -7,6 +9,10 @@ export function GameOverModal() {
   const name = useGameStore((s) => s.name)
   const age = useGameStore((s) => s.age)
   const startNewLife = useGameStore((s) => s.startNewLife)
+
+  useEffect(() => {
+    if (!alive) playSfx('death')
+  }, [alive])
 
   return (
     <Modal visible={!alive} transparent animationType="fade" onRequestClose={() => {}}>

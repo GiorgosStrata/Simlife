@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { playSfx } from '../audio/sfx'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 
@@ -10,6 +12,10 @@ import { colors } from '../theme'
 export function EventModal() {
   const currentEvent = useGameStore((s) => s.currentEvent)
   const chooseOption = useGameStore((s) => s.chooseOption)
+
+  useEffect(() => {
+    if (currentEvent) playSfx('pop')
+  }, [currentEvent])
 
   return (
     <Modal
@@ -28,7 +34,10 @@ export function EventModal() {
                 <Pressable
                   key={choice.label}
                   accessibilityRole="button"
-                  onPress={() => chooseOption(i)}
+                  onPress={() => {
+                    playSfx('click')
+                    chooseOption(i)
+                  }}
                   style={({ pressed }) => [styles.choice, pressed && styles.choicePressed]}
                 >
                   <Text style={styles.choiceText}>{choice.label}</Text>

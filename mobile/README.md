@@ -46,8 +46,10 @@ src/
 
 ## Game systems
 
-- **Career tab** — school is automatic through age 18; from 18 you can enroll in university (4 years, $5k/yr tuition, needs 30 smarts) to unlock degree jobs. Apply to any listing you qualify for (age/smarts/degree); salary is paid automatically every Age Up. Quit any time.
-- **Love tab** — you're born with parents (and often a sibling). Bonds drift down a little each year; spend time or give gifts to keep them up. From 18, Find Love to date someone; at 70+ bond you can propose, then marry ($2,000 wedding). Divorce costs half your money. Family members age and eventually pass away.
-- Events, stats, aging, and death work as on the web version.
+- **Career tab** — while in school (6–17) or university, a School section offers once-per-year actions: study harder (+smarts), hang out with classmates (+happiness, chance of a new friend), ask a teacher for help. At 18 a **graduation popup** offers university / job / gap year. University: 4 years, $5k/yr tuition, needs 30 smarts, unlocks degree jobs. **Applying to a job asks one random interview question** (easy, job-themed, 5 per job in `src/data/jobs.ts`) — right answer hires you, wrong answer logs the flub and you can retry. Salary is paid automatically every Age Up.
+- **Love tab** — parents (and often a sibling) at birth; friends via "Make a new friend" (once/year, max 4) or hanging out with classmates. Actions: spend time, gift, ask parents for pocket money (under 18, once/year each), date your partner, propose at 70+ bond, marry, break up/divorce. Family ages and eventually passes away.
+- **Sounds** — small synthesized effects (expo-audio) for taps, popups, wins, fails, and death; assets in `assets/sfx/`, playback in `src/audio/sfx.ts`.
+- **Settings (⚙️ in the header)** — sound volume (Off/Low/Medium/High, persisted across lives) and a confirm-guarded character reset.
+- Events, stats, aging, and death work as on the web version. Scripted moments (like graduation) live in `src/data/specialEvents.ts`.
 
 The game content (`types.ts`, `data/events.ts`) is kept identical to the web app's `src/` — if you add events, copy the file between the two apps. The career/relationship systems are currently mobile-only.

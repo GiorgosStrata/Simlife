@@ -1,6 +1,9 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { playSfx } from '../audio/sfx'
 import {
+  DATE_COST,
   GIFT_COST,
+  MAX_FRIENDS,
   PROPOSAL_MIN_RELATIONSHIP,
   WEDDING_COST,
   useGameStore,
@@ -13,22 +16,27 @@ const ROLE_EMOJI: Record<Person['role'], string> = {
   father: '👨',
   sibling: '🧑',
   partner: '❤️',
+  friend: '😎',
 }
 
 function roleLabel(person: Person, partnerStatus: PartnerStatus | null): string {
   if (person.role === 'partner') {
     if (partnerStatus === 'married') return 'Spouse'
     if (partnerStatus === 'engaged') return 'Fiancé(e)'
-    return 'Partner'
+    return 'Boyfriend/Girlfriend'
   }
   return person.role.charAt(0).toUpperCase() + person.role.slice(1)
 }
 
 function PersonCard({ person }: { person: Person }) {
+  const age = useGameStore((s) => s.age)
   const money = useGameStore((s) => s.money)
+  const usedActions = useGameStore((s) => s.usedActions)
   const partnerStatus = useGameStore((s) => s.partnerStatus)
   const spendTime = useGameStore((s) => s.spendTime)
   const giveGift = useGameStore((s) => s.giveGift)
+  const askForMoney = useGameStore((s) => s.askForMoney)
+  const goOnDate = useGameStore((s) => s.goOnDate)
   const propose = useGameStore((s) => s.propose)
   const marry = useGameStore((s) => s.marry)
   const breakUp = useGameStore((s) => s.breakUp)
@@ -45,9 +53,16 @@ function PersonCard({ person }: { person: Person }) {
   }
 
   const isPartner = person.role === 'partner'
+  const isParent = person.role === 'mother' || person.role === 'father'
   const canPropose =
     isPartner && partnerStatus === 'dating' && person.relationship >= PROPOSAL_MIN_RELATIONSHIP
   const canMarry = isPartner && partnerStatus === 'engaged' && money >= WEDDING_COST
+  const askedThisYear = usedActions.includes(`ask-money-${person.id}`)
+
+  const tap = (run: () => void, sfx: 'click' | 'success' | 'fail' = 'click') => () => {
+    playSfx(sfx)
+    run()
+  }
 
   return (
     <View style={styles.card}>
@@ -79,14 +94,14 @@ function PersonCard({ person }: { person: Person }) {
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => spendTime(person.id)}
+          onPress={tap(() => spendTime(person.id))}
           style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
         >
           <Text style={styles.actionText}>🕰️ Spend time</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          onPress={() => giveGift(person.id)}
+          onPress={tap(() => giveGift(person.id))}
           disabled={money < GIFT_COST}
           style={({ pressed }) => [
             styles.actionButton,
@@ -96,10 +111,39 @@ function PersonCard({ person }: { person: Person }) {
         >
           <Text style={styles.actionText}>🎁 Gift (${GIFT_COST})</Text>
         </Pressable>
+        {isParent && age < 18 && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={tap(() => askForMoney(person.id))}
+            disabled={askedThisYear}
+            style={({ pressed }) => [
+              styles.actionButton,
+              pressed && styles.actionButtonPressed,
+              askedThisYear && styles.buttonDisabled,
+            ]}
+          >
+            <Text style={styles.actionText}>🪙 Ask for pocket money</Text>
+          </Pressable>
+        )}
+        {isPartner && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={tap(goOnDate)}
+            disabled={money < DATE_COST}
+            style={({ pressed }) => [
+              styles.actionButton,
+              styles.loveButton,
+              pressed && styles.actionButtonPressed,
+              money < DATE_COST && styles.buttonDisabled,
+            ]}
+          >
+            <Text style={styles.actionText}>🌹 Go on a date (${DATE_COST})</Text>
+          </Pressable>
+        )}
         {isPartner && partnerStatus === 'dating' && (
           <Pressable
             accessibilityRole="button"
-            onPress={propose}
+            onPress={tap(propose, 'success')}
             disabled={!canPropose}
             style={({ pressed }) => [
               styles.actionButton,
@@ -114,7 +158,7 @@ function PersonCard({ person }: { person: Person }) {
         {isPartner && partnerStatus === 'engaged' && (
           <Pressable
             accessibilityRole="button"
-            onPress={marry}
+            onPress={tap(marry, 'success')}
             disabled={!canMarry}
             style={({ pressed }) => [
               styles.actionButton,
@@ -129,7 +173,7 @@ function PersonCard({ person }: { person: Person }) {
         {isPartner && (
           <Pressable
             accessibilityRole="button"
-            onPress={breakUp}
+            onPress={tap(breakUp, 'fail')}
             style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
           >
             <Text style={[styles.actionText, styles.dangerText]}>
@@ -141,7 +185,7 @@ function PersonCard({ person }: { person: Person }) {
 
       {isPartner && partnerStatus === 'dating' && person.relationship < PROPOSAL_MIN_RELATIONSHIP && (
         <Text style={styles.hint}>
-          Bond {PROPOSAL_MIN_RELATIONSHIP}+ needed to propose — spend time together.
+          Bond {PROPOSAL_MIN_RELATIONSHIP}+ needed to propose — spend time and go on dates.
         </Text>
       )}
       {isPartner && partnerStatus === 'engaged' && money < WEDDING_COST && (
@@ -153,25 +197,59 @@ function PersonCard({ person }: { person: Person }) {
   )
 }
 
+const SECTION_ORDER: Person['role'][] = ['partner', 'mother', 'father', 'sibling', 'friend']
+
 export function RelationshipsScreen() {
   const age = useGameStore((s) => s.age)
   const relationships = useGameStore((s) => s.relationships)
+  const usedActions = useGameStore((s) => s.usedActions)
   const findLove = useGameStore((s) => s.findLove)
+  const makeFriend = useGameStore((s) => s.makeFriend)
 
   const hasPartner = relationships.some((p) => p.id === 'partner')
+  const livingFriends = relationships.filter((p) => p.role === 'friend' && p.alive).length
+  const canMakeFriend =
+    age >= 5 && livingFriends < MAX_FRIENDS && !usedActions.includes('make-friend')
+
+  const sorted = [...relationships].sort(
+    (a, b) => SECTION_ORDER.indexOf(a.role) - SECTION_ORDER.indexOf(b.role),
+  )
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       {age >= 18 && !hasPartner && (
         <Pressable
           accessibilityRole="button"
-          onPress={findLove}
-          style={({ pressed }) => [styles.findLove, pressed && styles.findLovePressed]}
+          onPress={() => {
+            playSfx('click')
+            findLove()
+          }}
+          style={({ pressed }) => [styles.bigButton, pressed && styles.bigButtonPressed]}
         >
-          <Text style={styles.findLoveText}>💘 Find Love</Text>
+          <Text style={styles.bigButtonText}>💘 Find Love</Text>
         </Pressable>
       )}
-      {relationships.map((person) => (
+      {age >= 5 && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            playSfx('click')
+            makeFriend()
+          }}
+          disabled={!canMakeFriend}
+          style={({ pressed }) => [
+            styles.bigButton,
+            styles.friendButton,
+            pressed && styles.bigButtonPressed,
+            !canMakeFriend && styles.buttonDisabled,
+          ]}
+        >
+          <Text style={styles.bigButtonText}>
+            🤝 Make a new friend ({livingFriends}/{MAX_FRIENDS})
+          </Text>
+        </Pressable>
+      )}
+      {sorted.map((person) => (
         <PersonCard key={person.id} person={person} />
       ))}
     </ScrollView>
@@ -186,16 +264,19 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingBottom: 64,
   },
-  findLove: {
+  bigButton: {
     backgroundColor: colors.cyan500,
     borderRadius: 16,
     paddingVertical: 13,
     alignItems: 'center',
   },
-  findLovePressed: {
+  friendButton: {
+    backgroundColor: colors.cyan600,
+  },
+  bigButtonPressed: {
     backgroundColor: colors.cyan400,
   },
-  findLoveText: {
+  bigButtonText: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.white,

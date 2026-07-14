@@ -3,9 +3,29 @@ import type { Job } from '../types'
 /**
  * Job content lives here, separate from game logic.
  * Salary is paid automatically on every Age Up while employed.
- * To add a job: append an object with a unique `id` and requirements.
+ * Applying asks ONE random question from the job's `questions` list —
+ * answer right and you're hired. Questions are deliberately easy,
+ * surface-level knowledge about the job (BitLife style).
+ * To add a job: append an object with a unique `id`, requirements,
+ * and 5 questions.
  */
 export const JOBS: Job[] = [
+  {
+    id: 'garbage-collector',
+    title: 'Garbage Collector',
+    emoji: '🗑️',
+    salary: 26000,
+    minAge: 18,
+    minSmarts: 0,
+    requiresDegree: false,
+    questions: [
+      { q: 'Which of these belongs in the recycling bin?', options: ['A banana peel', 'A plastic bottle', 'A dead battery'], answer: 1 },
+      { q: 'When do garbage trucks usually run their routes?', options: ['Early morning', 'Midnight', 'Whenever'], answer: 0 },
+      { q: 'What should you wear on the job?', options: ['Flip flops', 'High-visibility gloves and vest', 'A suit'], answer: 1 },
+      { q: 'A bin is overflowing. What do you do?', options: ['Leave it', 'Empty it and report it', 'Hide it'], answer: 1 },
+      { q: 'Where does a glass jar go?', options: ['Glass recycling', 'The river', 'The compost'], answer: 0 },
+    ],
+  },
   {
     id: 'fast-food',
     title: 'Fast Food Worker',
@@ -14,6 +34,13 @@ export const JOBS: Job[] = [
     minAge: 16,
     minSmarts: 0,
     requiresDegree: false,
+    questions: [
+      { q: 'A customer says their fries are cold. What do you do?', options: ['Shrug', 'Replace them with a smile', 'Eat them'], answer: 1 },
+      { q: 'How often should you wash your hands?', options: ['Once a shift', 'Frequently', 'Never'], answer: 1 },
+      { q: 'What temperature should cooked burgers be?', options: ['Hot all the way through', 'Raw in the middle', 'Frozen'], answer: 0 },
+      { q: 'The fryer timer beeps. What does that mean?', options: ['Break time', 'The fries are done', 'Fire drill'], answer: 1 },
+      { q: 'Where does the ice cream come from?', options: ['The soft-serve machine', 'The deep fryer', 'The cash register'], answer: 0 },
+    ],
   },
   {
     id: 'cashier',
@@ -23,6 +50,29 @@ export const JOBS: Job[] = [
     minAge: 16,
     minSmarts: 10,
     requiresDegree: false,
+    questions: [
+      { q: 'A customer pays $10 for a $7 item. How much change?', options: ['$3', '$7', '$17'], answer: 0 },
+      { q: 'What do you scan at the checkout?', options: ['The barcode', 'The customer', 'Your badge'], answer: 0 },
+      { q: 'The card machine says "declined". What do you do?', options: ['Give it away free', 'Politely ask for another payment method', 'Call the police'], answer: 1 },
+      { q: 'Where do coins go in the till?', options: ['Your pocket', 'The coin tray', 'The floor'], answer: 1 },
+      { q: 'A shelf price says $5 but it scans $6. Best move?', options: ['Check the price and honor the correct one', 'Charge $10', 'Ignore the customer'], answer: 0 },
+    ],
+  },
+  {
+    id: 'waiter',
+    title: 'Waiter',
+    emoji: '🍽️',
+    salary: 16000,
+    minAge: 16,
+    minSmarts: 10,
+    requiresDegree: false,
+    questions: [
+      { q: 'A table waves at you. What do they probably want?', options: ['To order', 'To arm wrestle', 'Nothing'], answer: 0 },
+      { q: 'What do you bring at the end of the meal?', options: ['The check', 'More napkins only', 'Your resume'], answer: 0 },
+      { q: 'A dish has a hair in it. What do you do?', options: ['Apologize and replace it', 'Say it adds flavor', 'Charge extra'], answer: 0 },
+      { q: 'Which hand position is safest for carrying plates?', options: ['Balanced and steady', 'One finger', 'Behind your back'], answer: 0 },
+      { q: 'What does "86 the soup" mean in a kitchen?', options: ['The soup is sold out', 'Add 86 soups', 'Soup costs $86'], answer: 0 },
+    ],
   },
   {
     id: 'barista',
@@ -32,6 +82,61 @@ export const JOBS: Job[] = [
     minAge: 16,
     minSmarts: 15,
     requiresDegree: false,
+    questions: [
+      { q: 'What is espresso?', options: ['Strong coffee brewed under pressure', 'A type of tea', 'Chocolate milk'], answer: 0 },
+      { q: 'A latte is espresso plus what?', options: ['Steamed milk', 'Orange juice', 'Soda water'], answer: 0 },
+      { q: 'A customer asks for decaf. What matters most?', options: ['Actually using decaf beans', 'Extra caffeine', 'A bigger cup'], answer: 0 },
+      { q: 'The milk steamer hisses loudly. That is...', options: ['Normal', 'A ghost', 'A fire alarm'], answer: 0 },
+      { q: 'What goes on top of a cappuccino?', options: ['Milk foam', 'Ketchup', 'Ice cubes'], answer: 0 },
+    ],
+  },
+  {
+    id: 'delivery-driver',
+    title: 'Delivery Driver',
+    emoji: '📦',
+    salary: 22000,
+    minAge: 18,
+    minSmarts: 15,
+    requiresDegree: false,
+    questions: [
+      { q: 'What do you need to drive a delivery van?', options: ['A driver’s license', 'A boat license', 'Nothing'], answer: 0 },
+      { q: 'The package says FRAGILE. You should...', options: ['Handle it gently', 'Drop-kick it', 'Shake it to check'], answer: 0 },
+      { q: 'Nobody answers the door. Best option?', options: ['Follow the delivery instructions or leave a note', 'Throw it on the roof', 'Keep the package'], answer: 0 },
+      { q: 'A red traffic light means...', options: ['Stop', 'Go faster', 'Honk'], answer: 0 },
+      { q: 'What helps you find an address fastest?', options: ['GPS navigation', 'Asking a pigeon', 'Guessing'], answer: 0 },
+    ],
+  },
+  {
+    id: 'hairdresser',
+    title: 'Hairdresser',
+    emoji: '💇',
+    salary: 28000,
+    minAge: 18,
+    minSmarts: 20,
+    requiresDegree: false,
+    questions: [
+      { q: 'What tool cuts hair?', options: ['Scissors', 'A spoon', 'A stapler'], answer: 0 },
+      { q: 'A client shows a photo of a bob. What do they want?', options: ['That haircut', 'A man named Bob', 'A hat'], answer: 0 },
+      { q: 'What do you do before coloring hair?', options: ['Check for allergies with a patch test', 'Dye their eyebrows first', 'Nothing'], answer: 0 },
+      { q: 'The clippers say "8mm guard". That controls...', options: ['The hair length left', 'The volume', 'The price'], answer: 0 },
+      { q: 'Hair on the floor after a cut — what do you do?', options: ['Sweep it up', 'Leave it forever', 'Glue it back on'], answer: 0 },
+    ],
+  },
+  {
+    id: 'chef',
+    title: 'Line Cook',
+    emoji: '👨‍🍳',
+    salary: 32000,
+    minAge: 18,
+    minSmarts: 25,
+    requiresDegree: false,
+    questions: [
+      { q: 'What does "sauté" mean?', options: ['Fry quickly in a little oil', 'Freeze solid', 'Serve raw'], answer: 0 },
+      { q: 'Raw chicken touched the cutting board. You should...', options: ['Wash and sanitize it', 'Use it for salad', 'Lick it clean'], answer: 0 },
+      { q: 'A pan catches fire. Best response?', options: ['Smother it — never pour water on an oil fire', 'Add water', 'Fan the flames'], answer: 0 },
+      { q: 'What does the head chef say to fire an order?', options: ['"Fire table 2!"', '"Retreat!"', '"Encore!"'], answer: 0 },
+      { q: 'Where do you store raw meat in the fridge?', options: ['Bottom shelf, covered', 'On the ice cream', 'On the counter overnight'], answer: 0 },
+    ],
   },
   {
     id: 'mechanic',
@@ -41,6 +146,13 @@ export const JOBS: Job[] = [
     minAge: 18,
     minSmarts: 30,
     requiresDegree: false,
+    questions: [
+      { q: 'What does an oil change involve?', options: ['Replacing the engine oil', 'Painting the car', 'Filling the tires with oil'], answer: 0 },
+      { q: 'A tire keeps going flat. Most likely cause?', options: ['A puncture', 'The moon', 'Too much air conditioning'], answer: 0 },
+      { q: 'Which pedal is the brake in an automatic?', options: ['The left one', 'The right one', 'There is no brake'], answer: 0 },
+      { q: 'The battery is dead. The car will...', options: ['Not start', 'Fly', 'Drive itself'], answer: 0 },
+      { q: 'What tool tightens a bolt?', options: ['A wrench', 'A banana', 'A paintbrush'], answer: 0 },
+    ],
   },
   {
     id: 'sales-rep',
@@ -50,6 +162,45 @@ export const JOBS: Job[] = [
     minAge: 18,
     minSmarts: 35,
     requiresDegree: false,
+    questions: [
+      { q: 'A customer has an objection. Best first move?', options: ['Listen to it', 'Hang up', 'Talk louder'], answer: 0 },
+      { q: 'What is a "lead" in sales?', options: ['A potential customer', 'A type of metal only', 'The office dog'], answer: 0 },
+      { q: 'When is the deal actually done?', options: ['When the contract is signed', 'When you imagine it', 'Never'], answer: 0 },
+      { q: 'Your product costs more than the rival’s. You should...', options: ['Explain the extra value', 'Cry', 'Insult the rival'], answer: 0 },
+      { q: 'A good salesperson mostly...', options: ['Asks questions and listens', 'Interrupts constantly', 'Avoids customers'], answer: 0 },
+    ],
+  },
+  {
+    id: 'plumber',
+    title: 'Plumber',
+    emoji: '🚿',
+    salary: 42000,
+    minAge: 18,
+    minSmarts: 35,
+    requiresDegree: false,
+    questions: [
+      { q: 'Water is gushing from a burst pipe. First step?', options: ['Shut off the main water valve', 'Take a photo', 'Open more taps'], answer: 0 },
+      { q: 'What unclogs a toilet?', options: ['A plunger', 'A hairdryer', 'More paper'], answer: 0 },
+      { q: 'Hot water pipes are usually marked...', options: ['Red', 'Polka dot', 'Invisible'], answer: 0 },
+      { q: 'A tap drips at night. That means...', options: ['A worn washer or seal', 'Rain indoors', 'It’s thirsty'], answer: 0 },
+      { q: 'What seals threaded pipe joints?', options: ['Plumber’s tape', 'Chewing gum', 'Hope'], answer: 0 },
+    ],
+  },
+  {
+    id: 'firefighter',
+    title: 'Firefighter',
+    emoji: '🚒',
+    salary: 45000,
+    minAge: 18,
+    minSmarts: 40,
+    requiresDegree: false,
+    questions: [
+      { q: 'What number do people call for a fire?', options: ['Emergency services', 'The weather line', 'A pizza place'], answer: 0 },
+      { q: 'Smoke fills a room. You should stay...', options: ['Low to the ground', 'On the ceiling', 'Very tall'], answer: 0 },
+      { q: 'What does a fire need to burn?', options: ['Oxygen, heat, and fuel', 'Water', 'Applause'], answer: 0 },
+      { q: 'A grease fire in a kitchen — never use...', options: ['Water', 'A fire blanket', 'An extinguisher'], answer: 0 },
+      { q: 'Why do firefighters wear helmets?', options: ['Falling debris protection', 'Fashion', 'Wi-Fi reception'], answer: 0 },
+    ],
   },
   {
     id: 'electrician',
@@ -59,6 +210,29 @@ export const JOBS: Job[] = [
     minAge: 18,
     minSmarts: 40,
     requiresDegree: false,
+    questions: [
+      { q: 'Before working on a circuit you should...', options: ['Turn off the power', 'Wet your hands', 'Hum loudly'], answer: 0 },
+      { q: 'What protects a circuit from overload?', options: ['A fuse or breaker', 'A rubber band', 'A candle'], answer: 0 },
+      { q: 'Electricity and water are...', options: ['A dangerous mix', 'Best friends', 'The same thing'], answer: 0 },
+      { q: 'Which material conducts electricity?', options: ['Copper', 'Wood', 'Glass'], answer: 0 },
+      { q: 'A flickering light usually means...', options: ['A loose connection or bad bulb', 'Ghosts', 'Disco mode'], answer: 0 },
+    ],
+  },
+  {
+    id: 'police-officer',
+    title: 'Police Officer',
+    emoji: '👮',
+    salary: 48000,
+    minAge: 21,
+    minSmarts: 45,
+    requiresDegree: false,
+    questions: [
+      { q: 'Someone reports a stolen bike. First step?', options: ['Take a report and gather details', 'Arrest the bike', 'Ignore them'], answer: 0 },
+      { q: 'What do you read a suspect when arresting them?', options: ['Their rights', 'A bedtime story', 'The menu'], answer: 0 },
+      { q: 'A traffic stop begins with...', options: ['Flashing lights to pull the car over', 'A high five', 'A race'], answer: 0 },
+      { q: 'Evidence at a crime scene should be...', options: ['Preserved and documented', 'Taken home', 'Rearranged'], answer: 0 },
+      { q: 'What is a patrol?', options: ['Regularly moving through an area to keep it safe', 'A nap', 'A parade'], answer: 0 },
+    ],
   },
   {
     id: 'nurse',
@@ -68,6 +242,13 @@ export const JOBS: Job[] = [
     minAge: 22,
     minSmarts: 55,
     requiresDegree: true,
+    questions: [
+      { q: 'What does a thermometer measure?', options: ['Body temperature', 'Height', 'Mood'], answer: 0 },
+      { q: 'Before giving medication you check...', options: ['The patient and the dose', 'The weather', 'Your horoscope'], answer: 0 },
+      { q: 'A patient’s pulse is taken at the...', options: ['Wrist or neck', 'Elbow only', 'Hair'], answer: 0 },
+      { q: 'Why do nurses wash their hands between patients?', options: ['To stop infections spreading', 'For fun', 'To stay warm'], answer: 0 },
+      { q: 'What does "NPO / nil by mouth" mean?', options: ['No food or drink', 'Extra dessert', 'Talk quietly'], answer: 0 },
+    ],
   },
   {
     id: 'teacher',
@@ -77,6 +258,29 @@ export const JOBS: Job[] = [
     minAge: 22,
     minSmarts: 60,
     requiresDegree: true,
+    questions: [
+      { q: 'What is 7 × 8?', options: ['56', '54', '78'], answer: 0 },
+      { q: 'A student doesn’t understand the lesson. You should...', options: ['Explain it a different way', 'Move on faster', 'Sigh dramatically'], answer: 0 },
+      { q: 'What is a syllabus?', options: ['A plan of what the class will learn', 'A type of bus', 'A snake'], answer: 0 },
+      { q: 'Homework is for...', options: ['Practicing what was taught', 'Punishment only', 'The dog'], answer: 0 },
+      { q: 'The capital of France is...', options: ['Paris', 'London', 'Rome'], answer: 0 },
+    ],
+  },
+  {
+    id: 'accountant',
+    title: 'Accountant',
+    emoji: '🧾',
+    salary: 62000,
+    minAge: 22,
+    minSmarts: 65,
+    requiresDegree: true,
+    questions: [
+      { q: 'Income minus expenses equals...', options: ['Profit', 'Pasta', 'Weather'], answer: 0 },
+      { q: 'What is a budget?', options: ['A plan for money', 'A small bird', 'A tax on fun'], answer: 0 },
+      { q: 'If a company spends more than it earns, it makes a...', options: ['Loss', 'Profit', 'Sandwich'], answer: 0 },
+      { q: 'What does an invoice ask for?', options: ['Payment', 'A dance', 'Directions'], answer: 0 },
+      { q: 'Which is a company asset?', options: ['Money in the bank', 'A rumor', 'Monday'], answer: 0 },
+    ],
   },
   {
     id: 'software-dev',
@@ -86,6 +290,13 @@ export const JOBS: Job[] = [
     minAge: 22,
     minSmarts: 70,
     requiresDegree: true,
+    questions: [
+      { q: 'What is a "bug" in software?', options: ['A mistake in the code', 'An insect in the office', 'A keyboard'], answer: 0 },
+      { q: 'What does code run on?', options: ['A computer', 'A treadmill', 'Vibes'], answer: 0 },
+      { q: 'Saving your code often is...', options: ['A good idea', 'Forbidden', 'Impossible'], answer: 0 },
+      { q: 'The app crashes every time it opens. You should...', options: ['Debug it', 'Ship it anyway', 'Blame the users'], answer: 0 },
+      { q: 'What is a password for?', options: ['Keeping accounts secure', 'Decoration', 'Sharing with everyone'], answer: 0 },
+    ],
   },
   {
     id: 'lawyer',
@@ -95,6 +306,13 @@ export const JOBS: Job[] = [
     minAge: 24,
     minSmarts: 80,
     requiresDegree: true,
+    questions: [
+      { q: 'Who decides the verdict in a jury trial?', options: ['The jury', 'The mailman', 'The loudest person'], answer: 0 },
+      { q: 'What is a contract?', options: ['A legally binding agreement', 'A type of dance', 'A suggestion'], answer: 0 },
+      { q: 'Your client tells you something in confidence. You...', options: ['Keep it confidential', 'Post it online', 'Sell it'], answer: 0 },
+      { q: '"Innocent until proven..."', options: ['Guilty', 'Hungry', 'Late'], answer: 0 },
+      { q: 'Where does a trial take place?', options: ['A courtroom', 'A food court', 'A tennis court'], answer: 0 },
+    ],
   },
   {
     id: 'doctor',
@@ -104,5 +322,12 @@ export const JOBS: Job[] = [
     minAge: 26,
     minSmarts: 88,
     requiresDegree: true,
+    questions: [
+      { q: 'What organ pumps blood?', options: ['The heart', 'The elbow', 'The hair'], answer: 0 },
+      { q: 'An X-ray is used to see...', options: ['Bones', 'The future', 'Wi-Fi'], answer: 0 },
+      { q: 'A patient has a fever. Their temperature is...', options: ['Higher than normal', 'Lower than normal', 'Purple'], answer: 0 },
+      { q: 'What do you do first in an emergency?', options: ['Check the patient is breathing', 'Update your status', 'Order lunch'], answer: 0 },
+      { q: 'Antibiotics treat...', options: ['Bacterial infections', 'Broken hearts', 'Bad luck'], answer: 0 },
+    ],
   },
 ]

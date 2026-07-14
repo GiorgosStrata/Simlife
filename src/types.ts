@@ -22,6 +22,8 @@ export interface EventChoice {
   /** Line written to the life log after picking this choice. */
   outcome: string
   effects: Effects
+  /** Optional game action triggered on top of the stat effects. */
+  action?: 'enrollUniversity'
 }
 
 export interface GameEvent {
@@ -44,12 +46,15 @@ export interface LogEntry {
   kind: 'birthday' | 'event' | 'info' | 'death' | 'career' | 'relationship'
 }
 
-/** Someone in the character's life. One person per role at a time. */
-export type PersonRole = 'mother' | 'father' | 'sibling' | 'partner'
+/** Someone in the character's life. */
+export type PersonRole = 'mother' | 'father' | 'sibling' | 'partner' | 'friend'
 
 export interface Person {
-  /** Roles are unique, so the role doubles as the id. */
-  id: PersonRole
+  /**
+   * Unique id. Family and partner use their role as the id (one of
+   * each); friends get generated ids like "friend-1".
+   */
+  id: string
   name: string
   role: PersonRole
   age: number
@@ -60,6 +65,14 @@ export interface Person {
 
 export type PartnerStatus = 'dating' | 'engaged' | 'married'
 
+/** One multiple-choice interview question. Kept obvious on purpose. */
+export interface JobQuestion {
+  q: string
+  options: string[]
+  /** Index into options. */
+  answer: number
+}
+
 export interface Job {
   id: string
   title: string
@@ -69,4 +82,6 @@ export interface Job {
   minAge: number
   minSmarts: number
   requiresDegree: boolean
+  /** One of these is asked, at random, when applying. */
+  questions: JobQuestion[]
 }
