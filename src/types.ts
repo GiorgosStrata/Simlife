@@ -41,5 +41,32 @@ export interface LogEntry {
   age: number
   year: number
   text: string
-  kind: 'birthday' | 'event' | 'info' | 'death'
+  kind: 'birthday' | 'event' | 'info' | 'death' | 'career' | 'relationship'
+}
+
+/** Someone in the character's life. One person per role at a time. */
+export type PersonRole = 'mother' | 'father' | 'sibling' | 'partner'
+
+export interface Person {
+  /** Roles are unique, so the role doubles as the id. */
+  id: PersonRole
+  name: string
+  role: PersonRole
+  age: number
+  alive: boolean
+  /** Bond strength 0-100; drifts down slowly each year. */
+  relationship: number
+}
+
+export type PartnerStatus = 'dating' | 'engaged' | 'married'
+
+export interface Job {
+  id: string
+  title: string
+  emoji: string
+  /** Paid into money automatically every Age Up. */
+  salary: number
+  minAge: number
+  minSmarts: number
+  requiresDegree: boolean
 }

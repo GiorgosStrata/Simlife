@@ -268,6 +268,236 @@ export const EVENTS: GameEvent[] = [
     ],
   },
   {
+    id: 'first-bicycle',
+    title: 'Two Wheels of Freedom',
+    description:
+      'Your parents offer to teach you to ride a bike without training wheels. The driveway looks very long and very hard.',
+    minAge: 5,
+    maxAge: 10,
+    choices: [
+      {
+        label: 'Pedal fearlessly',
+        outcome: 'You wobbled, you crashed, you got up — and then you flew. Scraped knees, huge grin.',
+        effects: { happiness: 9, health: -2 },
+      },
+      {
+        label: 'Keep the training wheels',
+        outcome: 'You kept the training wheels another year. Stability has its charms.',
+        effects: { happiness: 2 },
+      },
+    ],
+  },
+  {
+    id: 'school-bully',
+    title: 'The Bully',
+    description:
+      'A kid at school keeps knocking your books out of your hands. Today they did it in front of everyone.',
+    minAge: 7,
+    maxAge: 15,
+    choices: [
+      {
+        label: 'Stand up to them',
+        outcome: 'You looked them in the eye and told them to stop. To everyone’s surprise, they did.',
+        effects: { happiness: 8, smarts: 2 },
+      },
+      {
+        label: 'Tell a teacher',
+        outcome: 'The teacher handled it quietly. The bullying stopped, mostly.',
+        effects: { happiness: 4, smarts: 3 },
+      },
+      {
+        label: 'Ignore it',
+        outcome: 'You kept your head down. The books kept falling.',
+        effects: { happiness: -6 },
+      },
+    ],
+  },
+  {
+    id: 'summer-camp',
+    title: 'Summer Camp',
+    description:
+      'You’re off to summer camp for two weeks. On day one, the counselors ask everyone to pick a specialty.',
+    minAge: 8,
+    maxAge: 14,
+    choices: [
+      {
+        label: 'Wilderness survival',
+        outcome: 'You can now build a fire and identify three edible berries. You feel invincible.',
+        effects: { health: 5, smarts: 4, happiness: 4 },
+      },
+      {
+        label: 'Arts and crafts',
+        outcome: 'You made a lopsided clay bowl for your mother. She displays it proudly.',
+        effects: { happiness: 7 },
+      },
+      {
+        label: 'Competitive kickball',
+        outcome: 'Your team won the camp championship. You were carried off the field. Briefly.',
+        effects: { health: 6, happiness: 5 },
+      },
+    ],
+  },
+  {
+    id: 'garage-band',
+    title: 'Garage Band',
+    description:
+      'Your friends are starting a band in someone’s garage. They need one more member and they’re looking at you.',
+    minAge: 14,
+    maxAge: 22,
+    choices: [
+      {
+        label: 'Join on guitar',
+        outcome: 'The band is terrible and it is the best thing in your life right now.',
+        effects: { happiness: 10, money: -200 },
+      },
+      {
+        label: 'Offer to be the manager',
+        outcome: 'You booked the band two gigs and took ten percent. Business is business.',
+        effects: { smarts: 5, money: 100 },
+      },
+      {
+        label: 'Politely decline',
+        outcome: 'You passed. Their first single was... actually kind of good?',
+        effects: { happiness: -3 },
+      },
+    ],
+  },
+  {
+    id: 'road-trip',
+    title: 'The Road Trip',
+    description:
+      'Friends are planning a week-long road trip along the coast. It leaves in two days and the car smells like fries.',
+    minAge: 18,
+    maxAge: 40,
+    choices: [
+      {
+        label: 'Call shotgun',
+        outcome: 'Seven days, four flat tires, one perfect sunset. Worth every penny.',
+        effects: { happiness: 12, money: -400 },
+      },
+      {
+        label: 'Stay home and save',
+        outcome: 'You stayed behind. The group chat photos stung a little.',
+        effects: { money: 200, happiness: -4 },
+      },
+    ],
+  },
+  {
+    id: 'overtime-request',
+    title: 'Crunch Time',
+    description:
+      'Things are hectic at work and you’re asked to put in serious overtime this month. It would not go unnoticed.',
+    minAge: 20,
+    maxAge: 60,
+    choices: [
+      {
+        label: 'Work the overtime',
+        outcome: 'A brutal month, but the bonus landed and so did some goodwill upstairs.',
+        effects: { money: 1500, health: -4, happiness: -3 },
+      },
+      {
+        label: 'Protect your evenings',
+        outcome: 'You said no politely. Your plants, and your sleep schedule, thanked you.',
+        effects: { happiness: 5 },
+      },
+    ],
+  },
+  {
+    id: 'neighbor-dispute',
+    title: 'The Hedge War',
+    description:
+      'Your neighbor’s hedge has crossed the property line and is slowly consuming your garden. Diplomacy has failed.',
+    minAge: 25,
+    maxAge: 75,
+    choices: [
+      {
+        label: 'Trim it yourself at dawn',
+        outcome: 'You pruned the invader at 6am. The neighbor now waters their lawn while maintaining eye contact.',
+        effects: { happiness: 4 },
+      },
+      {
+        label: 'Bake a peace offering',
+        outcome: 'Banana bread fixed in one afternoon what three years of glaring could not.',
+        effects: { happiness: 8, money: -20 },
+      },
+      {
+        label: 'Call the city',
+        outcome: 'The city sent a letter. The hedge retreated. The cold war continues.',
+        effects: { happiness: -2, smarts: 2 },
+      },
+    ],
+  },
+  {
+    id: 'charity-drive',
+    title: 'A Good Cause',
+    description:
+      'A local charity is raising money to fix up the community playground. A volunteer is at your door with a clipboard.',
+    minAge: 20,
+    maxAge: 85,
+    choices: [
+      {
+        label: 'Donate generously',
+        outcome: 'You gave more than you planned to. The new slide has a plaque with your name on it.',
+        effects: { money: -500, happiness: 10 },
+      },
+      {
+        label: 'Volunteer your weekend',
+        outcome: 'You spent Saturday painting monkey bars. Your back hurts. Your heart doesn’t.',
+        effects: { happiness: 8, health: -2 },
+      },
+      {
+        label: 'Not this time',
+        outcome: 'You wished them luck and closed the door gently.',
+        effects: {},
+      },
+    ],
+  },
+  {
+    id: 'cooking-disaster',
+    title: 'Chef’s Special',
+    description:
+      'You attempt an ambitious new recipe for guests arriving in one hour. The kitchen is starting to smoke. Slightly.',
+    minAge: 16,
+    maxAge: 90,
+    choices: [
+      {
+        label: 'Push through and serve it',
+        outcome: 'The crust was carbon, the middle was raw, and everyone asked for seconds out of love.',
+        effects: { happiness: 6, health: -2 },
+      },
+      {
+        label: 'Order takeout, plate it nicely',
+        outcome: 'Nobody suspected a thing. One guest asked for the recipe. You winked.',
+        effects: { money: -60, happiness: 7 },
+      },
+    ],
+  },
+  {
+    id: 'retirement-hobby',
+    title: 'New Horizons',
+    description:
+      'With more free time on your hands these days, you’ve been thinking about finally picking up something new.',
+    minAge: 60,
+    maxAge: 90,
+    choices: [
+      {
+        label: 'Competitive gardening',
+        outcome: 'Your tomatoes took second place at the county fair. Next year, gold.',
+        effects: { happiness: 8, health: 3 },
+      },
+      {
+        label: 'Learn the piano',
+        outcome: 'Your rendition of Für Elise is now only mostly wrong. Progress.',
+        effects: { smarts: 6, happiness: 5, money: -200 },
+      },
+      {
+        label: 'Master chess at the park',
+        outcome: 'The park regulars stopped going easy on you. You consider this a great honor.',
+        effects: { smarts: 8, happiness: 4 },
+      },
+    ],
+  },
+  {
     id: 'grandparent-story',
     title: 'Grandpa’s Stories',
     description:

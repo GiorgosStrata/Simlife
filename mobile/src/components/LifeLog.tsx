@@ -9,6 +9,8 @@ const KIND_COLORS: Record<LogEntry['kind'], string> = {
   event: colors.slate600,
   info: colors.indigo700,
   death: colors.rose700,
+  career: colors.sky600,
+  relationship: colors.pink600,
 }
 
 const KIND_WEIGHTS: Record<LogEntry['kind'], '400' | '600'> = {
@@ -16,6 +18,8 @@ const KIND_WEIGHTS: Record<LogEntry['kind'], '400' | '600'> = {
   event: '400',
   info: '400',
   death: '600',
+  career: '400',
+  relationship: '400',
 }
 
 export function LifeLog() {
@@ -28,6 +32,7 @@ export function LifeLog() {
       <FlatList
         ref={listRef}
         data={log}
+        contentContainerStyle={styles.listContent}
         keyExtractor={(entry) => String(entry.id)}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         renderItem={({ item }) => (
@@ -57,6 +62,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: colors.slate400,
     marginBottom: 8,
+  },
+  listContent: {
+    paddingBottom: 56,
   },
   entry: {
     fontSize: 14,

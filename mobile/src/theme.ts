@@ -20,6 +20,8 @@ export const colors = {
   emerald50: '#ecfdf5',
   emerald700: '#047857',
   indigo700: '#4338ca',
+  pink600: '#db2777',
+  sky600: '#0284c7',
   white: '#ffffff',
   backdrop: 'rgba(15, 23, 42, 0.65)',
 }

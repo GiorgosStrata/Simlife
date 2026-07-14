@@ -7,6 +7,8 @@ const KIND_STYLES: Record<LogEntry['kind'], string> = {
   event: 'text-slate-600',
   info: 'text-indigo-700',
   death: 'font-semibold text-rose-700',
+  career: 'text-sky-600',
+  relationship: 'text-pink-600',
 }
 
 export function LifeLog() {

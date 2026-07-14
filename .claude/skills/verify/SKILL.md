@@ -20,6 +20,8 @@ npx expo export --platform web --output-dir <dir> && python3 -m http.server 4174
 
 Drive it like the web app (below), with RN-web differences: buttons need `getByRole('button')` (Pressables carry `accessibilityRole="button"`); Age Up disabled state is `aria-disabled`, the element never unmounts; name inputs are `[data-testid=first-name]` / `[data-testid=last-name]`; there's a brief AsyncStorage hydration spinner before the first screen; saves land in localStorage key `simlife-save` on web.
 
+Mobile-only systems (v2 saves): bottom tabs (`aria-label` "Career tab" / "Life tab" / "Love tab"), Career (jobs from `src/data/jobs.ts`, salary lands each Age Up, university at 18), Relationships (family at birth, Find Love at 18, propose at 70+ bond, marry). When resolving the event modal in a driver, click `getByRole('button').last()` — the modal mounts last in the DOM and tab buttons behind the backdrop intercept anything else. Worth probing: v1→v2 save migration (inject `{version: 1}` save, expect generated parents + unemployed career, no creation screen).
+
 ## Web app — build & launch
 
 ```bash

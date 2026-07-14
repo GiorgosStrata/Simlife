@@ -1,0 +1,108 @@
+import type { Job } from '../types'
+
+/**
+ * Job content lives here, separate from game logic.
+ * Salary is paid automatically on every Age Up while employed.
+ * To add a job: append an object with a unique `id` and requirements.
+ */
+export const JOBS: Job[] = [
+  {
+    id: 'fast-food',
+    title: 'Fast Food Worker',
+    emoji: '🍟',
+    salary: 12000,
+    minAge: 16,
+    minSmarts: 0,
+    requiresDegree: false,
+  },
+  {
+    id: 'cashier',
+    title: 'Retail Cashier',
+    emoji: '🛒',
+    salary: 15000,
+    minAge: 16,
+    minSmarts: 10,
+    requiresDegree: false,
+  },
+  {
+    id: 'barista',
+    title: 'Barista',
+    emoji: '☕',
+    salary: 17000,
+    minAge: 16,
+    minSmarts: 15,
+    requiresDegree: false,
+  },
+  {
+    id: 'mechanic',
+    title: 'Car Mechanic',
+    emoji: '🔧',
+    salary: 34000,
+    minAge: 18,
+    minSmarts: 30,
+    requiresDegree: false,
+  },
+  {
+    id: 'sales-rep',
+    title: 'Sales Rep',
+    emoji: '📞',
+    salary: 38000,
+    minAge: 18,
+    minSmarts: 35,
+    requiresDegree: false,
+  },
+  {
+    id: 'electrician',
+    title: 'Electrician',
+    emoji: '⚡',
+    salary: 46000,
+    minAge: 18,
+    minSmarts: 40,
+    requiresDegree: false,
+  },
+  {
+    id: 'nurse',
+    title: 'Nurse',
+    emoji: '🩺',
+    salary: 54000,
+    minAge: 22,
+    minSmarts: 55,
+    requiresDegree: true,
+  },
+  {
+    id: 'teacher',
+    title: 'Teacher',
+    emoji: '📚',
+    salary: 48000,
+    minAge: 22,
+    minSmarts: 60,
+    requiresDegree: true,
+  },
+  {
+    id: 'software-dev',
+    title: 'Software Developer',
+    emoji: '💻',
+    salary: 85000,
+    minAge: 22,
+    minSmarts: 70,
+    requiresDegree: true,
+  },
+  {
+    id: 'lawyer',
+    title: 'Lawyer',
+    emoji: '⚖️',
+    salary: 110000,
+    minAge: 24,
+    minSmarts: 80,
+    requiresDegree: true,
+  },
+  {
+    id: 'doctor',
+    title: 'Doctor',
+    emoji: '🩻',
+    salary: 160000,
+    minAge: 26,
+    minSmarts: 88,
+    requiresDegree: true,
+  },
+]

@@ -1,15 +1,20 @@
 import { StatusBar } from 'expo-status-bar'
+import { useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+import { CareerScreen } from './src/components/CareerScreen'
 import { CharacterCreation } from './src/components/CharacterCreation'
 import { EventModal } from './src/components/EventModal'
 import { GameOverModal } from './src/components/GameOverModal'
 import { LifeLog } from './src/components/LifeLog'
+import { RelationshipsScreen } from './src/components/RelationshipsScreen'
 import { StatsPanel } from './src/components/StatsPanel'
+import { TabBar, type TabKey } from './src/components/TabBar'
 import { useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
 
 function Game() {
+  const [tab, setTab] = useState<TabKey>('life')
   const hasHydrated = useGameStore((s) => s.hasHydrated)
   const screen = useGameStore((s) => s.screen)
   const name = useGameStore((s) => s.name)
@@ -53,7 +58,11 @@ function Game() {
 
         <StatsPanel />
 
-        <LifeLog />
+        {tab === 'life' && <LifeLog />}
+        {tab === 'career' && <CareerScreen />}
+        {tab === 'relationships' && <RelationshipsScreen />}
+
+        <TabBar active={tab} onChange={setTab} />
       </View>
 
       {/* Fixed Age Up button: never moves, like BitLife's age button. */}
@@ -101,7 +110,6 @@ const styles = StyleSheet.create({
   column: {
     flex: 1,
     gap: 12,
-    paddingBottom: 76,
   },
   header: {
     flexDirection: 'row',
@@ -137,7 +145,7 @@ const styles = StyleSheet.create({
   },
   ageUpButton: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 92,
     alignSelf: 'center',
     backgroundColor: colors.cyan500,
     borderRadius: 999,
