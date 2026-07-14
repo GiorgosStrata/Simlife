@@ -27,12 +27,14 @@ import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs'
 
 ## Flows worth driving
 
-- Click **Age Up +** until an event card appears (events start around age 5–7); pick a choice, confirm stat bars (`[role=progressbar]` `aria-valuenow`) and the life log (`[data-testid=life-log]`) update.
+- Fresh load shows the **character creation screen** ("New Life"): two name inputs, 🎲 Randomize / Reroll buttons, "Start Life" begins the game.
+- Click **Age Up +** (fixed cyan button, always visible) until an event modal pops (`[role=dialog]`, events start around age 5–7); pick a choice, confirm stat bars (`[role=progressbar]` `aria-valuenow`) and the life log (`[data-testid=life-log]`) update.
 - Reload mid-event: the pending event must persist and keep blocking Age Up.
-- Reload after resolving: age/year/log must survive (localStorage key `simlife-save`).
-- Loop age-up/choose ~300 iterations to reach death ("Rest in Peace"), then "Start a New Life" resets to age 0 with a fresh name.
+- Reload after resolving: age/year/log must survive (localStorage key `simlife-save`, persist version 1; v0 saves without `screen` must migrate straight to the life screen, not creation).
+- Loop age-up/choose ~400 iterations to reach the death modal ("Rest in Peace"), then "Start a New Life" returns to character creation.
 
 ## Gotchas
 
 - Collect `console`/`pageerror` events in the driver — the app itself logs nothing, so anything appearing is a finding.
-- Choice buttons live inside the event card container (`.border-indigo-100 button`); "Age Up +" disappears while an event is pending.
+- Choice buttons live inside the modal (`[role=dialog] button`); "Age Up +" stays visible but disabled while an event is pending.
+- On a mobile viewport the modal is a bottom sheet that covers the Age Up button's coordinates — don't probe "click through the backdrop" at those coordinates, you'll hit a choice button instead.

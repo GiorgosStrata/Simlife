@@ -29,6 +29,10 @@ function clampStat(value: number): number {
   return Math.max(0, Math.min(100, value))
 }
 
+export function randomNameParts(): { first: string; last: string } {
+  return { first: pick(FIRST_NAMES), last: pick(LAST_NAMES) }
+}
+
 function rollStats(): Stats {
   return {
     health: randomInt(60, 100),
@@ -39,6 +43,8 @@ function rollStats(): Stats {
 }
 
 interface GameState {
+  /** 'creation' shows the character creation screen; 'life' is the game. */
+  screen: 'creation' | 'life'
   name: string
   alive: boolean
   age: number
@@ -51,33 +57,27 @@ interface GameState {
   usedEventIds: string[]
   nextLogId: number
 
+  rerollStats: () => void
+  startLife: (firstName: string, lastName: string) => void
   ageUp: () => void
   chooseOption: (choiceIndex: number) => void
   startNewLife: () => void
 }
 
 function newLifeState() {
-  const name = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`
-  const year = START_YEAR_BASE
+  const { first, last } = randomNameParts()
   return {
-    name,
+    screen: 'creation' as const,
+    name: `${first} ${last}`,
     alive: true,
     age: 0,
-    year,
+    year: START_YEAR_BASE,
     stats: rollStats(),
     money: 0,
     currentEvent: null,
     usedEventIds: [] as string[],
     nextLogId: 1,
-    log: [
-      {
-        id: 0,
-        age: 0,
-        year,
-        text: `You were born! Say hello to ${name}.`,
-        kind: 'info' as const,
-      },
-    ],
+    log: [] as LogEntry[],
   }
 }
 
@@ -101,9 +101,36 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       ...newLifeState(),
 
+      rerollStats: () => {
+        if (get().screen !== 'creation') return
+        set({ stats: rollStats() })
+      },
+
+      startLife: (firstName: string, lastName: string) => {
+        const s = get()
+        if (s.screen !== 'creation') return
+        const typed = `${firstName.trim()} ${lastName.trim()}`.trim()
+        const fallback = randomNameParts()
+        const name = typed || `${fallback.first} ${fallback.last}`
+        set({
+          name,
+          screen: 'life',
+          log: [
+            {
+              id: 0,
+              age: 0,
+              year: s.year,
+              text: `You were born! Say hello to ${name}.`,
+              kind: 'info',
+            },
+          ],
+          nextLogId: 1,
+        })
+      },
+
       ageUp: () => {
         const s = get()
-        if (!s.alive || s.currentEvent) return
+        if (s.screen !== 'life' || !s.alive || s.currentEvent) return
 
         const age = s.age + 1
         const year = s.year + 1
@@ -192,6 +219,15 @@ export const useGameStore = create<GameState>()(
 
       startNewLife: () => set(newLifeState()),
     }),
-    { name: 'simlife-save' },
+    {
+      name: 'simlife-save',
+      version: 1,
+      migrate: (persisted, version) => {
+        // v0 saves predate the character creation screen: they were mid-life.
+        const state = persisted as Partial<GameState>
+        if (version < 1) state.screen = 'life'
+        return state as GameState
+      },
+    },
   ),
 )

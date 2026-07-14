@@ -20,8 +20,9 @@ Other scripts:
 
 ## How the game works
 
+- **Character creation** — new lives start on a creation screen: pick or randomize a name, reroll your birth stats, then start life.
 - **Stats** — four 0–100 attributes (Health, Happiness, Smarts, Looks) plus Money, which is an open-ended currency amount. Stats are rolled randomly at birth.
-- **Age Up** — advances one year, applies late-life health decline, then draws a random event eligible for your age. You must resolve the event before aging again.
+- **Age Up** — a fixed floating button; advances one year, applies late-life health decline, then draws a random event eligible for your age. Events pop up as a modal (the layout underneath never moves) and must be resolved before aging again.
 - **Events** — each event offers 2–3 choices; each choice applies stat/money effects and writes an outcome line to the life log. Events don't repeat until the eligible pool for your age is exhausted.
 - **Death** — health reaching 0 ends the life, and past age 70 an old-age mortality roll kicks in. A "Start a New Life" button rerolls a fresh character.
 - **Saving** — the whole game state is persisted via Zustand's `persist` middleware under the `simlife-save` localStorage key.
@@ -34,11 +35,13 @@ src/
   data/events.ts        # Event content — add new events here, no logic changes needed
   store/gameStore.ts    # Zustand store: game state, ageUp/chooseOption/startNewLife
   components/
-    StatsPanel.tsx      # Stat bars + money badge
-    StatBar.tsx         # Single labeled progress bar
-    EventCard.tsx       # Current event with choice buttons
-    LifeLog.tsx         # Scrollable, auto-scrolling life history
-  App.tsx               # Layout, header (name/age/year), Age Up / game-over UI
+    CharacterCreation.tsx # New-life screen: name inputs + stat reroll
+    StatsPanel.tsx        # Stat bars + money badge
+    StatBar.tsx           # Single labeled progress bar
+    EventModal.tsx        # Popup event dialog with choice buttons
+    GameOverModal.tsx     # Death overlay with new-life button
+    LifeLog.tsx           # Scrollable, auto-scrolling life history
+  App.tsx                 # Layout, header (name/age/year), fixed Age Up button
 ```
 
 ## Adding events
