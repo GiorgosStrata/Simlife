@@ -1,333 +1,338 @@
-import type { Job } from '../types'
+import type { Job, JobQuestion } from '../types'
 
 /**
  * Job content lives here, separate from game logic.
- * Salary is paid automatically on every Age Up while employed.
- * Applying asks ONE random question from the job's `questions` list —
- * answer right and you're hired. Questions are deliberately easy,
- * surface-level knowledge about the job (BitLife style).
- * To add a job: append an object with a unique `id`, requirements,
- * and 5 questions.
+ * - Salary is paid automatically on every Age Up while employed.
+ * - Applying asks ONE random question from the job's `questions` —
+ *   right answer hires you (BitLife style, deliberately obvious).
+ * - `requiredMajor` locks a job behind a specific university degree
+ *   (see majors.ts); `requiresDegree` accepts any degree.
+ * - Only a rotating subset of jobs is hiring each year (the store's
+ *   `jobOpenings`), so not everything is available all the time.
+ *
+ * Related jobs share a category question pool, mixed with
+ * job-specific questions where it matters.
  */
-export const JOBS: Job[] = [
-  {
-    id: 'garbage-collector',
-    title: 'Garbage Collector',
-    emoji: '🗑️',
-    salary: 26000,
-    minAge: 18,
-    minSmarts: 0,
-    requiresDegree: false,
-    questions: [
-      { q: 'Which of these belongs in the recycling bin?', options: ['A banana peel', 'A plastic bottle', 'A dead battery'], answer: 1 },
-      { q: 'When do garbage trucks usually run their routes?', options: ['Early morning', 'Midnight', 'Whenever'], answer: 0 },
-      { q: 'What should you wear on the job?', options: ['Flip flops', 'High-visibility gloves and vest', 'A suit'], answer: 1 },
-      { q: 'A bin is overflowing. What do you do?', options: ['Leave it', 'Empty it and report it', 'Hide it'], answer: 1 },
-      { q: 'Where does a glass jar go?', options: ['Glass recycling', 'The river', 'The compost'], answer: 0 },
-    ],
-  },
-  {
-    id: 'fast-food',
-    title: 'Fast Food Worker',
-    emoji: '🍟',
-    salary: 12000,
-    minAge: 16,
-    minSmarts: 0,
-    requiresDegree: false,
-    questions: [
-      { q: 'A customer says their fries are cold. What do you do?', options: ['Shrug', 'Replace them with a smile', 'Eat them'], answer: 1 },
-      { q: 'How often should you wash your hands?', options: ['Once a shift', 'Frequently', 'Never'], answer: 1 },
-      { q: 'What temperature should cooked burgers be?', options: ['Hot all the way through', 'Raw in the middle', 'Frozen'], answer: 0 },
-      { q: 'The fryer timer beeps. What does that mean?', options: ['Break time', 'The fries are done', 'Fire drill'], answer: 1 },
-      { q: 'Where does the ice cream come from?', options: ['The soft-serve machine', 'The deep fryer', 'The cash register'], answer: 0 },
-    ],
-  },
-  {
-    id: 'cashier',
-    title: 'Retail Cashier',
-    emoji: '🛒',
-    salary: 15000,
-    minAge: 16,
-    minSmarts: 10,
-    requiresDegree: false,
-    questions: [
-      { q: 'A customer pays $10 for a $7 item. How much change?', options: ['$3', '$7', '$17'], answer: 0 },
-      { q: 'What do you scan at the checkout?', options: ['The barcode', 'The customer', 'Your badge'], answer: 0 },
-      { q: 'The card machine says "declined". What do you do?', options: ['Give it away free', 'Politely ask for another payment method', 'Call the police'], answer: 1 },
-      { q: 'Where do coins go in the till?', options: ['Your pocket', 'The coin tray', 'The floor'], answer: 1 },
-      { q: 'A shelf price says $5 but it scans $6. Best move?', options: ['Check the price and honor the correct one', 'Charge $10', 'Ignore the customer'], answer: 0 },
-    ],
-  },
-  {
-    id: 'waiter',
-    title: 'Waiter',
-    emoji: '🍽️',
-    salary: 16000,
-    minAge: 16,
-    minSmarts: 10,
-    requiresDegree: false,
-    questions: [
-      { q: 'A table waves at you. What do they probably want?', options: ['To order', 'To arm wrestle', 'Nothing'], answer: 0 },
-      { q: 'What do you bring at the end of the meal?', options: ['The check', 'More napkins only', 'Your resume'], answer: 0 },
-      { q: 'A dish has a hair in it. What do you do?', options: ['Apologize and replace it', 'Say it adds flavor', 'Charge extra'], answer: 0 },
-      { q: 'Which hand position is safest for carrying plates?', options: ['Balanced and steady', 'One finger', 'Behind your back'], answer: 0 },
-      { q: 'What does "86 the soup" mean in a kitchen?', options: ['The soup is sold out', 'Add 86 soups', 'Soup costs $86'], answer: 0 },
-    ],
-  },
-  {
-    id: 'barista',
-    title: 'Barista',
-    emoji: '☕',
-    salary: 17000,
-    minAge: 16,
-    minSmarts: 15,
-    requiresDegree: false,
-    questions: [
-      { q: 'What is espresso?', options: ['Strong coffee brewed under pressure', 'A type of tea', 'Chocolate milk'], answer: 0 },
-      { q: 'A latte is espresso plus what?', options: ['Steamed milk', 'Orange juice', 'Soda water'], answer: 0 },
-      { q: 'A customer asks for decaf. What matters most?', options: ['Actually using decaf beans', 'Extra caffeine', 'A bigger cup'], answer: 0 },
-      { q: 'The milk steamer hisses loudly. That is...', options: ['Normal', 'A ghost', 'A fire alarm'], answer: 0 },
-      { q: 'What goes on top of a cappuccino?', options: ['Milk foam', 'Ketchup', 'Ice cubes'], answer: 0 },
-    ],
-  },
-  {
-    id: 'delivery-driver',
-    title: 'Delivery Driver',
-    emoji: '📦',
-    salary: 22000,
-    minAge: 18,
-    minSmarts: 15,
-    requiresDegree: false,
-    questions: [
-      { q: 'What do you need to drive a delivery van?', options: ['A driver’s license', 'A boat license', 'Nothing'], answer: 0 },
-      { q: 'The package says FRAGILE. You should...', options: ['Handle it gently', 'Drop-kick it', 'Shake it to check'], answer: 0 },
-      { q: 'Nobody answers the door. Best option?', options: ['Follow the delivery instructions or leave a note', 'Throw it on the roof', 'Keep the package'], answer: 0 },
-      { q: 'A red traffic light means...', options: ['Stop', 'Go faster', 'Honk'], answer: 0 },
-      { q: 'What helps you find an address fastest?', options: ['GPS navigation', 'Asking a pigeon', 'Guessing'], answer: 0 },
-    ],
-  },
-  {
-    id: 'hairdresser',
-    title: 'Hairdresser',
-    emoji: '💇',
-    salary: 28000,
-    minAge: 18,
-    minSmarts: 20,
-    requiresDegree: false,
-    questions: [
-      { q: 'What tool cuts hair?', options: ['Scissors', 'A spoon', 'A stapler'], answer: 0 },
-      { q: 'A client shows a photo of a bob. What do they want?', options: ['That haircut', 'A man named Bob', 'A hat'], answer: 0 },
-      { q: 'What do you do before coloring hair?', options: ['Check for allergies with a patch test', 'Dye their eyebrows first', 'Nothing'], answer: 0 },
-      { q: 'The clippers say "8mm guard". That controls...', options: ['The hair length left', 'The volume', 'The price'], answer: 0 },
-      { q: 'Hair on the floor after a cut — what do you do?', options: ['Sweep it up', 'Leave it forever', 'Glue it back on'], answer: 0 },
-    ],
-  },
-  {
-    id: 'chef',
-    title: 'Line Cook',
-    emoji: '👨‍🍳',
-    salary: 32000,
-    minAge: 18,
-    minSmarts: 25,
-    requiresDegree: false,
-    questions: [
-      { q: 'What does "sauté" mean?', options: ['Fry quickly in a little oil', 'Freeze solid', 'Serve raw'], answer: 0 },
-      { q: 'Raw chicken touched the cutting board. You should...', options: ['Wash and sanitize it', 'Use it for salad', 'Lick it clean'], answer: 0 },
-      { q: 'A pan catches fire. Best response?', options: ['Smother it — never pour water on an oil fire', 'Add water', 'Fan the flames'], answer: 0 },
-      { q: 'What does the head chef say to fire an order?', options: ['"Fire table 2!"', '"Retreat!"', '"Encore!"'], answer: 0 },
-      { q: 'Where do you store raw meat in the fridge?', options: ['Bottom shelf, covered', 'On the ice cream', 'On the counter overnight'], answer: 0 },
-    ],
-  },
-  {
-    id: 'mechanic',
-    title: 'Car Mechanic',
-    emoji: '🔧',
-    salary: 34000,
-    minAge: 18,
-    minSmarts: 30,
-    requiresDegree: false,
-    questions: [
-      { q: 'What does an oil change involve?', options: ['Replacing the engine oil', 'Painting the car', 'Filling the tires with oil'], answer: 0 },
-      { q: 'A tire keeps going flat. Most likely cause?', options: ['A puncture', 'The moon', 'Too much air conditioning'], answer: 0 },
-      { q: 'Which pedal is the brake in an automatic?', options: ['The left one', 'The right one', 'There is no brake'], answer: 0 },
-      { q: 'The battery is dead. The car will...', options: ['Not start', 'Fly', 'Drive itself'], answer: 0 },
-      { q: 'What tool tightens a bolt?', options: ['A wrench', 'A banana', 'A paintbrush'], answer: 0 },
-    ],
-  },
-  {
-    id: 'sales-rep',
-    title: 'Sales Rep',
-    emoji: '📞',
-    salary: 38000,
-    minAge: 18,
-    minSmarts: 35,
-    requiresDegree: false,
-    questions: [
-      { q: 'A customer has an objection. Best first move?', options: ['Listen to it', 'Hang up', 'Talk louder'], answer: 0 },
-      { q: 'What is a "lead" in sales?', options: ['A potential customer', 'A type of metal only', 'The office dog'], answer: 0 },
-      { q: 'When is the deal actually done?', options: ['When the contract is signed', 'When you imagine it', 'Never'], answer: 0 },
-      { q: 'Your product costs more than the rival’s. You should...', options: ['Explain the extra value', 'Cry', 'Insult the rival'], answer: 0 },
-      { q: 'A good salesperson mostly...', options: ['Asks questions and listens', 'Interrupts constantly', 'Avoids customers'], answer: 0 },
-    ],
-  },
-  {
-    id: 'plumber',
-    title: 'Plumber',
-    emoji: '🚿',
-    salary: 42000,
-    minAge: 18,
-    minSmarts: 35,
-    requiresDegree: false,
-    questions: [
-      { q: 'Water is gushing from a burst pipe. First step?', options: ['Shut off the main water valve', 'Take a photo', 'Open more taps'], answer: 0 },
-      { q: 'What unclogs a toilet?', options: ['A plunger', 'A hairdryer', 'More paper'], answer: 0 },
-      { q: 'Hot water pipes are usually marked...', options: ['Red', 'Polka dot', 'Invisible'], answer: 0 },
-      { q: 'A tap drips at night. That means...', options: ['A worn washer or seal', 'Rain indoors', 'It’s thirsty'], answer: 0 },
-      { q: 'What seals threaded pipe joints?', options: ['Plumber’s tape', 'Chewing gum', 'Hope'], answer: 0 },
-    ],
-  },
-  {
-    id: 'firefighter',
-    title: 'Firefighter',
-    emoji: '🚒',
-    salary: 45000,
-    minAge: 18,
-    minSmarts: 40,
-    requiresDegree: false,
-    questions: [
-      { q: 'What number do people call for a fire?', options: ['Emergency services', 'The weather line', 'A pizza place'], answer: 0 },
-      { q: 'Smoke fills a room. You should stay...', options: ['Low to the ground', 'On the ceiling', 'Very tall'], answer: 0 },
-      { q: 'What does a fire need to burn?', options: ['Oxygen, heat, and fuel', 'Water', 'Applause'], answer: 0 },
-      { q: 'A grease fire in a kitchen — never use...', options: ['Water', 'A fire blanket', 'An extinguisher'], answer: 0 },
-      { q: 'Why do firefighters wear helmets?', options: ['Falling debris protection', 'Fashion', 'Wi-Fi reception'], answer: 0 },
-    ],
-  },
-  {
-    id: 'electrician',
-    title: 'Electrician',
-    emoji: '⚡',
-    salary: 46000,
-    minAge: 18,
-    minSmarts: 40,
-    requiresDegree: false,
-    questions: [
-      { q: 'Before working on a circuit you should...', options: ['Turn off the power', 'Wet your hands', 'Hum loudly'], answer: 0 },
-      { q: 'What protects a circuit from overload?', options: ['A fuse or breaker', 'A rubber band', 'A candle'], answer: 0 },
-      { q: 'Electricity and water are...', options: ['A dangerous mix', 'Best friends', 'The same thing'], answer: 0 },
-      { q: 'Which material conducts electricity?', options: ['Copper', 'Wood', 'Glass'], answer: 0 },
-      { q: 'A flickering light usually means...', options: ['A loose connection or bad bulb', 'Ghosts', 'Disco mode'], answer: 0 },
-    ],
-  },
-  {
-    id: 'police-officer',
-    title: 'Police Officer',
-    emoji: '👮',
-    salary: 48000,
-    minAge: 21,
-    minSmarts: 45,
-    requiresDegree: false,
-    questions: [
-      { q: 'Someone reports a stolen bike. First step?', options: ['Take a report and gather details', 'Arrest the bike', 'Ignore them'], answer: 0 },
-      { q: 'What do you read a suspect when arresting them?', options: ['Their rights', 'A bedtime story', 'The menu'], answer: 0 },
-      { q: 'A traffic stop begins with...', options: ['Flashing lights to pull the car over', 'A high five', 'A race'], answer: 0 },
-      { q: 'Evidence at a crime scene should be...', options: ['Preserved and documented', 'Taken home', 'Rearranged'], answer: 0 },
-      { q: 'What is a patrol?', options: ['Regularly moving through an area to keep it safe', 'A nap', 'A parade'], answer: 0 },
-    ],
-  },
-  {
-    id: 'nurse',
-    title: 'Nurse',
-    emoji: '🩺',
-    salary: 54000,
-    minAge: 22,
-    minSmarts: 55,
-    requiresDegree: true,
-    questions: [
-      { q: 'What does a thermometer measure?', options: ['Body temperature', 'Height', 'Mood'], answer: 0 },
-      { q: 'Before giving medication you check...', options: ['The patient and the dose', 'The weather', 'Your horoscope'], answer: 0 },
-      { q: 'A patient’s pulse is taken at the...', options: ['Wrist or neck', 'Elbow only', 'Hair'], answer: 0 },
-      { q: 'Why do nurses wash their hands between patients?', options: ['To stop infections spreading', 'For fun', 'To stay warm'], answer: 0 },
-      { q: 'What does "NPO / nil by mouth" mean?', options: ['No food or drink', 'Extra dessert', 'Talk quietly'], answer: 0 },
-    ],
-  },
-  {
-    id: 'teacher',
-    title: 'Teacher',
-    emoji: '📚',
-    salary: 48000,
-    minAge: 22,
-    minSmarts: 60,
-    requiresDegree: true,
-    questions: [
-      { q: 'What is 7 × 8?', options: ['56', '54', '78'], answer: 0 },
-      { q: 'A student doesn’t understand the lesson. You should...', options: ['Explain it a different way', 'Move on faster', 'Sigh dramatically'], answer: 0 },
-      { q: 'What is a syllabus?', options: ['A plan of what the class will learn', 'A type of bus', 'A snake'], answer: 0 },
-      { q: 'Homework is for...', options: ['Practicing what was taught', 'Punishment only', 'The dog'], answer: 0 },
-      { q: 'The capital of France is...', options: ['Paris', 'London', 'Rome'], answer: 0 },
-    ],
-  },
-  {
-    id: 'accountant',
-    title: 'Accountant',
-    emoji: '🧾',
-    salary: 62000,
-    minAge: 22,
-    minSmarts: 65,
-    requiresDegree: true,
-    questions: [
-      { q: 'Income minus expenses equals...', options: ['Profit', 'Pasta', 'Weather'], answer: 0 },
-      { q: 'What is a budget?', options: ['A plan for money', 'A small bird', 'A tax on fun'], answer: 0 },
-      { q: 'If a company spends more than it earns, it makes a...', options: ['Loss', 'Profit', 'Sandwich'], answer: 0 },
-      { q: 'What does an invoice ask for?', options: ['Payment', 'A dance', 'Directions'], answer: 0 },
-      { q: 'Which is a company asset?', options: ['Money in the bank', 'A rumor', 'Monday'], answer: 0 },
-    ],
-  },
-  {
-    id: 'software-dev',
-    title: 'Software Developer',
-    emoji: '💻',
-    salary: 85000,
-    minAge: 22,
-    minSmarts: 70,
-    requiresDegree: true,
-    questions: [
-      { q: 'What is a "bug" in software?', options: ['A mistake in the code', 'An insect in the office', 'A keyboard'], answer: 0 },
-      { q: 'What does code run on?', options: ['A computer', 'A treadmill', 'Vibes'], answer: 0 },
-      { q: 'Saving your code often is...', options: ['A good idea', 'Forbidden', 'Impossible'], answer: 0 },
-      { q: 'The app crashes every time it opens. You should...', options: ['Debug it', 'Ship it anyway', 'Blame the users'], answer: 0 },
-      { q: 'What is a password for?', options: ['Keeping accounts secure', 'Decoration', 'Sharing with everyone'], answer: 0 },
-    ],
-  },
-  {
-    id: 'lawyer',
-    title: 'Lawyer',
-    emoji: '⚖️',
-    salary: 110000,
-    minAge: 24,
-    minSmarts: 80,
-    requiresDegree: true,
-    questions: [
-      { q: 'Who decides the verdict in a jury trial?', options: ['The jury', 'The mailman', 'The loudest person'], answer: 0 },
-      { q: 'What is a contract?', options: ['A legally binding agreement', 'A type of dance', 'A suggestion'], answer: 0 },
-      { q: 'Your client tells you something in confidence. You...', options: ['Keep it confidential', 'Post it online', 'Sell it'], answer: 0 },
-      { q: '"Innocent until proven..."', options: ['Guilty', 'Hungry', 'Late'], answer: 0 },
-      { q: 'Where does a trial take place?', options: ['A courtroom', 'A food court', 'A tennis court'], answer: 0 },
-    ],
-  },
-  {
-    id: 'doctor',
-    title: 'Doctor',
-    emoji: '🩻',
-    salary: 160000,
-    minAge: 26,
-    minSmarts: 88,
-    requiresDegree: true,
-    questions: [
-      { q: 'What organ pumps blood?', options: ['The heart', 'The elbow', 'The hair'], answer: 0 },
-      { q: 'An X-ray is used to see...', options: ['Bones', 'The future', 'Wi-Fi'], answer: 0 },
-      { q: 'A patient has a fever. Their temperature is...', options: ['Higher than normal', 'Lower than normal', 'Purple'], answer: 0 },
-      { q: 'What do you do first in an emergency?', options: ['Check the patient is breathing', 'Update your status', 'Order lunch'], answer: 0 },
-      { q: 'Antibiotics treat...', options: ['Bacterial infections', 'Broken hearts', 'Bad luck'], answer: 0 },
-    ],
-  },
+
+const q = (text: string, options: string[], answer = 0): JobQuestion => ({ q: text, options, answer })
+
+const FOOD_Q: JobQuestion[] = [
+  q('How often should you wash your hands in a kitchen?', ['Frequently', 'Once a shift', 'Never']),
+  q('A customer says their food is cold. You should...', ['Apologize and replace it', 'Shrug', 'Eat it yourself']),
+  q('Where does raw chicken go in the fridge?', ['Bottom shelf, covered', 'On the desserts', 'On the counter']),
+  q('The kitchen floor is wet. What do you do?', ['Mop it and put up a sign', 'Ice skate', 'Ignore it']),
+  q('What does "86 the soup" mean?', ['The soup is sold out', 'Add 86 soups', 'Soup costs $86']),
 ]
+
+const RETAIL_Q: JobQuestion[] = [
+  q('A customer pays $10 for a $7 item. How much change?', ['$3', '$7', '$17']),
+  q('What do you scan at checkout?', ['The barcode', 'The customer', 'Your badge']),
+  q('The card machine says "declined". You should...', ['Ask for another payment method', 'Give it free', 'Call the army']),
+  q('A shelf says $5 but it scans $6. Best move?', ['Check and honor the correct price', 'Charge $20', 'Hide the shelf']),
+  q('Where do you put the money customers hand you?', ['The till', 'Your pocket', 'The bin']),
+]
+
+const OFFICE_Q: JobQuestion[] = [
+  q('A meeting invite says 9am. When do you show up?', ['A little before 9', 'Noon', 'Never']),
+  q('What is "CC" on an email for?', ['Copying someone in', 'Secret codes', 'Extra font size']),
+  q('The printer is jammed. First step?', ['Open it and clear the jam', 'Hit it', 'Buy a new office']),
+  q('A colleague asks for the report. You...', ['Send it to them', 'Deny everything', 'Print and shred it']),
+  q('Deadlines are...', ['To be met', 'Decorative', 'A myth']),
+]
+
+const TRADE_Q: JobQuestion[] = [
+  q('What do you wear on a work site?', ['Safety gear', 'Sandals', 'A cape']),
+  q('The measurement is off by an inch. You should...', ['Re-measure and adjust', 'Guess', 'Blame the wall']),
+  q('What tool tightens a bolt?', ['A wrench', 'A banana', 'A pillow']),
+  q('A ladder should be placed...', ['On stable ground', 'On a skateboard', 'Upside down']),
+  q('Before starting a job you check...', ['The plans and materials', 'The horoscope', 'Nothing']),
+]
+
+const TRANSPORT_Q: JobQuestion[] = [
+  q('A red light means...', ['Stop', 'Speed up', 'Honk twice']),
+  q('What do you need before driving for work?', ['A valid license', 'A trumpet', 'Nothing']),
+  q('The package says FRAGILE. You...', ['Handle it gently', 'Drop-kick it', 'Shake it']),
+  q('You feel sleepy on a long route. You should...', ['Take a safe rest stop', 'Close your eyes briefly', 'Drive faster']),
+  q('What helps you find an address fastest?', ['GPS', 'A pigeon', 'Vibes']),
+]
+
+const SERVICE_Q: JobQuestion[] = [
+  q('A customer is upset. First move?', ['Listen politely', 'Argue louder', 'Hide']),
+  q('Being on time for shifts is...', ['Important', 'Optional', 'Rude']),
+  q('A customer leaves their phone behind. You...', ['Keep it safe and report it', 'Sell it', 'Ignore it']),
+  q('Your uniform should be...', ['Clean and tidy', 'On fire', 'Invisible']),
+  q('The schedule says you close tonight. That means...', ['You lock up at the end', 'You go home early', 'You open at dawn']),
+]
+
+const OUTDOOR_Q: JobQuestion[] = [
+  q('It’s going to storm during outdoor work. You...', ['Check safety and reschedule if needed', 'Work on the roof anyway', 'Summon lightning']),
+  q('What keeps plants alive?', ['Water and sunlight', 'Wi-Fi', 'Compliments only']),
+  q('Heavy lifting is safest with...', ['Bent knees and a straight back', 'One finger', 'Your teeth']),
+  q('Sunscreen on a long outdoor day is...', ['A good idea', 'Forbidden', 'A dessert']),
+  q('You found a wasp nest on the site. You...', ['Report it and keep distance', 'Poke it', 'Adopt them']),
+]
+
+const CARE_Q: JobQuestion[] = [
+  q('Washing hands between patients prevents...', ['Spreading infection', 'Boredom', 'Overtime']),
+  q('A patient presses the help button. You...', ['Respond promptly', 'Finish your show', 'Unplug it']),
+  q('Medication should be given...', ['Exactly as prescribed', 'Double for luck', 'Whenever']),
+  q('A thermometer measures...', ['Temperature', 'Mood', 'Height']),
+  q('Patient information is...', ['Confidential', 'Great gossip', 'For sale']),
+]
+
+const CREATIVE_Q: JobQuestion[] = [
+  q('The client wants changes to your work. You...', ['Take the feedback and revise', 'Cry publicly', 'Delete everything']),
+  q('A deadline for the final draft means...', ['Deliver it by then', 'Start it then', 'Ignore it artistically']),
+  q('Saving backup copies of your work is...', ['Essential', 'Cowardly', 'Impossible']),
+  q('Which is a primary color?', ['Blue', 'Beige', 'Glitter']),
+  q('Copying someone else’s work and signing it is...', ['Plagiarism', 'Efficiency', 'A tribute']),
+]
+
+const TECH_Q: JobQuestion[] = [
+  q('What is a "bug" in software?', ['A mistake in the code', 'An office insect', 'A keyboard brand']),
+  q('The app crashes on launch. You...', ['Debug it', 'Ship it anyway', 'Blame users']),
+  q('Passwords are for...', ['Security', 'Decoration', 'Sharing widely']),
+  q('Code runs on...', ['A computer', 'A treadmill', 'Hopes']),
+  q('Before deploying you should...', ['Test it', 'Nap', 'Panic']),
+]
+
+const FINANCE_Q: JobQuestion[] = [
+  q('Income minus expenses equals...', ['Profit', 'Pasta', 'Tuesday']),
+  q('A budget is...', ['A plan for money', 'A small bird', 'A crime']),
+  q('Spending more than you earn creates a...', ['Loss', 'Profit', 'Sandwich']),
+  q('An invoice asks for...', ['Payment', 'A dance', 'Directions']),
+  q('Double-checking the numbers is...', ['Part of the job', 'Paranoia', 'Illegal']),
+]
+
+const SAFETY_Q: JobQuestion[] = [
+  q('In an emergency, the first priority is...', ['People’s safety', 'Paperwork', 'Lunch']),
+  q('Smoke fills a room. You stay...', ['Low to the ground', 'On the ceiling', 'Very tall']),
+  q('Protective equipment is worn...', ['Whenever the job requires it', 'Never', 'Only in photos']),
+  q('You spot a hazard at work. You...', ['Report it immediately', 'Sell tickets', 'Look away']),
+  q('The emergency exit should be...', ['Kept clear', 'Blocked with boxes', 'Painted shut']),
+]
+
+const EDU_Q: JobQuestion[] = [
+  q('What is 7 × 8?', ['56', '54', '78']),
+  q('A student doesn’t understand. You...', ['Explain it another way', 'Move on faster', 'Sigh loudly']),
+  q('The capital of France is...', ['Paris', 'London', 'Rome']),
+  q('Homework exists to...', ['Practice what was taught', 'Punish', 'Feed the dog']),
+  q('A syllabus is...', ['A plan of what the class learns', 'A bus', 'A snake']),
+]
+
+const SCIENCE_Q: JobQuestion[] = [
+  q('H2O is better known as...', ['Water', 'Gold', 'Lava']),
+  q('An experiment should be...', ['Repeatable', 'Secret', 'Improvised']),
+  q('Lab safety goggles protect your...', ['Eyes', 'Ankles', 'Reputation']),
+  q('Recording your results is...', ['Essential', 'Optional', 'Bad luck']),
+  q('The Earth orbits the...', ['Sun', 'Moon', 'Mall']),
+]
+
+const LAW_Q: JobQuestion[] = [
+  q('"Innocent until proven..."', ['Guilty', 'Hungry', 'Late']),
+  q('A contract is...', ['A binding agreement', 'A suggestion', 'A type of dance']),
+  q('Client information is...', ['Confidential', 'Marketing material', 'A fun story']),
+  q('Who decides the verdict in a jury trial?', ['The jury', 'The mailman', 'The loudest lawyer']),
+  q('Evidence should be...', ['Preserved and documented', 'Improvised', 'Discarded']),
+]
+
+// [id, title, emoji, salary, minAge, minSmarts, questions, requiresDegree?, requiredMajor?]
+type Row = [string, string, string, number, number, number, JobQuestion[], boolean?, string?]
+
+const ROWS: Row[] = [
+  // ----- Teen & starter jobs -----
+  ['lawn-mower', 'Lawn Mower', '🌱', 2000, 13, 0, OUTDOOR_Q],
+  ['dog-walker', 'Dog Walker', '🐕', 2500, 13, 0, [
+    q('A dog pulls hard on the leash. You...', ['Hold firm and calm it', 'Let go', 'Race it']),
+    q('What do you bring on every walk?', ['Waste bags', 'A trombone', 'Nothing']),
+    q('The dog eats something suspicious. You...', ['Tell the owner right away', 'Keep it secret', 'Try some too']),
+    q('Dogs need water...', ['Regularly', 'Never', 'Only on Sundays']),
+    q('A friendly dog wags its...', ['Tail', 'Ears', 'Invoice']),
+  ]],
+  ['babysitter', 'Babysitter', '🍼', 3000, 14, 10, [
+    q('The baby is crying. First check...', ['Hunger, diaper, sleep', 'The stock market', 'Nothing']),
+    q('Small objects near a toddler are...', ['A choking hazard', 'Toys', 'Snacks']),
+    q('The parents left a phone number. It’s for...', ['Emergencies and questions', 'Prank calls', 'Decoration']),
+    q('Bedtime is 8pm. The kid says 11pm. You...', ['Stick to 8pm', 'Compromise at midnight', 'Ask the dog']),
+    q('You should never leave a baby...', ['Unattended in the bath', 'In its crib', 'With its parents']),
+  ]],
+  ['paper-route', 'Paper Deliverer', '📰', 2200, 14, 0, TRANSPORT_Q],
+  ['grocery-bagger', 'Grocery Bagger', '🛍️', 9000, 15, 0, RETAIL_Q],
+  ['ice-cream-scooper', 'Ice Cream Scooper', '🍦', 10000, 15, 0, FOOD_Q],
+  ['fast-food', 'Fast Food Worker', '🍟', 12000, 16, 0, FOOD_Q],
+  ['dishwasher', 'Dishwasher', '🍽️', 11000, 16, 0, FOOD_Q],
+  ['cashier', 'Retail Cashier', '🛒', 15000, 16, 10, RETAIL_Q],
+  ['movie-usher', 'Movie Theater Usher', '🎬', 13000, 16, 0, SERVICE_Q],
+  ['barista', 'Barista', '☕', 17000, 16, 15, [
+    q('What is espresso?', ['Strong coffee brewed under pressure', 'A type of tea', 'Chocolate milk']),
+    q('A latte is espresso plus...', ['Steamed milk', 'Orange juice', 'Soda water']),
+    q('A customer asks for decaf. What matters?', ['Actually using decaf beans', 'Extra caffeine', 'A bigger cup']),
+    q('What goes on top of a cappuccino?', ['Milk foam', 'Ketchup', 'Ice cubes']),
+    q('The milk steamer hisses loudly. That is...', ['Normal', 'A ghost', 'A fire alarm']),
+  ]],
+  ['waiter', 'Waiter', '🥂', 16000, 16, 10, FOOD_Q],
+  ['lifeguard', 'Lifeguard', '🏊', 15000, 16, 20, SAFETY_Q],
+  ['car-wash', 'Car Wash Attendant', '🚗', 12000, 16, 0, SERVICE_Q],
+
+  // ----- No degree, adult -----
+  ['janitor', 'Janitor', '🧹', 22000, 18, 0, SERVICE_Q],
+  ['warehouse-worker', 'Warehouse Worker', '📦', 25000, 18, 0, TRADE_Q],
+  ['factory-worker', 'Factory Worker', '🏭', 27000, 18, 0, TRADE_Q],
+  ['garbage-collector', 'Garbage Collector', '🗑️', 26000, 18, 0, [
+    q('Which of these belongs in the recycling bin?', ['A plastic bottle', 'A banana peel', 'A dead battery']),
+    q('When do garbage trucks usually run?', ['Early morning', 'Midnight', 'Whenever']),
+    q('What should you wear on the job?', ['High-visibility gear and gloves', 'Flip flops', 'A suit']),
+    q('A bin is overflowing. You...', ['Empty it and report it', 'Leave it', 'Hide it']),
+    q('Where does a glass jar go?', ['Glass recycling', 'The river', 'The compost']),
+  ]],
+  ['delivery-driver', 'Delivery Driver', '🚚', 22000, 18, 15, TRANSPORT_Q],
+  ['courier', 'Bike Courier', '🚴', 20000, 18, 10, TRANSPORT_Q],
+  ['taxi-driver', 'Taxi Driver', '🚕', 26000, 18, 15, TRANSPORT_Q],
+  ['bus-driver', 'Bus Driver', '🚌', 34000, 21, 20, TRANSPORT_Q],
+  ['truck-driver', 'Truck Driver', '🛻', 42000, 21, 20, TRANSPORT_Q],
+  ['mail-carrier', 'Mail Carrier', '📮', 36000, 18, 15, TRANSPORT_Q],
+  ['bartender', 'Bartender', '🍸', 24000, 21, 20, SERVICE_Q],
+  ['barber', 'Barber', '💈', 27000, 18, 20, SERVICE_Q],
+  ['hairdresser', 'Hairdresser', '💇', 28000, 18, 20, SERVICE_Q],
+  ['florist', 'Florist', '💐', 24000, 18, 15, OUTDOOR_Q],
+  ['landscaper', 'Landscaper', '🌳', 28000, 18, 10, OUTDOOR_Q],
+  ['farmer', 'Farm Hand', '🚜', 26000, 18, 10, OUTDOOR_Q],
+  ['fisherman', 'Deckhand', '🎣', 30000, 18, 10, OUTDOOR_Q],
+  ['zookeeper', 'Zookeeper', '🦁', 30000, 18, 35, [
+    q('Feeding schedules exist because animals...', ['Need regular meals', 'Like surprises', 'Can order takeout']),
+    q('The lion enclosure gate is open. You...', ['Follow emergency protocol immediately', 'Take a selfie', 'Say hello']),
+    q('Animal enclosures should be...', ['Clean and secure', 'Decorative', 'Open concept']),
+    q('A visitor taps the glass. You...', ['Ask them politely to stop', 'Join in', 'Charge extra']),
+    q('Sick animals are seen by...', ['The veterinarian', 'A magician', 'Nobody']),
+  ]],
+  ['vet-assistant', 'Veterinary Assistant', '🐾', 28000, 18, 30, CARE_Q],
+  ['security-guard', 'Security Guard', '💂', 30000, 21, 20, SAFETY_Q],
+  ['receptionist', 'Receptionist', '☎️', 28000, 18, 25, OFFICE_Q],
+  ['call-center', 'Call Center Rep', '🎧', 26000, 18, 20, SERVICE_Q],
+  ['data-entry', 'Data Entry Clerk', '⌨️', 27000, 18, 25, OFFICE_Q],
+  ['office-clerk', 'Office Clerk', '🗂️', 30000, 18, 30, OFFICE_Q],
+  ['sales-rep', 'Sales Rep', '📞', 38000, 18, 35, [
+    q('A customer has an objection. Best first move?', ['Listen to it', 'Hang up', 'Talk louder']),
+    q('What is a "lead" in sales?', ['A potential customer', 'A type of metal only', 'The office dog']),
+    q('When is the deal actually done?', ['When the contract is signed', 'When you imagine it', 'Never']),
+    q('Your product costs more than the rival’s. You...', ['Explain the extra value', 'Cry', 'Insult the rival']),
+    q('A good salesperson mostly...', ['Asks questions and listens', 'Interrupts constantly', 'Avoids customers']),
+  ]],
+  ['real-estate', 'Real Estate Agent', '🏠', 45000, 21, 40, [
+    q('"Location, location, ..."', ['Location', 'Vacation', 'Dalmatian']),
+    q('An open house is for...', ['Showing the home to buyers', 'A sleepover', 'Airing it out']),
+    q('The buyer asks about the leaky roof. You...', ['Disclose it honestly', 'Change the subject', 'Blame rain']),
+    q('A property’s asking price is...', ['What the seller wants', 'A random number', 'Illegal to say']),
+    q('Keys are handed over at...', ['Closing', 'First viewing', 'Halloween']),
+  ]],
+  ['line-cook', 'Line Cook', '👨‍🍳', 32000, 18, 25, FOOD_Q],
+  ['baker', 'Baker', '🥖', 30000, 18, 20, FOOD_Q],
+  ['butcher', 'Butcher', '🥩', 34000, 18, 20, FOOD_Q],
+  ['head-chef', 'Head Chef', '🧑‍🍳', 55000, 25, 45, FOOD_Q],
+  ['mechanic', 'Car Mechanic', '🔧', 34000, 18, 30, TRADE_Q],
+  ['painter', 'House Painter', '🎨', 30000, 18, 10, TRADE_Q],
+  ['carpenter', 'Carpenter', '🪚', 38000, 18, 30, TRADE_Q],
+  ['roofer', 'Roofer', '🏚️', 36000, 18, 20, TRADE_Q],
+  ['welder', 'Welder', '⚙️', 42000, 18, 35, TRADE_Q],
+  ['plumber', 'Plumber', '🚿', 42000, 18, 35, [
+    q('Water is gushing from a burst pipe. First step?', ['Shut off the main water valve', 'Take a photo', 'Open more taps']),
+    q('What unclogs a toilet?', ['A plunger', 'A hairdryer', 'More paper']),
+    q('Hot water pipes are usually marked...', ['Red', 'Polka dot', 'Invisible']),
+    q('A tap drips at night. That means...', ['A worn washer or seal', 'Rain indoors', 'It’s thirsty']),
+    q('What seals threaded pipe joints?', ['Plumber’s tape', 'Chewing gum', 'Hope']),
+  ]],
+  ['electrician', 'Electrician', '⚡', 46000, 18, 40, [
+    q('Before working on a circuit you...', ['Turn off the power', 'Wet your hands', 'Hum loudly']),
+    q('What protects a circuit from overload?', ['A fuse or breaker', 'A rubber band', 'A candle']),
+    q('Electricity and water are...', ['A dangerous mix', 'Best friends', 'The same thing']),
+    q('Which material conducts electricity?', ['Copper', 'Wood', 'Glass']),
+    q('A flickering light usually means...', ['A loose connection or bad bulb', 'Ghosts', 'Disco mode']),
+  ]],
+  ['personal-trainer', 'Personal Trainer', '💪', 34000, 18, 30, [
+    q('Before heavy exercise, clients should...', ['Warm up', 'Nap', 'Eat cake']),
+    q('Good form prevents...', ['Injuries', 'Fun', 'Music']),
+    q('A client is exhausted mid-set. You...', ['Let them rest', 'Add weight', 'Leave']),
+    q('Muscles grow with training and...', ['Rest and nutrition', 'Luck', 'Osmosis']),
+    q('Hydration during workouts is...', ['Important', 'Cheating', 'Rude']),
+  ]],
+  ['flight-attendant', 'Flight Attendant', '✈️', 40000, 21, 40, SAFETY_Q],
+  ['firefighter', 'Firefighter', '🚒', 45000, 18, 40, SAFETY_Q],
+  ['police-officer', 'Police Officer', '👮', 48000, 21, 45, [
+    q('Someone reports a stolen bike. First step?', ['Take a report and gather details', 'Arrest the bike', 'Ignore them']),
+    q('What do you read a suspect when arresting them?', ['Their rights', 'A bedtime story', 'The menu']),
+    q('A traffic stop begins with...', ['Flashing lights to pull the car over', 'A high five', 'A race']),
+    q('Evidence at a crime scene should be...', ['Preserved and documented', 'Taken home', 'Rearranged']),
+    q('What is a patrol?', ['Regularly moving through an area', 'A nap', 'A parade']),
+  ]],
+  ['photographer', 'Photographer', '📷', 32000, 18, 30, CREATIVE_Q],
+  ['tattoo-artist', 'Tattoo Artist', '🖋️', 36000, 21, 30, CREATIVE_Q],
+  ['dj', 'Club DJ', '🎧', 30000, 21, 25, CREATIVE_Q],
+  ['musician', 'Session Musician', '🎸', 28000, 18, 30, CREATIVE_Q],
+  ['actor', 'Stage Actor', '🎭', 26000, 18, 30, CREATIVE_Q],
+  ['influencer', 'Content Creator', '🤳', 24000, 18, 25, CREATIVE_Q],
+
+  // ----- Any degree -----
+  ['office-manager', 'Office Manager', '🗄️', 52000, 22, 50, OFFICE_Q, true],
+  ['hr-manager', 'HR Manager', '🤝', 58000, 24, 55, OFFICE_Q, true],
+  ['journalist', 'Journalist', '🗞️', 45000, 22, 60, CREATIVE_Q, true],
+  ['librarian', 'Librarian', '📚', 42000, 22, 55, EDU_Q, true],
+
+  // ----- Major-locked careers -----
+  ['nurse', 'Nurse', '💉', 54000, 22, 55, CARE_Q, true, 'nursing'],
+  ['midwife', 'Midwife', '🤱', 56000, 24, 60, CARE_Q, true, 'nursing'],
+  ['paramedic', 'Paramedic', '🚑', 48000, 22, 50, CARE_Q, true, 'nursing'],
+  ['teacher', 'Teacher', '🏫', 48000, 22, 60, EDU_Q, true, 'education'],
+  ['principal', 'School Principal', '🎓', 72000, 35, 70, EDU_Q, true, 'education'],
+  ['professor', 'University Professor', '👨‍🏫', 85000, 30, 80, EDU_Q, true, 'education'],
+  ['accountant', 'Accountant', '🧾', 62000, 22, 65, FINANCE_Q, true, 'business'],
+  ['financial-analyst', 'Financial Analyst', '📊', 70000, 22, 68, FINANCE_Q, true, 'business'],
+  ['marketing-manager', 'Marketing Manager', '📣', 68000, 25, 60, FINANCE_Q, true, 'business'],
+  ['banker', 'Banker', '🏦', 75000, 24, 65, FINANCE_Q, true, 'business'],
+  ['investment-banker', 'Investment Banker', '💰', 120000, 26, 75, FINANCE_Q, true, 'business'],
+  ['web-developer', 'Web Developer', '🌐', 70000, 22, 65, TECH_Q, true, 'computer-science'],
+  ['software-dev', 'Software Developer', '💻', 85000, 22, 70, TECH_Q, true, 'computer-science'],
+  ['game-developer', 'Game Developer', '🎮', 78000, 22, 70, TECH_Q, true, 'computer-science'],
+  ['data-scientist', 'Data Scientist', '🧮', 95000, 24, 75, TECH_Q, true, 'computer-science'],
+  ['cybersecurity', 'Cybersecurity Analyst', '🛡️', 90000, 24, 72, TECH_Q, true, 'computer-science'],
+  ['civil-engineer', 'Civil Engineer', '🌉', 78000, 22, 72, TRADE_Q, true, 'engineering'],
+  ['mechanical-engineer', 'Mechanical Engineer', '⚙️', 80000, 22, 72, TRADE_Q, true, 'engineering'],
+  ['electrical-engineer', 'Electrical Engineer', '🔌', 82000, 22, 73, TRADE_Q, true, 'engineering'],
+  ['aerospace-engineer', 'Aerospace Engineer', '🚀', 98000, 24, 80, SCIENCE_Q, true, 'engineering'],
+  ['architect', 'Architect', '📐', 85000, 24, 75, CREATIVE_Q, true, 'engineering'],
+  ['lab-tech', 'Lab Technician', '🧪', 52000, 22, 60, SCIENCE_Q, true, 'science'],
+  ['biologist', 'Biologist', '🧬', 68000, 24, 70, SCIENCE_Q, true, 'science'],
+  ['chemist', 'Chemist', '⚗️', 72000, 24, 72, SCIENCE_Q, true, 'science'],
+  ['meteorologist', 'Meteorologist', '🌦️', 65000, 24, 68, SCIENCE_Q, true, 'science'],
+  ['graphic-designer', 'Graphic Designer', '🖌️', 52000, 22, 50, CREATIVE_Q, true, 'arts'],
+  ['author', 'Author', '✍️', 45000, 22, 60, CREATIVE_Q, true, 'arts'],
+  ['film-director', 'Film Director', '🎥', 75000, 28, 65, CREATIVE_Q, true, 'arts'],
+  ['paralegal', 'Paralegal', '📋', 52000, 22, 60, LAW_Q, true, 'law'],
+  ['lawyer', 'Lawyer', '⚖️', 110000, 24, 80, LAW_Q, true, 'law'],
+  ['judge', 'Judge', '👨‍⚖️', 150000, 40, 88, LAW_Q, true, 'law'],
+  ['pharmacist', 'Pharmacist', '💊', 105000, 26, 80, CARE_Q, true, 'medicine'],
+  ['dentist', 'Dentist', '🦷', 130000, 26, 82, CARE_Q, true, 'medicine'],
+  ['veterinarian', 'Veterinarian', '🐕‍🦺', 95000, 26, 78, CARE_Q, true, 'medicine'],
+  ['psychiatrist', 'Psychiatrist', '🛋️', 140000, 28, 85, CARE_Q, true, 'medicine'],
+  ['doctor', 'Doctor', '🩻', 160000, 26, 88, [
+    q('What organ pumps blood?', ['The heart', 'The elbow', 'The hair']),
+    q('An X-ray is used to see...', ['Bones', 'The future', 'Wi-Fi']),
+    q('A patient has a fever. Their temperature is...', ['Higher than normal', 'Lower than normal', 'Purple']),
+    q('What do you do first in an emergency?', ['Check the patient is breathing', 'Update your status', 'Order lunch']),
+    q('Antibiotics treat...', ['Bacterial infections', 'Broken hearts', 'Bad luck']),
+  ], true, 'medicine'],
+  ['surgeon', 'Surgeon', '🔪', 220000, 30, 92, CARE_Q, true, 'medicine'],
+]
+
+export const JOBS: Job[] = ROWS.map(
+  ([id, title, emoji, salary, minAge, minSmarts, questions, requiresDegree, requiredMajor]) => ({
+    id,
+    title,
+    emoji,
+    salary,
+    minAge,
+    minSmarts,
+    questions,
+    ...(requiresDegree ? { requiresDegree } : {}),
+    ...(requiredMajor ? { requiredMajor } : {}),
+  }),
+)

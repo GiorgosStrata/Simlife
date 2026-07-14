@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { JOBS } from '../data/jobs'
+import { getMajor } from '../data/majors'
 import {
   TUITION_PER_YEAR,
-  UNIVERSITY_MIN_SMARTS,
   UNIVERSITY_YEARS,
   getJob,
   isInSchool,
@@ -13,26 +13,44 @@ import {
 import { colors } from '../theme'
 import type { Job, JobQuestion } from '../types'
 import { InterviewModal } from './InterviewModal'
+import { Row } from './Row'
 
-function educationLabel(
-  age: number,
-  hasDegree: boolean,
-  inUniversity: boolean,
-  uniYearsLeft: number,
-): string {
-  if (hasDegree) return 'University graduate 🎓'
-  if (inUniversity) return `University student — ${uniYearsLeft} year${uniYearsLeft === 1 ? '' : 's'} to go`
-  if (age < 6) return 'Too young for school'
-  if (age < 12) return 'Primary school student'
-  if (age < 15) return 'Middle school student'
-  if (age < 18) return 'High school student'
-  return 'High school graduate'
+function educationLabel(state: {
+  age: number
+  hasDegree: boolean
+  inUniversity: boolean
+  uniYearsLeft: number
+  major: string | null
+}): { emoji: string; title: string; subtitle: string } {
+  const { age, hasDegree, inUniversity, uniYearsLeft, major } = state
+  const majorName = getMajor(major)?.name
+  if (hasDegree)
+    return { emoji: '🎓', title: `${majorName ?? 'University'} graduate`, subtitle: 'Degree earned' }
+  if (inUniversity)
+    return {
+      emoji: '🏛️',
+      title: `University — ${majorName ?? '...'}`,
+      subtitle: `${uniYearsLeft} year${uniYearsLeft === 1 ? '' : 's'} to go · $${TUITION_PER_YEAR.toLocaleString()}/yr tuition`,
+    }
+  if (age < 6) return { emoji: '🧸', title: 'Too young for school', subtitle: 'Enjoy it while it lasts' }
+  if (age < 12) return { emoji: '🎒', title: 'Primary school', subtitle: 'Student' }
+  if (age < 15) return { emoji: '📗', title: 'Middle school', subtitle: 'Student' }
+  if (age < 18) return { emoji: '📘', title: 'High school', subtitle: 'Student' }
+  return { emoji: '📜', title: 'High school graduate', subtitle: 'No degree yet' }
 }
 
-function jobBlocker(job: Job, age: number, smarts: number, hasDegree: boolean): string | null {
-  if (age < job.minAge) return `requires age ${job.minAge}`
-  if (job.requiresDegree && !hasDegree) return 'requires a university degree'
-  if (smarts < job.minSmarts) return `requires ${job.minSmarts} smarts`
+function jobBlocker(
+  job: Job,
+  age: number,
+  smarts: number,
+  hasDegree: boolean,
+  major: string | null,
+): string | null {
+  if (age < job.minAge) return `age ${job.minAge}+`
+  if (job.requiredMajor && major !== job.requiredMajor)
+    return `${getMajor(job.requiredMajor)?.name ?? job.requiredMajor} degree required`
+  if (job.requiresDegree && !hasDegree) return 'university degree required'
+  if (smarts < job.minSmarts) return `${job.minSmarts} smarts required`
   return null
 }
 
@@ -48,11 +66,13 @@ export function CareerScreen() {
   const hasDegree = useGameStore((s) => s.hasDegree)
   const inUniversity = useGameStore((s) => s.inUniversity)
   const uniYearsLeft = useGameStore((s) => s.uniYearsLeft)
+  const major = useGameStore((s) => s.major)
+  const jobOpenings = useGameStore((s) => s.jobOpenings)
   const usedActions = useGameStore((s) => s.usedActions)
   const applyForJob = useGameStore((s) => s.applyForJob)
   const failInterview = useGameStore((s) => s.failInterview)
   const quitJob = useGameStore((s) => s.quitJob)
-  const enrollUniversity = useGameStore((s) => s.enrollUniversity)
+  const openUniversityApplication = useGameStore((s) => s.openUniversityApplication)
   const studyHarder = useGameStore((s) => s.studyHarder)
   const hangWithClassmates = useGameStore((s) => s.hangWithClassmates)
   const askTeacherForHelp = useGameStore((s) => s.askTeacherForHelp)
@@ -61,8 +81,10 @@ export function CareerScreen() {
 
   const currentJob = getJob(jobId)
   const inSchool = isInSchool(age) || inUniversity
-  const canEnroll =
-    age >= 18 && !hasDegree && !inUniversity && stats.smarts >= UNIVERSITY_MIN_SMARTS
+  const edu = educationLabel({ age, hasDegree, inUniversity, uniYearsLeft, major })
+  const workingAge = age >= 16
+
+  const openings = JOBS.filter((j) => jobOpenings.includes(j.id))
 
   const startInterview = (job: Job) => {
     playSfx('click')
@@ -82,144 +104,103 @@ export function CareerScreen() {
     setInterview(null)
   }
 
-  const schoolAction = (key: string, run: () => void) => () => {
+  const action = (run: () => void) => () => {
     playSfx('click')
     run()
   }
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <View style={styles.card}>
-        <Text style={styles.heading}>{inSchool ? 'SCHOOL' : 'EDUCATION'}</Text>
-        <Text style={styles.bodyText}>
-          {educationLabel(age, hasDegree, inUniversity, uniYearsLeft)}
-        </Text>
+      <Text style={styles.sectionHeading}>{inSchool ? '🎓 SCHOOL' : '🎓 EDUCATION'}</Text>
+      <Row emoji={edu.emoji} title={edu.title} subtitle={edu.subtitle} />
 
-        {inSchool && (
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={schoolAction('study', studyHarder)}
-              disabled={usedActions.includes('study')}
-              style={({ pressed }) => [
-                styles.actionButton,
-                pressed && styles.actionButtonPressed,
-                usedActions.includes('study') && styles.buttonDisabled,
-              ]}
-            >
-              <Text style={styles.actionText}>📖 Study harder</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={schoolAction('classmates', hangWithClassmates)}
-              disabled={usedActions.includes('classmates')}
-              style={({ pressed }) => [
-                styles.actionButton,
-                pressed && styles.actionButtonPressed,
-                usedActions.includes('classmates') && styles.buttonDisabled,
-              ]}
-            >
-              <Text style={styles.actionText}>🎒 Hang out with classmates</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={schoolAction('teacher', askTeacherForHelp)}
-              disabled={usedActions.includes('teacher')}
-              style={({ pressed }) => [
-                styles.actionButton,
-                pressed && styles.actionButtonPressed,
-                usedActions.includes('teacher') && styles.buttonDisabled,
-              ]}
-            >
-              <Text style={styles.actionText}>🍎 Ask a teacher for help</Text>
-            </Pressable>
-            <Text style={styles.hint}>Each school action can be done once per year.</Text>
-          </View>
-        )}
+      {inSchool && (
+        <>
+          <Row
+            emoji="📖"
+            title="Study harder"
+            subtitle={usedActions.includes('study') ? 'Done this year' : '+ smarts'}
+            onPress={action(studyHarder)}
+            disabled={usedActions.includes('study')}
+            chevron
+          />
+          <Row
+            emoji="🎒"
+            title="Hang out with classmates"
+            subtitle={usedActions.includes('classmates') ? 'Done this year' : '+ happiness, maybe a friend'}
+            onPress={action(hangWithClassmates)}
+            disabled={usedActions.includes('classmates')}
+            chevron
+          />
+          <Row
+            emoji="🍎"
+            title="Ask a teacher for help"
+            subtitle={usedActions.includes('teacher') ? 'Done this year' : '+ smarts'}
+            onPress={action(askTeacherForHelp)}
+            disabled={usedActions.includes('teacher')}
+            chevron
+          />
+        </>
+      )}
 
-        {age >= 18 && !hasDegree && !inUniversity && (
-          <>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                playSfx('click')
-                enrollUniversity()
-              }}
-              disabled={!canEnroll}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.primaryButtonPressed,
-                !canEnroll && styles.buttonDisabled,
-              ]}
-            >
-              <Text style={styles.primaryButtonText}>Enroll in University</Text>
-            </Pressable>
-            <Text style={styles.hint}>
-              ${TUITION_PER_YEAR.toLocaleString()}/year for {UNIVERSITY_YEARS} years · needs{' '}
-              {UNIVERSITY_MIN_SMARTS} smarts · unlocks better jobs
-            </Text>
-          </>
-        )}
-      </View>
+      {age >= 18 && !hasDegree && !inUniversity && (
+        <Row
+          emoji="🏛️"
+          title="Apply to university"
+          subtitle={`Pick a major · ${UNIVERSITY_YEARS} years · $${TUITION_PER_YEAR.toLocaleString()}/yr`}
+          onPress={action(openUniversityApplication)}
+          chevron
+        />
+      )}
 
-      <View style={styles.card}>
-        <Text style={styles.heading}>CURRENT JOB</Text>
-        {currentJob ? (
-          <>
-            <Text style={styles.bodyText}>
-              {currentJob.emoji} {currentJob.title} · ${currentJob.salary.toLocaleString()}/year
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                playSfx('click')
-                quitJob()
-              }}
-              style={({ pressed }) => [styles.dangerButton, pressed && styles.dangerButtonPressed]}
-            >
-              <Text style={styles.dangerButtonText}>Quit Job</Text>
-            </Pressable>
-          </>
-        ) : (
-          <Text style={styles.bodyText}>
-            {age < 16 ? 'Unemployed — come back when you turn 16.' : 'Unemployed'}
+      {workingAge && (
+        <>
+          <Text style={styles.sectionHeading}>💼 CURRENT JOB</Text>
+          {currentJob ? (
+            <>
+              <Row
+                emoji={currentJob.emoji}
+                title={currentJob.title}
+                subtitle={`$${currentJob.salary.toLocaleString()}/year`}
+              />
+              <Row emoji="🚪" title="Quit job" subtitle="Walk away" onPress={action(quitJob)} chevron />
+            </>
+          ) : (
+            <Row emoji="🛋️" title="Unemployed" subtitle="Check the listings below" />
+          )}
+
+          <Text style={styles.sectionHeading}>📋 JOB LISTINGS · HIRING THIS YEAR</Text>
+          <Text style={styles.hint}>
+            Openings rotate every year. Applying means one interview question — don’t blow it.
           </Text>
-        )}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.heading}>JOB LISTINGS</Text>
-        <Text style={styles.hint}>Applying means one interview question. Don’t blow it.</Text>
-        {JOBS.map((job) => {
-          const blocker = jobBlocker(job, age, stats.smarts, hasDegree)
-          const isCurrent = job.id === jobId
-          return (
-            <View key={job.id} style={styles.jobRow}>
-              <View style={styles.jobInfo}>
-                <Text style={styles.jobTitle}>
-                  {job.emoji} {job.title}
-                </Text>
-                <Text style={styles.jobMeta}>
-                  ${job.salary.toLocaleString()}/yr
-                  {blocker ? ` · ${blocker}` : ''}
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
+          {openings.map((job) => {
+            const blocker = jobBlocker(job, age, stats.smarts, hasDegree, major)
+            const isCurrent = job.id === jobId
+            return (
+              <Row
+                key={job.id}
+                emoji={job.emoji}
+                title={job.title}
+                subtitle={`$${job.salary.toLocaleString()}/yr${blocker ? ` · 🔒 ${blocker}` : ''}`}
                 onPress={() => startInterview(job)}
                 disabled={blocker !== null || isCurrent}
-                style={({ pressed }) => [
-                  styles.applyButton,
-                  pressed && styles.applyButtonPressed,
-                  (blocker !== null || isCurrent) && styles.buttonDisabled,
-                ]}
-              >
-                <Text style={styles.applyButtonText}>{isCurrent ? 'Hired' : 'Apply'}</Text>
-              </Pressable>
-            </View>
-          )
-        })}
-      </View>
+                right={
+                  <View style={[styles.applyPill, (blocker !== null || isCurrent) && styles.applyPillLocked]}>
+                    <Text style={styles.applyPillText}>{isCurrent ? 'Hired' : blocker ? '🔒' : 'Apply'}</Text>
+                  </View>
+                }
+              />
+            )
+          })}
+        </>
+      )}
+
+      {!workingAge && (
+        <>
+          <Text style={styles.sectionHeading}>💼 JOBS</Text>
+          <Row emoji="⏳" title="Too young to work" subtitle="Come back when you turn 16" />
+        </>
+      )}
 
       {interview && (
         <InterviewModal
@@ -238,116 +219,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: 12,
-    paddingBottom: 64,
+    gap: 8,
+    paddingBottom: 110,
   },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 16,
-  },
-  heading: {
+  sectionHeading: {
+    marginTop: 8,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: 1,
-    color: colors.slate400,
-    marginBottom: 8,
-  },
-  bodyText: {
-    fontSize: 14,
-    color: colors.slate800,
-    fontWeight: '500',
+    color: colors.slate500,
   },
   hint: {
-    marginTop: 6,
     fontSize: 12,
     color: colors.slate500,
+    marginBottom: 2,
   },
-  actions: {
-    marginTop: 12,
-    gap: 8,
+  applyPill: {
+    backgroundColor: colors.cyan500,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
-  actionButton: {
-    backgroundColor: colors.slate100,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  actionButtonPressed: {
+  applyPillLocked: {
     backgroundColor: colors.slate200,
   },
-  actionText: {
+  applyPillText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: colors.slate600,
-  },
-  primaryButton: {
-    marginTop: 12,
-    backgroundColor: colors.cyan500,
-    borderRadius: 12,
-    paddingVertical: 11,
-    alignItems: 'center',
-  },
-  primaryButtonPressed: {
-    backgroundColor: colors.cyan400,
-  },
-  primaryButtonText: {
-    fontSize: 14,
     fontWeight: '700',
     color: colors.white,
-  },
-  dangerButton: {
-    marginTop: 12,
-    backgroundColor: colors.slate100,
-    borderRadius: 12,
-    paddingVertical: 11,
-    alignItems: 'center',
-  },
-  dangerButtonPressed: {
-    backgroundColor: colors.slate200,
-  },
-  dangerButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.rose700,
-  },
-  buttonDisabled: {
-    opacity: 0.45,
-  },
-  jobRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 9,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.slate200,
-    gap: 10,
-    marginTop: 6,
-  },
-  jobInfo: {
-    flex: 1,
-  },
-  jobTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.slate800,
-  },
-  jobMeta: {
-    fontSize: 12,
-    color: colors.slate500,
-    marginTop: 1,
-  },
-  applyButton: {
-    backgroundColor: colors.cyan50,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  applyButtonPressed: {
-    backgroundColor: colors.cyan100,
-  },
-  applyButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.cyan600,
   },
 })

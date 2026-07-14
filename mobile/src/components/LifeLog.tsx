@@ -13,36 +13,39 @@ const KIND_COLORS: Record<LogEntry['kind'], string> = {
   relationship: colors.pink600,
 }
 
-const KIND_WEIGHTS: Record<LogEntry['kind'], '400' | '600'> = {
-  birthday: '600',
-  event: '400',
-  info: '400',
-  death: '600',
-  career: '400',
-  relationship: '400',
+const KIND_EMOJI: Partial<Record<LogEntry['kind'], string>> = {
+  info: '👶',
+  death: '🪦',
 }
 
+/** BitLife-style journal: bold "Age N" headers with the year's lines under them. */
 export function LifeLog() {
   const log = useGameStore((s) => s.log)
   const listRef = useRef<FlatList<LogEntry>>(null)
 
   return (
     <View style={styles.card}>
-      <Text style={styles.heading}>LIFE STORY</Text>
       <FlatList
         ref={listRef}
         data={log}
         contentContainerStyle={styles.listContent}
-        keyExtractor={(entry) => String(entry.id)}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-        renderItem={({ item }) => (
-          <Text style={styles.entry}>
-            <Text style={styles.age}>Age {item.age}  </Text>
-            <Text style={{ color: KIND_COLORS[item.kind], fontWeight: KIND_WEIGHTS[item.kind] }}>
+        keyExtractor={(entry) => String(entry.id)}
+        renderItem={({ item }) =>
+          item.kind === 'birthday' ? (
+            <View style={styles.ageHeader}>
+              <Text style={styles.ageHeaderText}>
+                Age {item.age} · {item.year}
+              </Text>
+              <View style={styles.ageHeaderLine} />
+            </View>
+          ) : (
+            <Text style={[styles.entry, { color: KIND_COLORS[item.kind] }]}>
+              {KIND_EMOJI[item.kind] ? `${KIND_EMOJI[item.kind]} ` : ''}
               {item.text}
             </Text>
-          </Text>
-        )}
+          )
+        }
       />
     </View>
   )
@@ -53,27 +56,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
     borderRadius: 16,
-    padding: 16,
-    paddingBottom: 8,
-  },
-  heading: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1,
-    color: colors.slate400,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   listContent: {
-    paddingBottom: 56,
+    paddingBottom: 110,
+    paddingTop: 4,
+  },
+  ageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  ageHeaderText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.slate800,
+  },
+  ageHeaderLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.slate200,
   },
   entry: {
     fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 6,
-  },
-  age: {
-    fontSize: 11,
-    color: colors.slate400,
-    fontVariant: ['tabular-nums'],
+    lineHeight: 21,
+    marginBottom: 5,
   },
 })

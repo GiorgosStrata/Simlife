@@ -8,6 +8,7 @@ interface StatBarProps {
   icon: string
 }
 
+/** BitLife-style stat row: emoji, label, thick bar with the % beside it. */
 export function StatBar({ label, value, color, icon }: StatBarProps) {
   return (
     <View style={styles.row}>
@@ -24,7 +25,7 @@ export function StatBar({ label, value, color, icon }: StatBarProps) {
       >
         <View style={[styles.fill, { width: `${value}%`, backgroundColor: color }]} />
       </View>
-      <Text style={styles.value}>{value}</Text>
+      <Text style={styles.value}>{value}%</Text>
     </View>
   )
 }
@@ -34,22 +35,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginVertical: 4,
+    marginVertical: 5,
   },
   icon: {
-    width: 22,
-    fontSize: 13,
+    width: 26,
+    fontSize: 17,
     textAlign: 'center',
   },
   label: {
-    width: 78,
+    width: 76,
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '700',
     color: colors.slate600,
   },
   track: {
     flex: 1,
-    height: 10,
+    height: 14,
     borderRadius: 999,
     backgroundColor: colors.slate200,
     overflow: 'hidden',
@@ -59,8 +60,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   value: {
-    width: 30,
+    width: 38,
     fontSize: 12,
+    fontWeight: '700',
     textAlign: 'right',
     color: colors.slate500,
     fontVariant: ['tabular-nums'],

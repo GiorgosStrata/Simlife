@@ -73,6 +73,14 @@ export interface JobQuestion {
   answer: number
 }
 
+/** A university major. Admission needs the grades (minSmarts). */
+export interface Major {
+  id: string
+  name: string
+  emoji: string
+  minSmarts: number
+}
+
 export interface Job {
   id: string
   title: string
@@ -81,7 +89,10 @@ export interface Job {
   salary: number
   minAge: number
   minSmarts: number
-  requiresDegree: boolean
+  /** Needs a university degree in any major. */
+  requiresDegree?: boolean
+  /** Needs a degree in this specific major (implies requiresDegree). */
+  requiredMajor?: string
   /** One of these is asked, at random, when applying. */
   questions: JobQuestion[]
 }

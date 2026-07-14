@@ -11,6 +11,7 @@ import type {
 } from '../types'
 import { EVENTS } from '../data/events'
 import { JOBS } from '../data/jobs'
+import { getMajor } from '../data/majors'
 import { GRADUATION_EVENT } from '../data/specialEvents'
 import {
   DATE_COST,
@@ -114,6 +115,15 @@ export function getJob(jobId: string | null): Job | null {
   return jobId ? (JOBS.find((j) => j.id === jobId) ?? null) : null
 }
 
+/** How many jobs are hiring in any given year. */
+const OPENINGS_PER_YEAR = 9
+
+/** A fresh random batch of job openings — not everything is hiring. */
+function rollJobOpenings(): string[] {
+  const shuffled = [...JOBS].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, OPENINGS_PER_YEAR).map((j) => j.id)
+}
+
 /** True while the character is in mandatory schooling. */
 export function isInSchool(age: number): boolean {
   return age >= 6 && age < 18
@@ -146,6 +156,12 @@ interface GameState {
   hasDegree: boolean
   inUniversity: boolean
   uniYearsLeft: number
+  /** The university major (see majors.ts); set when accepted. */
+  major: string | null
+  /** Job ids hiring this year; rerolled every Age Up. */
+  jobOpenings: string[]
+  /** True while the major-picker is open (from the grad popup or Career tab). */
+  applyingToUniversity: boolean
 
   // Relationships
   relationships: Person[]
@@ -169,7 +185,9 @@ interface GameState {
   applyForJob: (jobId: string) => void
   failInterview: (jobId: string) => void
   quitJob: () => void
-  enrollUniversity: () => void
+  openUniversityApplication: () => void
+  cancelUniversityApplication: () => void
+  applyToUniversity: (majorId: string) => void
 
   // Relationships
   spendTime: (personId: string) => void
@@ -202,6 +220,9 @@ function newLifeState() {
     hasDegree: false,
     inUniversity: false,
     uniYearsLeft: 0,
+    major: null,
+    jobOpenings: rollJobOpenings(),
+    applyingToUniversity: false,
     relationships: makeFamily(),
     partnerStatus: null as PartnerStatus | null,
     nextFriendId: 1,
@@ -260,25 +281,9 @@ export const useGameStore = create<GameState>()(
         return true
       }
 
-      const doEnrollUniversity = () => {
+      const canApplyToUniversity = () => {
         const s = get()
-        if (s.age < 18 || s.hasDegree || s.inUniversity) return
-        if (s.stats.smarts < UNIVERSITY_MIN_SMARTS) {
-          addLog([
-            {
-              text: `Your university application was rejected — they want ${UNIVERSITY_MIN_SMARTS}+ smarts.`,
-              kind: 'career',
-            },
-          ])
-          return
-        }
-        set({ inUniversity: true, uniYearsLeft: UNIVERSITY_YEARS })
-        addLog([
-          {
-            text: `You were accepted into university! Tuition is $${TUITION_PER_YEAR.toLocaleString()}/year for ${UNIVERSITY_YEARS} years.`,
-            kind: 'career',
-          },
-        ])
+        return s.alive && s.screen === 'life' && s.age >= 18 && !s.hasDegree && !s.inUniversity
       }
 
       return {
@@ -355,11 +360,12 @@ export const useGameStore = create<GameState>()(
               inUniversity = false
               hasDegree = true
               stats.smarts = clampStat(stats.smarts + 10)
+              const majorName = getMajor(s.major)?.name ?? 'your field'
               entries.push({
                 id: logId++,
                 age,
                 year,
-                text: 'You graduated from university! 🎓',
+                text: `You graduated from university with a degree in ${majorName}! 🎓`,
                 kind: 'career',
               })
             }
@@ -448,6 +454,7 @@ export const useGameStore = create<GameState>()(
                 ? [...s.usedEventIds, event.id]
                 : s.usedEventIds,
             usedActions: [],
+            jobOpenings: rollJobOpenings(),
             log: [...s.log, ...entries],
             nextLogId: logId,
           })
@@ -492,8 +499,8 @@ export const useGameStore = create<GameState>()(
             nextLogId: logId,
           })
 
-          if (!died && choice.action === 'enrollUniversity') {
-            doEnrollUniversity()
+          if (!died && choice.action === 'enrollUniversity' && canApplyToUniversity()) {
+            set({ applyingToUniversity: true })
           }
         },
 
@@ -566,9 +573,11 @@ export const useGameStore = create<GameState>()(
           const s = get()
           const job = getJob(jobId)
           if (!job || !s.alive || s.screen !== 'life' || s.jobId === jobId) return
+          if (!s.jobOpenings.includes(jobId)) return
           if (
             s.age < job.minAge ||
             s.stats.smarts < job.minSmarts ||
+            (job.requiredMajor && s.major !== job.requiredMajor) ||
             (job.requiresDegree && !s.hasDegree)
           ) {
             return
@@ -599,10 +608,35 @@ export const useGameStore = create<GameState>()(
           addLog([{ text: `You quit your job as a ${job.title}.`, kind: 'career' }])
         },
 
-        enrollUniversity: () => {
+        openUniversityApplication: () => {
+          if (canApplyToUniversity()) set({ applyingToUniversity: true })
+        },
+
+        cancelUniversityApplication: () => {
+          set({ applyingToUniversity: false })
+        },
+
+        applyToUniversity: (majorId: string) => {
+          const major = getMajor(majorId)
+          if (!major || !canApplyToUniversity()) return
+          set({ applyingToUniversity: false })
           const s = get()
-          if (!s.alive || s.screen !== 'life') return
-          doEnrollUniversity()
+          if (s.stats.smarts < major.minSmarts) {
+            addLog([
+              {
+                text: `${major.name} rejected your application — they want ${major.minSmarts}+ smarts. Hit the books.`,
+                kind: 'career',
+              },
+            ])
+            return
+          }
+          set({ inUniversity: true, uniYearsLeft: UNIVERSITY_YEARS, major: majorId })
+          addLog([
+            {
+              text: `You got into university, majoring in ${major.name} ${major.emoji}! Tuition is $${TUITION_PER_YEAR.toLocaleString()}/year for ${UNIVERSITY_YEARS} years.`,
+              kind: 'career',
+            },
+          ])
         },
 
         // ----- Relationships -----
@@ -770,7 +804,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -803,6 +837,15 @@ export const useGameStore = create<GameState>()(
           state.usedActions = []
           state.nextFriendId = 1
           state.sfxVolume = 1
+        }
+        // v3 saves predate majors and rotating job openings.
+        if (version < 4) {
+          state.major = state.hasDegree || state.inUniversity ? 'business' : null
+          state.jobOpenings = rollJobOpenings()
+          state.applyingToUniversity = false
+          // Keep an existing major-locked job valid by aligning the major.
+          const job = JOBS.find((j) => j.id === state.jobId)
+          if (job?.requiredMajor) state.major = job.requiredMajor
         }
         return state as GameState
       },

@@ -44,10 +44,17 @@ function PersonCard({ person }: { person: Person }) {
   if (!person.alive) {
     return (
       <View style={[styles.card, styles.cardDeceased]}>
-        <Text style={styles.personName}>
-          🪦 {person.name} · {roleLabel(person, partnerStatus)}
-        </Text>
-        <Text style={styles.personMeta}>Passed away at age {person.age}</Text>
+        <View style={styles.personHeader}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeEmoji}>🪦</Text>
+          </View>
+          <View style={styles.personInfo}>
+            <Text style={styles.personName}>{person.name}</Text>
+            <Text style={styles.personMeta}>
+              {roleLabel(person, partnerStatus)} · passed away at {person.age}
+            </Text>
+          </View>
+        </View>
       </View>
     )
   }
@@ -67,12 +74,15 @@ function PersonCard({ person }: { person: Person }) {
   return (
     <View style={styles.card}>
       <View style={styles.personHeader}>
-        <Text style={styles.personName}>
-          {ROLE_EMOJI[person.role]} {person.name}
-        </Text>
-        <Text style={styles.personMeta}>
-          {roleLabel(person, partnerStatus)} · {person.age}
-        </Text>
+        <View style={styles.badge}>
+          <Text style={styles.badgeEmoji}>{ROLE_EMOJI[person.role]}</Text>
+        </View>
+        <View style={styles.personInfo}>
+          <Text style={styles.personName}>{person.name}</Text>
+          <Text style={styles.personMeta}>
+            {roleLabel(person, partnerStatus)} · age {person.age}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.bondRow}>
@@ -261,8 +271,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: 12,
-    paddingBottom: 64,
+    gap: 10,
+    paddingBottom: 110,
   },
   bigButton: {
     backgroundColor: colors.cyan500,
@@ -292,8 +302,22 @@ const styles = StyleSheet.create({
   personHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    gap: 12,
+    marginBottom: 10,
+  },
+  badge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.slate100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeEmoji: {
+    fontSize: 22,
+  },
+  personInfo: {
+    flex: 1,
   },
   personName: {
     fontSize: 15,
@@ -304,6 +328,7 @@ const styles = StyleSheet.create({
   personMeta: {
     fontSize: 12,
     color: colors.slate500,
+    marginTop: 1,
   },
   bondRow: {
     flexDirection: 'row',
