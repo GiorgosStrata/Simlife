@@ -2,6 +2,8 @@
 
 A life-simulation game built with React + TypeScript + Vite, Tailwind CSS, and Zustand.
 
+> 📱 **iOS version:** a React Native (Expo) port lives in [`mobile/`](mobile/) — see its README for running it on an iPhone or simulator. This directory is the web app.
+
 Live a randomized life one year at a time: hit **Age Up**, face a random life event with 2–3 choices, and watch your stats and life story evolve. Progress is saved to `localStorage` automatically, so your life persists between sessions.
 
 ## Getting started
