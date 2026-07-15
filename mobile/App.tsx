@@ -18,14 +18,14 @@ import { getMajor } from './src/data/majors'
 import { getJob, isInSchool, useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
 
-/** BitLife-style avatar: the character's emoji changes as they age. */
-function avatarEmoji(age: number, alive: boolean): string {
+/** BitLife-style avatar: the character's emoji ages with them. */
+function avatarEmoji(age: number, alive: boolean, gender: 'male' | 'female'): string {
   if (!alive) return '🪦'
+  const male = gender === 'male'
   if (age < 2) return '👶'
-  if (age < 13) return '🧒'
-  if (age < 20) return '🧑'
-  if (age < 60) return '🧑‍🦱'
-  return '🧓'
+  if (age < 13) return male ? '👦' : '👧'
+  if (age < 60) return male ? '👨' : '👩'
+  return male ? '👴' : '👵'
 }
 
 function Game() {
@@ -35,6 +35,7 @@ function Game() {
   const hasHydrated = useGameStore((s) => s.hasHydrated)
   const screen = useGameStore((s) => s.screen)
   const name = useGameStore((s) => s.name)
+  const gender = useGameStore((s) => s.gender)
   const age = useGameStore((s) => s.age)
   const year = useGameStore((s) => s.year)
   const alive = useGameStore((s) => s.alive)
@@ -81,7 +82,7 @@ function Game() {
         {/* Header: avatar, name, occupation, age/year, settings */}
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarEmoji}>{avatarEmoji(age, alive)}</Text>
+            <Text style={styles.avatarEmoji}>{avatarEmoji(age, alive, gender)}</Text>
           </View>
           <View style={styles.headerInfo}>
             <Text style={styles.headerName} numberOfLines={1}>

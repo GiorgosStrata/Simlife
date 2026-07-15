@@ -11,20 +11,30 @@ import {
 import { colors } from '../theme'
 import type { PartnerStatus, Person } from '../types'
 
-const ROLE_EMOJI: Record<Person['role'], string> = {
-  mother: '👩',
-  father: '👨',
-  sibling: '🧑',
-  partner: '❤️',
-  friend: '😎',
+function personEmoji(person: Person): string {
+  const male = person.gender === 'male'
+  switch (person.role) {
+    case 'mother':
+      return '👩'
+    case 'father':
+      return '👨'
+    case 'sibling':
+      return male ? '👦' : '👧'
+    case 'partner':
+      return male ? '👨' : '👩'
+    case 'friend':
+      return male ? '🙋‍♂️' : '🙋‍♀️'
+  }
 }
 
 function roleLabel(person: Person, partnerStatus: PartnerStatus | null): string {
+  const male = person.gender === 'male'
   if (person.role === 'partner') {
-    if (partnerStatus === 'married') return 'Spouse'
-    if (partnerStatus === 'engaged') return 'Fiancé(e)'
-    return 'Boyfriend/Girlfriend'
+    if (partnerStatus === 'married') return male ? 'Husband' : 'Wife'
+    if (partnerStatus === 'engaged') return male ? 'Fiancé' : 'Fiancée'
+    return male ? 'Boyfriend' : 'Girlfriend'
   }
+  if (person.role === 'sibling') return male ? 'Brother' : 'Sister'
   return person.role.charAt(0).toUpperCase() + person.role.slice(1)
 }
 
@@ -65,6 +75,9 @@ function PersonCard({ person }: { person: Person }) {
     isPartner && partnerStatus === 'dating' && person.relationship >= PROPOSAL_MIN_RELATIONSHIP
   const canMarry = isPartner && partnerStatus === 'engaged' && money >= WEDDING_COST
   const askedThisYear = usedActions.includes(`ask-money-${person.id}`)
+  const spentTimeThisYear = usedActions.includes(`time-${person.id}`)
+  const giftedThisYear = usedActions.includes(`gift-${person.id}`)
+  const datedThisYear = usedActions.includes('date')
 
   const tap = (run: () => void, sfx: 'click' | 'success' | 'fail' = 'click') => () => {
     playSfx(sfx)
@@ -75,7 +88,7 @@ function PersonCard({ person }: { person: Person }) {
     <View style={styles.card}>
       <View style={styles.personHeader}>
         <View style={styles.badge}>
-          <Text style={styles.badgeEmoji}>{ROLE_EMOJI[person.role]}</Text>
+          <Text style={styles.badgeEmoji}>{personEmoji(person)}</Text>
         </View>
         <View style={styles.personInfo}>
           <Text style={styles.personName}>{person.name}</Text>
@@ -105,18 +118,23 @@ function PersonCard({ person }: { person: Person }) {
         <Pressable
           accessibilityRole="button"
           onPress={tap(() => spendTime(person.id))}
-          style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+          disabled={spentTimeThisYear}
+          style={({ pressed }) => [
+            styles.actionButton,
+            pressed && styles.actionButtonPressed,
+            spentTimeThisYear && styles.buttonDisabled,
+          ]}
         >
           <Text style={styles.actionText}>🕰️ Spend time</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
           onPress={tap(() => giveGift(person.id))}
-          disabled={money < GIFT_COST}
+          disabled={money < GIFT_COST || giftedThisYear}
           style={({ pressed }) => [
             styles.actionButton,
             pressed && styles.actionButtonPressed,
-            money < GIFT_COST && styles.buttonDisabled,
+            (money < GIFT_COST || giftedThisYear) && styles.buttonDisabled,
           ]}
         >
           <Text style={styles.actionText}>🎁 Gift (${GIFT_COST})</Text>
@@ -139,12 +157,12 @@ function PersonCard({ person }: { person: Person }) {
           <Pressable
             accessibilityRole="button"
             onPress={tap(goOnDate)}
-            disabled={money < DATE_COST}
+            disabled={money < DATE_COST || datedThisYear}
             style={({ pressed }) => [
               styles.actionButton,
               styles.loveButton,
               pressed && styles.actionButtonPressed,
-              money < DATE_COST && styles.buttonDisabled,
+              (money < DATE_COST || datedThisYear) && styles.buttonDisabled,
             ]}
           >
             <Text style={styles.actionText}>🌹 Go on a date (${DATE_COST})</Text>

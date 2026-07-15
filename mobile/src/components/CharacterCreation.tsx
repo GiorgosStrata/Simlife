@@ -9,8 +9,10 @@ import {
   View,
 } from 'react-native'
 import { COUNTRIES, getCountry } from '../data/countries'
-import { randomNameParts, useGameStore } from '../store/gameStore'
+import { randomFirstName, randomGender, randomLastName } from '../data/names'
+import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import type { Gender } from '../types'
 import { CountryPickerModal } from './CountryPickerModal'
 import { StatBar } from './StatBar'
 
@@ -24,10 +26,27 @@ export function CharacterCreation() {
   const rerollStats = useGameStore((s) => s.rerollStats)
   const startLife = useGameStore((s) => s.startLife)
 
-  const [{ first, last }, setName] = useState(randomNameParts)
   const [countryCode, setCountryCode] = useState(randomCountryCode)
+  const [gender, setGender] = useState<Gender>(randomGender)
+  const [first, setFirst] = useState(() => randomFirstName(countryCode, gender))
+  const [last, setLast] = useState(() => randomLastName(countryCode))
   const [pickingCountry, setPickingCountry] = useState(false)
   const country = getCountry(countryCode) ?? COUNTRIES[0]
+
+  const rollName = (code: string, g: Gender) => {
+    setFirst(randomFirstName(code, g))
+    setLast(randomLastName(code))
+  }
+
+  const changeCountry = (code: string) => {
+    setCountryCode(code)
+    rollName(code, gender)
+  }
+
+  const changeGender = (g: Gender) => {
+    setGender(g)
+    setFirst(randomFirstName(countryCode, g))
+  }
 
   return (
     <KeyboardAvoidingView
@@ -41,13 +60,35 @@ export function CharacterCreation() {
 
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
-          <Text style={styles.cardHeading}>NAME</Text>
+          <Text style={styles.cardHeading}>NAME & GENDER</Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setName(randomNameParts())}
+            onPress={() => rollName(countryCode, gender)}
             style={({ pressed }) => [styles.smallButton, pressed && styles.smallButtonPressed]}
           >
             <Text style={styles.smallButtonText}>🎲 Randomize</Text>
+          </Pressable>
+        </View>
+        <View style={styles.genderRow}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => changeGender('male')}
+            style={[styles.genderButton, gender === 'male' && styles.genderButtonActive]}
+          >
+            <Text style={styles.genderEmoji}>👦</Text>
+            <Text style={[styles.genderLabel, gender === 'male' && styles.genderLabelActive]}>
+              Male
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => changeGender('female')}
+            style={[styles.genderButton, gender === 'female' && styles.genderButtonActive]}
+          >
+            <Text style={styles.genderEmoji}>👧</Text>
+            <Text style={[styles.genderLabel, gender === 'female' && styles.genderLabelActive]}>
+              Female
+            </Text>
           </Pressable>
         </View>
         <View style={styles.inputRow}>
@@ -55,19 +96,14 @@ export function CharacterCreation() {
             <Text style={styles.inputLabel}>First name</Text>
             <TextInput
               value={first}
-              onChangeText={(text) => setName((n) => ({ ...n, first: text }))}
+              onChangeText={setFirst}
               style={styles.input}
               testID="first-name"
             />
           </View>
           <View style={styles.inputWrap}>
             <Text style={styles.inputLabel}>Last name</Text>
-            <TextInput
-              value={last}
-              onChangeText={(text) => setName((n) => ({ ...n, last: text }))}
-              style={styles.input}
-              testID="last-name"
-            />
+            <TextInput value={last} onChangeText={setLast} style={styles.input} testID="last-name" />
           </View>
         </View>
       </View>
@@ -77,7 +113,7 @@ export function CharacterCreation() {
           <Text style={styles.cardHeading}>COUNTRY</Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setCountryCode(randomCountryCode())}
+            onPress={() => changeCountry(randomCountryCode())}
             style={({ pressed }) => [styles.smallButton, pressed && styles.smallButtonPressed]}
           >
             <Text style={styles.smallButtonText}>🎲 Random</Text>
@@ -115,7 +151,7 @@ export function CharacterCreation() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() => startLife(first, last, countryCode)}
+        onPress={() => startLife(first, last, countryCode, gender)}
         style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}
       >
         <Text style={styles.startButtonText}>Start Life 🍼</Text>
@@ -125,7 +161,7 @@ export function CharacterCreation() {
         <CountryPickerModal
           selected={countryCode}
           onSelect={(c) => {
-            setCountryCode(c.code)
+            changeCountry(c.code)
             setPickingCountry(false)
           }}
           onClose={() => setPickingCountry(false)}
@@ -186,6 +222,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: colors.slate600,
+  },
+  genderRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  genderButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.slate100,
+    borderRadius: 12,
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  genderButtonActive: {
+    backgroundColor: colors.cyan50,
+    borderColor: colors.cyan500,
+  },
+  genderEmoji: {
+    fontSize: 18,
+  },
+  genderLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.slate500,
+  },
+  genderLabelActive: {
+    color: colors.cyan600,
   },
   inputRow: {
     flexDirection: 'row',

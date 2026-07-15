@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type {
   GameEvent,
+  Gender,
   Job,
   LogEntry,
   PartnerStatus,
@@ -13,6 +14,7 @@ import { COUNTRIES, countrySalary, getCountry } from '../data/countries'
 import { EVENTS } from '../data/events'
 import { JOBS } from '../data/jobs'
 import { getMajor } from '../data/majors'
+import { randomFirstName, randomGender, randomLastName } from '../data/names'
 import { GRADUATION_EVENT } from '../data/specialEvents'
 import {
   DATE_COST,
@@ -39,17 +41,6 @@ export {
 const START_YEAR_BASE = 2026
 const MAX_AGE = 100
 
-const FIRST_NAMES = [
-  'Alex', 'Billie', 'Casey', 'Dana', 'Eli', 'Frankie', 'Georgie', 'Harper',
-  'Izzy', 'Jules', 'Kai', 'Lou', 'Marlow', 'Nico', 'Ozzie', 'Piper',
-  'Quinn', 'Remy', 'Sasha', 'Toni',
-]
-const LAST_NAMES = [
-  'Abbott', 'Baker', 'Castillo', 'Dawson', 'Ellis', 'Ferris', 'Grady',
-  'Holloway', 'Ibarra', 'Jensen', 'Klein', 'Lambert', 'Moreau', 'Novak',
-  'Ortega', 'Petrov', 'Quill', 'Rossi', 'Silva', 'Tanaka',
-]
-
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
@@ -66,10 +57,6 @@ function clampRelationship(value: number): number {
   return Math.max(0, Math.min(100, value))
 }
 
-export function randomNameParts(): { first: string; last: string } {
-  return { first: pick(FIRST_NAMES), last: pick(LAST_NAMES) }
-}
-
 function rollStats(): Stats {
   return {
     health: randomInt(60, 100),
@@ -79,13 +66,14 @@ function rollStats(): Stats {
   }
 }
 
-/** Parents (and maybe an older sibling); first names only until startLife. */
-function makeFamily(): Person[] {
+/** Parents (and maybe an older sibling) with country-appropriate names. */
+function makeFamily(countryCode: string, familyLastName: string): Person[] {
   const family: Person[] = [
     {
       id: 'mother',
       role: 'mother',
-      name: pick(FIRST_NAMES),
+      gender: 'female',
+      name: `${randomFirstName(countryCode, 'female')} ${familyLastName}`,
       age: randomInt(20, 38),
       alive: true,
       relationship: randomInt(70, 95),
@@ -93,17 +81,20 @@ function makeFamily(): Person[] {
     {
       id: 'father',
       role: 'father',
-      name: pick(FIRST_NAMES),
+      gender: 'male',
+      name: `${randomFirstName(countryCode, 'male')} ${familyLastName}`,
       age: randomInt(22, 42),
       alive: true,
       relationship: randomInt(70, 95),
     },
   ]
   if (Math.random() < 0.6) {
+    const gender = randomGender()
     family.push({
       id: 'sibling',
       role: 'sibling',
-      name: pick(FIRST_NAMES),
+      gender,
+      name: `${randomFirstName(countryCode, gender)} ${familyLastName}`,
       age: randomInt(1, 6),
       alive: true,
       relationship: randomInt(60, 90),
@@ -191,8 +182,10 @@ interface GameState {
 
   setSfxVolume: (volume: number) => void
 
+  gender: Gender
+
   rerollStats: () => void
-  startLife: (firstName: string, lastName: string, countryCode: string) => void
+  startLife: (firstName: string, lastName: string, countryCode: string, gender: Gender) => void
   ageUp: () => void
   chooseOption: (choiceIndex: number) => void
   startNewLife: () => void
@@ -223,11 +216,13 @@ interface GameState {
 }
 
 function newLifeState() {
-  const { first, last } = randomNameParts()
+  const countryCode = pick(COUNTRIES).code
+  const gender = randomGender()
   return {
     screen: 'creation' as const,
-    name: `${first} ${last}`,
-    countryCode: pick(COUNTRIES).code,
+    name: `${randomFirstName(countryCode, gender)} ${randomLastName(countryCode)}`,
+    gender,
+    countryCode,
     alive: true,
     age: 0,
     year: START_YEAR_BASE,
@@ -245,7 +240,8 @@ function newLifeState() {
     major: null,
     jobOpenings: rollJobOpenings(null, false),
     applyingToUniversity: false,
-    relationships: makeFamily(),
+    // Family is generated in startLife, once country and name are final.
+    relationships: [] as Person[],
     partnerStatus: null as PartnerStatus | null,
     nextFriendId: 1,
   }
@@ -303,6 +299,22 @@ export const useGameStore = create<GameState>()(
         return true
       }
 
+      /** New friend near the player's age, usually the same gender. */
+      const rollNewFriend = (ageOffset: number): Person => {
+        const s = get()
+        const gender =
+          Math.random() < 0.7 ? s.gender : s.gender === 'male' ? 'female' : 'male'
+        return {
+          id: `friend-${s.nextFriendId}`,
+          role: 'friend',
+          gender,
+          name: `${randomFirstName(s.countryCode, gender)} ${randomLastName(s.countryCode)}`,
+          age: Math.max(5, s.age + ageOffset),
+          alive: true,
+          relationship: randomInt(45, 75),
+        }
+      }
+
       const canApplyToUniversity = () => {
         const s = get()
         return s.alive && s.screen === 'life' && s.age >= 18 && !s.hasDegree && !s.inUniversity
@@ -322,22 +334,21 @@ export const useGameStore = create<GameState>()(
           set({ stats: rollStats() })
         },
 
-        startLife: (firstName: string, lastName: string, countryCode: string) => {
+        startLife: (firstName: string, lastName: string, countryCode: string, gender: Gender) => {
           const s = get()
           if (s.screen !== 'creation') return
-          const typed = `${firstName.trim()} ${lastName.trim()}`.trim()
-          const fallback = randomNameParts()
-          const name = typed || `${fallback.first} ${fallback.last}`
-          const familyLastName = name.split(' ').slice(-1)[0] ?? ''
           const country = getCountry(countryCode) ?? pick(COUNTRIES)
+          const typed = `${firstName.trim()} ${lastName.trim()}`.trim()
+          const name =
+            typed ||
+            `${randomFirstName(country.code, gender)} ${randomLastName(country.code)}`
+          const familyLastName = name.split(' ').slice(-1)[0] ?? ''
           set({
             name,
+            gender,
             countryCode: country.code,
             screen: 'life',
-            relationships: s.relationships.map((p) => ({
-              ...p,
-              name: `${p.name} ${familyLastName}`.trim(),
-            })),
+            relationships: makeFamily(country.code, familyLastName),
             log: [
               {
                 id: 0,
@@ -556,15 +567,7 @@ export const useGameStore = create<GameState>()(
             stats: { ...s.stats, happiness: clampStat(s.stats.happiness + randomInt(3, 6)) },
           })
           if (madeFriend) {
-            const { first, last } = randomNameParts()
-            const friend: Person = {
-              id: `friend-${get().nextFriendId}`,
-              role: 'friend',
-              name: `${first} ${last}`,
-              age: Math.max(5, s.age + randomInt(-2, 2)),
-              alive: true,
-              relationship: randomInt(50, 75),
-            }
+            const friend = rollNewFriend(randomInt(-2, 2))
             set({
               relationships: [...get().relationships, friend],
               nextFriendId: get().nextFriendId + 1,
@@ -669,6 +672,7 @@ export const useGameStore = create<GameState>()(
           const s = get()
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive) return
+          if (!useYearlyAction(`time-${personId}`)) return
           updatePerson(personId, {
             relationship: clampRelationship(person.relationship + randomInt(4, 10)),
           })
@@ -680,6 +684,7 @@ export const useGameStore = create<GameState>()(
           const s = get()
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive || s.money < GIFT_COST) return
+          if (!useYearlyAction(`gift-${personId}`)) return
           updatePerson(personId, {
             relationship: clampRelationship(person.relationship + randomInt(6, 12)),
           })
@@ -711,6 +716,7 @@ export const useGameStore = create<GameState>()(
           const s = get()
           const partner = s.relationships.find((p) => p.id === 'partner')
           if (!partner?.alive || !s.alive || s.money < DATE_COST) return
+          if (!useYearlyAction('date')) return
           updatePerson('partner', {
             relationship: clampRelationship(partner.relationship + randomInt(5, 11)),
           })
@@ -728,18 +734,10 @@ export const useGameStore = create<GameState>()(
           if (friends.length >= MAX_FRIENDS) return
           if (!useYearlyAction('make-friend')) return
           if (Math.random() < 0.8) {
-            const { first, last } = randomNameParts()
-            const friend: Person = {
-              id: `friend-${s.nextFriendId}`,
-              role: 'friend',
-              name: `${first} ${last}`,
-              age: Math.max(5, s.age + randomInt(-3, 3)),
-              alive: true,
-              relationship: randomInt(45, 70),
-            }
+            const friend = rollNewFriend(randomInt(-3, 3))
             set({
-              relationships: [...s.relationships, friend],
-              nextFriendId: s.nextFriendId + 1,
+              relationships: [...get().relationships, friend],
+              nextFriendId: get().nextFriendId + 1,
             })
             addLog([{ text: `You made a new friend: ${friend.name}!`, kind: 'relationship' }])
           } else {
@@ -753,11 +751,13 @@ export const useGameStore = create<GameState>()(
           const s = get()
           if (!s.alive || s.age < 18 || s.relationships.some((p) => p.id === 'partner')) return
           if (Math.random() < 0.75) {
-            const { first, last } = randomNameParts()
+            // Heterosexual pairing for now; sexuality options come later.
+            const gender = s.gender === 'male' ? 'female' : 'male'
             const partner: Person = {
               id: 'partner',
               role: 'partner',
-              name: `${first} ${last}`,
+              gender,
+              name: `${randomFirstName(s.countryCode, gender)} ${randomLastName(s.countryCode)}`,
               age: Math.max(18, s.age + randomInt(-4, 4)),
               alive: true,
               relationship: randomInt(40, 65),
@@ -828,7 +828,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -850,7 +850,8 @@ export const useGameStore = create<GameState>()(
           state.relationships = (['mother', 'father'] as const).map((role) => ({
             id: role,
             role,
-            name: `${pick(FIRST_NAMES)} ${lastName}`.trim(),
+            gender: (role === 'mother' ? 'female' : 'male') as Gender,
+            name: `${randomFirstName('US', role === 'mother' ? 'female' : 'male')} ${lastName}`.trim(),
             age: age + randomInt(22, 40),
             alive: true,
             relationship: randomInt(55, 85),
@@ -874,6 +875,25 @@ export const useGameStore = create<GameState>()(
         // v4 saves predate countries.
         if (version < 5) {
           state.countryCode = 'US'
+        }
+        // v5 saves predate gender.
+        if (version < 6) {
+          const playerGender = randomGender()
+          state.gender = playerGender
+          state.relationships = (state.relationships ?? []).map((p) => {
+            if (p.gender) return p
+            const gender: Gender =
+              p.role === 'mother'
+                ? 'female'
+                : p.role === 'father'
+                  ? 'male'
+                  : p.role === 'partner'
+                    ? playerGender === 'male'
+                      ? 'female'
+                      : 'male'
+                    : randomGender()
+            return { ...p, gender }
+          })
         }
         return state as GameState
       },

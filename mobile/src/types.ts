@@ -46,6 +46,8 @@ export interface LogEntry {
   kind: 'birthday' | 'event' | 'info' | 'death' | 'career' | 'relationship'
 }
 
+export type Gender = 'male' | 'female'
+
 /** Someone in the character's life. */
 export type PersonRole = 'mother' | 'father' | 'sibling' | 'partner' | 'friend'
 
@@ -57,6 +59,7 @@ export interface Person {
   id: string
   name: string
   role: PersonRole
+  gender: Gender
   age: number
   alive: boolean
   /** Bond strength 0-100; drifts down slowly each year. */
