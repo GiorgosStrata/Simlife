@@ -9,6 +9,7 @@ import type {
   Person,
   Stats,
 } from '../types'
+import { COUNTRIES, countrySalary, getCountry } from '../data/countries'
 import { EVENTS } from '../data/events'
 import { JOBS } from '../data/jobs'
 import { getMajor } from '../data/majors'
@@ -117,11 +118,29 @@ export function getJob(jobId: string | null): Job | null {
 
 /** How many jobs are hiring in any given year. */
 const OPENINGS_PER_YEAR = 9
+/** With a degree, this many openings match your major (when available). */
+const MAJOR_MATCHED_OPENINGS = 3
 
-/** A fresh random batch of job openings — not everything is hiring. */
-function rollJobOpenings(): string[] {
-  const shuffled = [...JOBS].sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, OPENINGS_PER_YEAR).map((j) => j.id)
+/**
+ * A fresh random batch of job openings — not everything is hiring.
+ * A graduate's major guarantees some matching listings, so the degree
+ * you earned actually shows up in the job market.
+ */
+function rollJobOpenings(major: string | null, hasDegree: boolean): string[] {
+  const shuffle = <T,>(arr: T[]) => [...arr].sort(() => Math.random() - 0.5)
+  const picked: string[] = []
+  if (hasDegree && major) {
+    const matching = shuffle(JOBS.filter((j) => j.requiredMajor === major))
+    picked.push(...matching.slice(0, MAJOR_MATCHED_OPENINGS).map((j) => j.id))
+  }
+  const rest = shuffle(JOBS.filter((j) => !picked.includes(j.id)))
+  picked.push(...rest.slice(0, OPENINGS_PER_YEAR - picked.length).map((j) => j.id))
+  return picked
+}
+
+/** Country-adjusted yearly salary for a job. */
+export function jobSalary(job: Job, countryCode: string | null): number {
+  return countrySalary(job.salary, countryCode)
 }
 
 /** True while the character is in mandatory schooling. */
@@ -133,6 +152,8 @@ interface GameState {
   /** 'creation' shows the character creation screen; 'life' is the game. */
   screen: 'creation' | 'life'
   name: string
+  /** ISO2 country code; scales every salary (see data/countries.ts). */
+  countryCode: string
   alive: boolean
   age: number
   year: number
@@ -171,7 +192,7 @@ interface GameState {
   setSfxVolume: (volume: number) => void
 
   rerollStats: () => void
-  startLife: (firstName: string, lastName: string) => void
+  startLife: (firstName: string, lastName: string, countryCode: string) => void
   ageUp: () => void
   chooseOption: (choiceIndex: number) => void
   startNewLife: () => void
@@ -206,6 +227,7 @@ function newLifeState() {
   return {
     screen: 'creation' as const,
     name: `${first} ${last}`,
+    countryCode: pick(COUNTRIES).code,
     alive: true,
     age: 0,
     year: START_YEAR_BASE,
@@ -221,7 +243,7 @@ function newLifeState() {
     inUniversity: false,
     uniYearsLeft: 0,
     major: null,
-    jobOpenings: rollJobOpenings(),
+    jobOpenings: rollJobOpenings(null, false),
     applyingToUniversity: false,
     relationships: makeFamily(),
     partnerStatus: null as PartnerStatus | null,
@@ -300,15 +322,17 @@ export const useGameStore = create<GameState>()(
           set({ stats: rollStats() })
         },
 
-        startLife: (firstName: string, lastName: string) => {
+        startLife: (firstName: string, lastName: string, countryCode: string) => {
           const s = get()
           if (s.screen !== 'creation') return
           const typed = `${firstName.trim()} ${lastName.trim()}`.trim()
           const fallback = randomNameParts()
           const name = typed || `${fallback.first} ${fallback.last}`
           const familyLastName = name.split(' ').slice(-1)[0] ?? ''
+          const country = getCountry(countryCode) ?? pick(COUNTRIES)
           set({
             name,
+            countryCode: country.code,
             screen: 'life',
             relationships: s.relationships.map((p) => ({
               ...p,
@@ -319,7 +343,7 @@ export const useGameStore = create<GameState>()(
                 id: 0,
                 age: 0,
                 year: s.year,
-                text: `You were born! Say hello to ${name}.`,
+                text: `You were born in ${country.flag} ${country.name}! Say hello to ${name}.`,
                 kind: 'info',
               },
             ],
@@ -345,10 +369,10 @@ export const useGameStore = create<GameState>()(
             stats.health = clampStat(stats.health - randomInt(0, 2))
           }
 
-          // Salary lands every year you hold a job.
+          // Salary lands every year you hold a job, scaled by country.
           const job = getJob(s.jobId)
           if (job) {
-            money += job.salary
+            money += jobSalary(job, s.countryCode)
           }
 
           // University: tuition drains yearly until graduation.
@@ -454,7 +478,7 @@ export const useGameStore = create<GameState>()(
                 ? [...s.usedEventIds, event.id]
                 : s.usedEventIds,
             usedActions: [],
-            jobOpenings: rollJobOpenings(),
+            jobOpenings: rollJobOpenings(s.major, hasDegree),
             log: [...s.log, ...entries],
             nextLogId: logId,
           })
@@ -585,7 +609,7 @@ export const useGameStore = create<GameState>()(
           set({ jobId })
           addLog([
             {
-              text: `You aced the interview and were hired as a ${job.title} ${job.emoji} earning $${job.salary.toLocaleString()}/year!`,
+              text: `You aced the interview and were hired as a ${job.title} ${job.emoji} earning $${jobSalary(job, s.countryCode).toLocaleString()}/year!`,
               kind: 'career',
             },
           ])
@@ -804,7 +828,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -841,11 +865,15 @@ export const useGameStore = create<GameState>()(
         // v3 saves predate majors and rotating job openings.
         if (version < 4) {
           state.major = state.hasDegree || state.inUniversity ? 'business' : null
-          state.jobOpenings = rollJobOpenings()
           state.applyingToUniversity = false
           // Keep an existing major-locked job valid by aligning the major.
           const job = JOBS.find((j) => j.id === state.jobId)
           if (job?.requiredMajor) state.major = job.requiredMajor
+          state.jobOpenings = rollJobOpenings(state.major ?? null, !!state.hasDegree)
+        }
+        // v4 saves predate countries.
+        if (version < 5) {
+          state.countryCode = 'US'
         }
         return state as GameState
       },

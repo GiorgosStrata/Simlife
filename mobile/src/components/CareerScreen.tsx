@@ -8,6 +8,7 @@ import {
   UNIVERSITY_YEARS,
   getJob,
   isInSchool,
+  jobSalary,
   useGameStore,
 } from '../store/gameStore'
 import { colors } from '../theme'
@@ -67,6 +68,7 @@ export function CareerScreen() {
   const inUniversity = useGameStore((s) => s.inUniversity)
   const uniYearsLeft = useGameStore((s) => s.uniYearsLeft)
   const major = useGameStore((s) => s.major)
+  const countryCode = useGameStore((s) => s.countryCode)
   const jobOpenings = useGameStore((s) => s.jobOpenings)
   const usedActions = useGameStore((s) => s.usedActions)
   const applyForJob = useGameStore((s) => s.applyForJob)
@@ -161,7 +163,7 @@ export function CareerScreen() {
               <Row
                 emoji={currentJob.emoji}
                 title={currentJob.title}
-                subtitle={`$${currentJob.salary.toLocaleString()}/year`}
+                subtitle={`$${jobSalary(currentJob, countryCode).toLocaleString()}/year`}
               />
               <Row emoji="🚪" title="Quit job" subtitle="Walk away" onPress={action(quitJob)} chevron />
             </>
@@ -181,7 +183,7 @@ export function CareerScreen() {
                 key={job.id}
                 emoji={job.emoji}
                 title={job.title}
-                subtitle={`$${job.salary.toLocaleString()}/yr${blocker ? ` · 🔒 ${blocker}` : ''}`}
+                subtitle={`$${jobSalary(job, countryCode).toLocaleString()}/yr${blocker ? ` · 🔒 ${blocker}` : ''}`}
                 onPress={() => startInterview(job)}
                 disabled={blocker !== null || isCurrent}
                 right={

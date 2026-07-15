@@ -13,6 +13,7 @@ import { RelationshipsScreen } from './src/components/RelationshipsScreen'
 import { SettingsModal } from './src/components/SettingsModal'
 import { StatsPanel } from './src/components/StatsPanel'
 import { TabBar, type TabKey } from './src/components/TabBar'
+import { getCountry } from './src/data/countries'
 import { getMajor } from './src/data/majors'
 import { getJob, isInSchool, useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
@@ -39,6 +40,7 @@ function Game() {
   const alive = useGameStore((s) => s.alive)
   const currentEvent = useGameStore((s) => s.currentEvent)
   const jobId = useGameStore((s) => s.jobId)
+  const countryCode = useGameStore((s) => s.countryCode)
   const inUniversity = useGameStore((s) => s.inUniversity)
   const major = useGameStore((s) => s.major)
   const applyingToUniversity = useGameStore((s) => s.applyingToUniversity)
@@ -83,7 +85,7 @@ function Game() {
           </View>
           <View style={styles.headerInfo}>
             <Text style={styles.headerName} numberOfLines={1}>
-              {name}
+              {getCountry(countryCode)?.flag ?? ''} {name}
             </Text>
             <Text style={styles.headerOccupation} numberOfLines={1}>
               {occupation}

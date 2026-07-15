@@ -46,6 +46,8 @@ src/
 
 ## Game systems
 
+- **Countries** — character creation includes every country with its flag (`src/data/countries.ts`). Each has a salary multiplier derived from real World Bank GNI-per-capita data, calibrated to US-level base salaries: a Doctor earns ~$160k in the US 🇺🇸, ~$95k in Germany 🇩🇪, ~$8k in Tunisia 🇹🇳.
+
 - **Education/Career tab** (labeled Education until working age 16) — while in school (6–17) or university, once-per-year school actions: study harder (+smarts), hang out with classmates (+happiness, chance of a new friend), ask a teacher for help. At 18 a **graduation popup** offers university / job / gap year. **University requires picking a major** (`src/data/majors.ts`) and having the grades for it — Medicine wants 85 smarts, Arts takes 40. Some jobs are locked to a specific major (Doctor needs Medicine, Lawyer needs Law...), some take any degree. **76 jobs** live in `src/data/jobs.ts`, but only a rotating batch of 9 is hiring each year. **Applying asks one random interview question** (5 per job) — right answer hires you, wrong answer logs the flub and you can retry. Salary is paid automatically every Age Up.
 - **Love tab** — parents (and often a sibling) at birth; friends via "Make a new friend" (once/year, max 4) or hanging out with classmates. Actions: spend time, gift, ask parents for pocket money (under 18, once/year each), date your partner, propose at 70+ bond, marry, break up/divorce. Family ages and eventually passes away.
 - **Sounds** — small synthesized effects (expo-audio) for taps, popups, wins, fails, and death; assets in `assets/sfx/`, playback in `src/audio/sfx.ts`.

@@ -8,9 +8,15 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import { COUNTRIES, getCountry } from '../data/countries'
 import { randomNameParts, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import { CountryPickerModal } from './CountryPickerModal'
 import { StatBar } from './StatBar'
+
+function randomCountryCode(): string {
+  return COUNTRIES[Math.floor(Math.random() * COUNTRIES.length)].code
+}
 
 export function CharacterCreation() {
   const stats = useGameStore((s) => s.stats)
@@ -19,6 +25,9 @@ export function CharacterCreation() {
   const startLife = useGameStore((s) => s.startLife)
 
   const [{ first, last }, setName] = useState(randomNameParts)
+  const [countryCode, setCountryCode] = useState(randomCountryCode)
+  const [pickingCountry, setPickingCountry] = useState(false)
+  const country = getCountry(countryCode) ?? COUNTRIES[0]
 
   return (
     <KeyboardAvoidingView
@@ -65,6 +74,28 @@ export function CharacterCreation() {
 
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
+          <Text style={styles.cardHeading}>COUNTRY</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setCountryCode(randomCountryCode())}
+            style={({ pressed }) => [styles.smallButton, pressed && styles.smallButtonPressed]}
+          >
+            <Text style={styles.smallButtonText}>🎲 Random</Text>
+          </Pressable>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setPickingCountry(true)}
+          style={({ pressed }) => [styles.countryRow, pressed && styles.countryRowPressed]}
+        >
+          <Text style={styles.countryFlag}>{country.flag}</Text>
+          <Text style={styles.countryName}>{country.name}</Text>
+          <Text style={styles.countryChevron}>›</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
           <Text style={styles.cardHeading}>BIRTH STATS</Text>
           <Pressable
             accessibilityRole="button"
@@ -84,11 +115,22 @@ export function CharacterCreation() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() => startLife(first, last)}
+        onPress={() => startLife(first, last, countryCode)}
         style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}
       >
         <Text style={styles.startButtonText}>Start Life 🍼</Text>
       </Pressable>
+
+      {pickingCountry && (
+        <CountryPickerModal
+          selected={countryCode}
+          onSelect={(c) => {
+            setCountryCode(c.code)
+            setPickingCountry(false)
+          }}
+          onClose={() => setPickingCountry(false)}
+        />
+      )}
     </KeyboardAvoidingView>
   )
 }
@@ -170,6 +212,32 @@ const styles = StyleSheet.create({
   },
   spacer: {
     flex: 1,
+  },
+  countryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.slate100,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  countryRowPressed: {
+    backgroundColor: colors.slate200,
+  },
+  countryFlag: {
+    fontSize: 24,
+  },
+  countryName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.slate800,
+  },
+  countryChevron: {
+    fontSize: 22,
+    color: colors.slate400,
+    fontWeight: '600',
   },
   startButton: {
     backgroundColor: colors.cyan500,
