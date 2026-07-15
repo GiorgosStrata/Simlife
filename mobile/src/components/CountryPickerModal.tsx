@@ -4,6 +4,7 @@ import { playSfx } from '../audio/sfx'
 import { COUNTRIES } from '../data/countries'
 import { colors } from '../theme'
 import type { Country } from '../types'
+import { Flag } from './Flag'
 
 interface CountryPickerModalProps {
   selected: string
@@ -53,7 +54,7 @@ export function CountryPickerModal({ selected, onSelect, onClose }: CountryPicke
                   item.code === selected && styles.rowSelected,
                 ]}
               >
-                <Text style={styles.flag}>{item.flag}</Text>
+                <Flag code={item.code} width={30} />
                 <Text style={styles.name}>{item.name}</Text>
                 {item.code === selected && <Text style={styles.check}>✓</Text>}
               </Pressable>

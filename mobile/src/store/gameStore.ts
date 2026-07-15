@@ -10,6 +10,8 @@ import type {
   Person,
   Stats,
 } from '../types'
+import { ACTIVITIES } from '../data/activities'
+import { getAsset, resaleValue } from '../data/assets'
 import { COUNTRIES, countrySalary, getCountry } from '../data/countries'
 import { EVENTS } from '../data/events'
 import { JOBS } from '../data/jobs'
@@ -266,6 +268,9 @@ interface GameState {
   partnerStatus: PartnerStatus | null
   nextFriendId: number
 
+  // Belongings
+  ownedAssetIds: string[]
+
   setSfxVolume: (volume: number) => void
 
   gender: Gender
@@ -294,6 +299,11 @@ interface GameState {
   // Workplace
   workHarder: () => void
   askForRaise: () => void
+
+  // Activities & belongings
+  doActivity: (activityId: string) => void
+  buyAsset: (assetId: string) => void
+  sellAsset: (assetId: string) => void
 
   // Career
   applyForJob: (jobId: string) => void
@@ -346,6 +356,7 @@ function newLifeState() {
     relationships: [] as Person[],
     partnerStatus: null as PartnerStatus | null,
     nextFriendId: 1,
+    ownedAssetIds: [] as string[],
   }
 }
 
@@ -703,6 +714,91 @@ export const useGameStore = create<GameState>()(
           })
           addLog([
             { text: `You paid ${person.name} a genuine compliment. They beamed.`, kind: 'relationship' },
+          ])
+        },
+
+        doActivity: (activityId: string) => {
+          const s = get()
+          const activity = ACTIVITIES.find((a) => a.id === activityId)
+          if (!activity || !s.alive || s.age < activity.minAge) return
+          if (s.money < activity.cost) return
+          if (!useYearlyAction(`activity-${activityId}`)) return
+
+          const stats = { ...s.stats }
+          const applyEffects = (e: typeof activity.effects) => {
+            const { money: m = 0, ...statDeltas } = e
+            for (const key of Object.keys(statDeltas) as (keyof Stats)[]) {
+              stats[key] = clampStat(stats[key] + (statDeltas[key] ?? 0))
+            }
+            return m
+          }
+
+          let money = s.money - activity.cost
+          money += applyEffects(activity.effects)
+
+          if (activity.special === 'casino') {
+            const won = Math.random() < 0.45
+            const amount = randomInt(100, 2000)
+            if (won) {
+              money += amount
+              stats.happiness = clampStat(stats.happiness + 6)
+              set({ money: Math.max(0, money), stats })
+              addLog([{ text: `You won $${amount.toLocaleString()} at the casino! 🎉`, kind: 'event' }])
+            } else {
+              money = Math.max(0, money - amount)
+              stats.happiness = clampStat(stats.happiness - 6)
+              set({ money, stats })
+              addLog([{ text: `You lost $${amount.toLocaleString()} at the casino. The house wins again.`, kind: 'event' }])
+            }
+            return
+          }
+
+          if (activity.special === 'surgery') {
+            const botched = Math.random() < 0.2
+            if (botched) {
+              stats.looks = clampStat(stats.looks - randomInt(5, 12))
+              stats.health = clampStat(stats.health - randomInt(8, 18))
+              set({ money: Math.max(0, money), stats })
+              addLog([{ text: 'The plastic surgery went badly. That is... not what you asked for.', kind: 'event' }])
+            } else {
+              stats.looks = clampStat(stats.looks + randomInt(15, 25))
+              stats.happiness = clampStat(stats.happiness + 6)
+              set({ money: Math.max(0, money), stats })
+              addLog([{ text: 'Your plastic surgery was a stunning success. Heads turn. 💃', kind: 'event' }])
+            }
+            return
+          }
+
+          set({ money: Math.max(0, money), stats })
+          addLog([{ text: `${activity.name}: done. ${activity.description}`, kind: 'event' }])
+        },
+
+        buyAsset: (assetId: string) => {
+          const s = get()
+          const asset = getAsset(assetId)
+          if (!asset || !s.alive || s.money < asset.price) return
+          if (s.ownedAssetIds.includes(assetId)) return
+          set({
+            money: s.money - asset.price,
+            ownedAssetIds: [...s.ownedAssetIds, assetId],
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + asset.joy) },
+          })
+          addLog([
+            { text: `You bought a ${asset.name} ${asset.emoji} for $${asset.price.toLocaleString()}!`, kind: 'event' },
+          ])
+        },
+
+        sellAsset: (assetId: string) => {
+          const s = get()
+          const asset = getAsset(assetId)
+          if (!asset || !s.alive || !s.ownedAssetIds.includes(assetId)) return
+          const value = resaleValue(asset)
+          set({
+            money: s.money + value,
+            ownedAssetIds: s.ownedAssetIds.filter((id) => id !== assetId),
+          })
+          addLog([
+            { text: `You sold your ${asset.name} for $${value.toLocaleString()}.`, kind: 'event' },
           ])
         },
 
@@ -1170,7 +1266,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 8,
+      version: 9,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -1266,6 +1362,10 @@ export const useGameStore = create<GameState>()(
             state.relationships = [...(state.relationships ?? []), ...crew]
             state.nextFriendId = (state.nextFriendId ?? 1) + crew.length
           }
+        }
+        // v8 saves predate belongings.
+        if (version < 9) {
+          state.ownedAssetIds = []
         }
         return state as GameState
       },

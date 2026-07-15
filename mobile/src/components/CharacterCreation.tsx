@@ -14,6 +14,7 @@ import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Gender } from '../types'
 import { CountryPickerModal } from './CountryPickerModal'
+import { Flag } from './Flag'
 import { StatBar } from './StatBar'
 
 function randomCountryCode(): string {
@@ -124,7 +125,7 @@ export function CharacterCreation() {
           onPress={() => setPickingCountry(true)}
           style={({ pressed }) => [styles.countryRow, pressed && styles.countryRowPressed]}
         >
-          <Text style={styles.countryFlag}>{country.flag}</Text>
+          <Flag code={country.code} width={32} />
           <Text style={styles.countryName}>{country.name}</Text>
           <Text style={styles.countryChevron}>›</Text>
         </Pressable>

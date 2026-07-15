@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 
-export type TabKey = 'career' | 'life' | 'relationships'
+export type TabKey = 'career' | 'life' | 'relationships' | 'activities' | 'assets'
 
 interface TabBarProps {
   active: TabKey
@@ -13,12 +13,14 @@ export function TabBar({ active, onChange }: TabBarProps) {
   const age = useGameStore((s) => s.age)
   // "Education" until you're old enough to work; "Career" after.
   const careerTab =
-    age < 16 ? { icon: '🎓', label: 'Education' } : { icon: '💼', label: 'Career' }
+    age < 16 ? { icon: '🎓', label: 'School' } : { icon: '💼', label: 'Career' }
 
   const tabs: Array<{ key: TabKey; icon: string; label: string }> = [
     { key: 'career', ...careerTab },
-    { key: 'life', icon: '📖', label: 'Life' },
     { key: 'relationships', icon: '❤️', label: 'Love' },
+    { key: 'life', icon: '📖', label: 'Life' },
+    { key: 'activities', icon: '🎯', label: 'Do' },
+    { key: 'assets', icon: '🛍️', label: 'Shop' },
   ]
 
   return (
@@ -47,8 +49,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: colors.white,
     borderRadius: 18,
-    padding: 6,
-    gap: 6,
+    padding: 5,
+    gap: 3,
   },
   tab: {
     flex: 1,
@@ -60,7 +62,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cyan50,
   },
   tabIcon: {
-    fontSize: 20,
+    fontSize: 19,
     opacity: 0.6,
   },
   tabIconActive: {

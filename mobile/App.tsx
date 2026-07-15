@@ -3,9 +3,12 @@ import { useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { playSfx } from './src/audio/sfx'
+import { ActivitiesScreen } from './src/components/ActivitiesScreen'
+import { AssetsScreen } from './src/components/AssetsScreen'
 import { CareerScreen } from './src/components/CareerScreen'
 import { CharacterCreation } from './src/components/CharacterCreation'
 import { EventModal } from './src/components/EventModal'
+import { Flag } from './src/components/Flag'
 import { GameOverModal } from './src/components/GameOverModal'
 import { LifeLog } from './src/components/LifeLog'
 import { MajorPickerModal } from './src/components/MajorPickerModal'
@@ -13,7 +16,6 @@ import { RelationshipsScreen } from './src/components/RelationshipsScreen'
 import { SettingsModal } from './src/components/SettingsModal'
 import { StatsPanel } from './src/components/StatsPanel'
 import { TabBar, type TabKey } from './src/components/TabBar'
-import { getCountry } from './src/data/countries'
 import { getMajor } from './src/data/majors'
 import { getJob, isInSchool, useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
@@ -85,9 +87,12 @@ function Game() {
             <Text style={styles.avatarEmoji}>{avatarEmoji(age, alive, gender)}</Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.headerName} numberOfLines={1}>
-              {getCountry(countryCode)?.flag ?? ''} {name}
-            </Text>
+            <View style={styles.nameRow}>
+              <Flag code={countryCode} width={22} />
+              <Text style={styles.headerName} numberOfLines={1}>
+                {name}
+              </Text>
+            </View>
             <Text style={styles.headerOccupation} numberOfLines={1}>
               {occupation}
             </Text>
@@ -113,6 +118,8 @@ function Game() {
         {tab === 'life' && <LifeLog />}
         {tab === 'career' && <CareerScreen />}
         {tab === 'relationships' && <RelationshipsScreen />}
+        {tab === 'activities' && <ActivitiesScreen />}
+        {tab === 'assets' && <AssetsScreen />}
 
         <TabBar active={tab} onChange={setTab} />
       </View>
@@ -192,7 +199,13 @@ const styles = StyleSheet.create({
   headerInfo: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   headerName: {
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: '800',
     color: colors.white,
