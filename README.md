@@ -1,8 +1,14 @@
 # Simlife
 
-A life-simulation game built with React + TypeScript + Vite, Tailwind CSS, and Zustand.
+A life-simulation game. **The full game lives in [`mobile/`](mobile/)** — a React Native (Expo) app that runs on iOS, Android, and the web (via react-native-web). It has countries, careers, school, relationships, activities, belongings, and more.
 
-> 📱 **iOS version:** a React Native (Expo) port lives in [`mobile/`](mobile/) — see its README for running it on an iPhone or simulator. This directory is the web app.
+> 🌐 **The deployed website builds the mobile app for web.** `vercel.json` at the repo root points Vercel at `mobile/` (`expo export --platform web`), so the live site is the same full game you play on your phone — not the legacy Vite app below.
+
+> 🧪 **Legacy Vite app (this directory, `src/`):** the original minimal scaffold (Age-Up loop + events only). It's kept for reference but is no longer what gets deployed. Run the real game from `mobile/`.
+
+---
+
+## Legacy Vite app
 
 Live a randomized life one year at a time: hit **Age Up**, face a random life event with 2–3 choices, and watch your stats and life story evolve. Progress is saved to `localStorage` automatically, so your life persists between sessions.
 
