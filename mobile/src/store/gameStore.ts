@@ -142,6 +142,11 @@ export function isInSchool(age: number): boolean {
 
 const CLASSMATE_COUNT = 4
 const TEACHER_COUNT = 2
+const COWORKER_COUNT = 3
+export const MAX_RAISE_PERCENT = 50
+export const MOVIE_COST = 20
+export const LUNCH_COST = 15
+export const GETAWAY_COST = 300
 
 /** A fresh classroom for a school stage: classmates + teachers. */
 function rollSchoolPeople(
@@ -164,8 +169,7 @@ function rollSchoolPeople(
       relationship: 20 + Math.floor(Math.random() * 31),
     })
   }
-  const teachers = stage === 'university' ? TEACHER_COUNT : TEACHER_COUNT
-  for (let i = 0; i < teachers; i++) {
+  for (let i = 0; i < TEACHER_COUNT; i++) {
     const gender = randomGender()
     people.push({
       id: `teacher-${id++}`,
@@ -181,6 +185,40 @@ function rollSchoolPeople(
     })
   }
   return people
+}
+
+/** A fresh workplace crew for a new job: coworkers + a boss. */
+function rollWorkplacePeople(countryCode: string, playerAge: number, idStart: number): Person[] {
+  const people: Person[] = []
+  let id = idStart
+  for (let i = 0; i < COWORKER_COUNT; i++) {
+    const gender = randomGender()
+    people.push({
+      id: `coworker-${id++}`,
+      role: 'coworker',
+      gender,
+      name: `${randomFirstName(countryCode, gender)} ${randomLastName(countryCode)}`,
+      age: Math.max(18, playerAge + randomInt(-8, 15)),
+      alive: true,
+      relationship: 25 + Math.floor(Math.random() * 31),
+    })
+  }
+  const gender = randomGender()
+  people.push({
+    id: `boss-${id++}`,
+    role: 'boss',
+    gender,
+    name: `${randomFirstName(countryCode, gender)} ${randomLastName(countryCode)}`,
+    age: randomInt(35, 62),
+    alive: true,
+    relationship: 25 + Math.floor(Math.random() * 26),
+  })
+  return people
+}
+
+/** Everyone tied to a workplace, dropped on job changes. */
+function withoutWorkPeople(relationships: Person[]): Person[] {
+  return relationships.filter((p) => p.role !== 'coworker' && p.role !== 'boss')
 }
 
 interface GameState {
@@ -209,6 +247,8 @@ interface GameState {
 
   // Career
   jobId: string | null
+  /** Accumulated raises as a percentage of base salary (0-50). */
+  raisePercent: number
   hasDegree: boolean
   inUniversity: boolean
   uniYearsLeft: number
@@ -241,8 +281,19 @@ interface GameState {
 
   // Person interactions (once per person per year)
   compliment: (personId: string) => void
+  insult: (personId: string) => void
+  askForAdvice: (personId: string) => void
+  prankSibling: (personId: string) => void
+  watchMovie: (personId: string) => void
+  studyTogether: (personId: string) => void
+  grabLunch: (personId: string) => void
+  weekendGetaway: () => void
   askTeacherHelp: (personId: string) => void
   befriendClassmate: (personId: string) => void
+
+  // Workplace
+  workHarder: () => void
+  askForRaise: () => void
 
   // Career
   applyForJob: (jobId: string) => void
@@ -283,6 +334,7 @@ function newLifeState() {
     log: [] as LogEntry[],
     usedActions: [] as string[],
     jobId: null,
+    raisePercent: 0,
     hasDegree: false,
     inUniversity: false,
     uniYearsLeft: 0,
@@ -430,10 +482,10 @@ export const useGameStore = create<GameState>()(
             stats.health = clampStat(stats.health - randomInt(0, 2))
           }
 
-          // Salary lands every year you hold a job, scaled by country.
+          // Salary lands every year you hold a job, scaled by country + raises.
           const job = getJob(s.jobId)
           if (job) {
-            money += jobSalary(job, s.countryCode)
+            money += Math.round(jobSalary(job, s.countryCode) * (1 + s.raisePercent / 100))
           }
 
           // University: tuition drains yearly until graduation.
@@ -654,6 +706,141 @@ export const useGameStore = create<GameState>()(
           ])
         },
 
+        insult: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive) return
+          if (!useYearlyAction(`insult-${personId}`)) return
+          updatePerson(personId, {
+            relationship: clampRelationship(person.relationship - randomInt(8, 18)),
+          })
+          if (Math.random() < 0.5) {
+            set({
+              stats: { ...get().stats, happiness: clampStat(get().stats.happiness - 3) },
+            })
+            addLog([
+              { text: `You insulted ${person.name}. They fired back something meaner. Ouch.`, kind: 'relationship' },
+            ])
+          } else {
+            set({
+              stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 2) },
+            })
+            addLog([
+              { text: `You insulted ${person.name}. Petty? Yes. Satisfying? Also yes.`, kind: 'relationship' },
+            ])
+          }
+        },
+
+        askForAdvice: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive) return
+          if (person.role !== 'mother' && person.role !== 'father') return
+          if (!useYearlyAction(`advice-${personId}`)) return
+          updatePerson(personId, {
+            relationship: clampRelationship(person.relationship + randomInt(3, 6)),
+          })
+          set({
+            stats: { ...get().stats, smarts: clampStat(get().stats.smarts + randomInt(1, 2)) },
+          })
+          addLog([
+            { text: `${person.name} shared some hard-earned life advice. It actually helped.`, kind: 'relationship' },
+          ])
+        },
+
+        prankSibling: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive || person.role !== 'sibling') return
+          if (!useYearlyAction(`prank-${personId}`)) return
+          if (Math.random() < 0.5) {
+            updatePerson(personId, {
+              relationship: clampRelationship(person.relationship + randomInt(3, 8)),
+            })
+            set({
+              stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 5) },
+            })
+            addLog([
+              { text: `Your prank on ${person.name} was legendary. Even they had to laugh.`, kind: 'relationship' },
+            ])
+          } else {
+            updatePerson(personId, {
+              relationship: clampRelationship(person.relationship - randomInt(4, 10)),
+            })
+            addLog([
+              { text: `Your prank on ${person.name} backfired badly. They're plotting revenge.`, kind: 'relationship' },
+            ])
+          }
+        },
+
+        watchMovie: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive || person.role !== 'friend' || s.money < MOVIE_COST) return
+          if (!useYearlyAction(`movie-${personId}`)) return
+          updatePerson(personId, {
+            relationship: clampRelationship(person.relationship + randomInt(5, 10)),
+          })
+          set({
+            money: get().money - MOVIE_COST,
+            stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 4) },
+          })
+          addLog([
+            { text: `You caught a movie with ${person.name}. The popcorn was criminally overpriced.`, kind: 'relationship' },
+          ])
+        },
+
+        studyTogether: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive || person.role !== 'classmate') return
+          if (!useYearlyAction(`study-with-${personId}`)) return
+          updatePerson(personId, {
+            relationship: clampRelationship(person.relationship + randomInt(4, 8)),
+          })
+          set({
+            stats: { ...get().stats, smarts: clampStat(get().stats.smarts + randomInt(1, 2)) },
+          })
+          addLog([
+            { text: `You studied with ${person.name}. Half studying, half memes — still counts.`, kind: 'career' },
+          ])
+        },
+
+        grabLunch: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive || s.money < LUNCH_COST) return
+          if (person.role !== 'coworker' && person.role !== 'boss') return
+          if (!useYearlyAction(`lunch-${personId}`)) return
+          updatePerson(personId, {
+            relationship: clampRelationship(person.relationship + randomInt(5, 10)),
+          })
+          set({
+            money: get().money - LUNCH_COST,
+            stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 3) },
+          })
+          addLog([
+            { text: `You grabbed lunch with ${person.name}. Office gossip was exchanged.`, kind: 'relationship' },
+          ])
+        },
+
+        weekendGetaway: () => {
+          const s = get()
+          const partner = s.relationships.find((p) => p.id === 'partner')
+          if (!partner?.alive || !s.alive || s.money < GETAWAY_COST) return
+          if (!useYearlyAction('getaway')) return
+          updatePerson('partner', {
+            relationship: clampRelationship(partner.relationship + randomInt(10, 16)),
+          })
+          set({
+            money: get().money - GETAWAY_COST,
+            stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 8) },
+          })
+          addLog([
+            { text: `You whisked ${partner.name} away for a weekend getaway. 10/10, would elope again.`, kind: 'relationship' },
+          ])
+        },
+
         askTeacherHelp: (personId: string) => {
           const s = get()
           const person = s.relationships.find((p) => p.id === personId)
@@ -698,7 +885,13 @@ export const useGameStore = create<GameState>()(
           ) {
             return
           }
-          set({ jobId })
+          const crew = rollWorkplacePeople(s.countryCode, s.age, s.nextFriendId)
+          set({
+            jobId,
+            raisePercent: 0,
+            relationships: [...withoutWorkPeople(s.relationships), ...crew],
+            nextFriendId: s.nextFriendId + crew.length,
+          })
           addLog([
             {
               text: `You aced the interview and were hired as a ${job.title} ${job.emoji} earning $${jobSalary(job, s.countryCode).toLocaleString()}/year!`,
@@ -720,8 +913,56 @@ export const useGameStore = create<GameState>()(
           const s = get()
           const job = getJob(s.jobId)
           if (!job || !s.alive) return
-          set({ jobId: null })
+          set({
+            jobId: null,
+            raisePercent: 0,
+            relationships: withoutWorkPeople(s.relationships),
+          })
           addLog([{ text: `You quit your job as a ${job.title}.`, kind: 'career' }])
+        },
+
+        workHarder: () => {
+          const s = get()
+          const boss = s.relationships.find((p) => p.role === 'boss' && p.alive)
+          if (!s.alive || !s.jobId) return
+          if (!useYearlyAction('work-harder')) return
+          if (boss) {
+            updatePerson(boss.id, {
+              relationship: clampRelationship(boss.relationship + randomInt(4, 9)),
+            })
+          }
+          set({
+            stats: { ...get().stats, health: clampStat(get().stats.health - randomInt(0, 2)) },
+          })
+          addLog([
+            { text: 'You put in serious extra effort at work this year. The boss noticed.', kind: 'career' },
+          ])
+        },
+
+        askForRaise: () => {
+          const s = get()
+          const job = getJob(s.jobId)
+          const boss = s.relationships.find((p) => p.role === 'boss' && p.alive)
+          if (!s.alive || !job) return
+          if (s.raisePercent >= MAX_RAISE_PERCENT) return
+          if (!useYearlyAction('raise')) return
+          const chance = 0.15 + (boss ? boss.relationship / 140 : 0.2)
+          if (Math.random() < chance) {
+            const bump = randomInt(5, 12)
+            set({ raisePercent: Math.min(MAX_RAISE_PERCENT, s.raisePercent + bump) })
+            addLog([
+              { text: `Your raise request was approved — salary up ${bump}%! 💸`, kind: 'career' },
+            ])
+          } else {
+            if (boss) {
+              updatePerson(boss.id, {
+                relationship: clampRelationship(boss.relationship - randomInt(1, 4)),
+              })
+            }
+            addLog([
+              { text: `"Not this year," said the boss, not looking up from their desk.`, kind: 'career' },
+            ])
+          }
         },
 
         openUniversityApplication: () => {
@@ -929,7 +1170,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 7,
+      version: 8,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -1011,6 +1252,19 @@ export const useGameStore = create<GameState>()(
             )
             state.relationships = [...(state.relationships ?? []), ...people]
             state.nextFriendId = (state.nextFriendId ?? 1) + people.length
+          }
+        }
+        // v7 saves predate workplaces and raises.
+        if (version < 8) {
+          state.raisePercent = 0
+          if (state.jobId) {
+            const crew = rollWorkplacePeople(
+              state.countryCode ?? 'US',
+              state.age ?? 25,
+              state.nextFriendId ?? 1,
+            )
+            state.relationships = [...(state.relationships ?? []), ...crew]
+            state.nextFriendId = (state.nextFriendId ?? 1) + crew.length
           }
         }
         return state as GameState

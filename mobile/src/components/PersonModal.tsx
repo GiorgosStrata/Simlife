@@ -3,8 +3,11 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { playSfx, type SfxName } from '../audio/sfx'
 import {
   DATE_COST,
+  GETAWAY_COST,
   GIFT_COST,
+  LUNCH_COST,
   MAX_FRIENDS,
+  MOVIE_COST,
   PROPOSAL_MIN_RELATIONSHIP,
   WEDDING_COST,
   useGameStore,
@@ -30,6 +33,10 @@ export function personEmoji(person: Person): string {
       return male ? '👨‍🎓' : '👩‍🎓'
     case 'teacher':
       return male ? '👨‍🏫' : '👩‍🏫'
+    case 'coworker':
+      return male ? '👨‍💼' : '👩‍💼'
+    case 'boss':
+      return male ? '🤵' : '🤵‍♀️'
   }
 }
 
@@ -60,7 +67,14 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const spendTime = useGameStore((s) => s.spendTime)
   const giveGift = useGameStore((s) => s.giveGift)
   const compliment = useGameStore((s) => s.compliment)
+  const insult = useGameStore((s) => s.insult)
   const askForMoney = useGameStore((s) => s.askForMoney)
+  const askForAdvice = useGameStore((s) => s.askForAdvice)
+  const prankSibling = useGameStore((s) => s.prankSibling)
+  const watchMovie = useGameStore((s) => s.watchMovie)
+  const studyTogether = useGameStore((s) => s.studyTogether)
+  const grabLunch = useGameStore((s) => s.grabLunch)
+  const weekendGetaway = useGameStore((s) => s.weekendGetaway)
   const askTeacherHelp = useGameStore((s) => s.askTeacherHelp)
   const befriendClassmate = useGameStore((s) => s.befriendClassmate)
   const goOnDate = useGameStore((s) => s.goOnDate)
@@ -82,8 +96,11 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
 
   const isParent = person.role === 'mother' || person.role === 'father'
   const isPartner = person.role === 'partner'
+  const isSibling = person.role === 'sibling'
+  const isFriend = person.role === 'friend'
   const isClassmate = person.role === 'classmate'
   const isTeacher = person.role === 'teacher'
+  const isWorkPerson = person.role === 'coworker' || person.role === 'boss'
   const livingFriends = relationships.filter((p) => p.role === 'friend' && p.alive).length
   const canPropose =
     isPartner && partnerStatus === 'dating' && person.relationship >= PROPOSAL_MIN_RELATIONSHIP
@@ -164,6 +181,68 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                   chevron
                 />
               )}
+              {isParent && (
+                <Row
+                  emoji="🦉"
+                  title="Ask for life advice"
+                  subtitle={used(`advice-${person.id}`) ? 'Done this year' : '+ smarts, + bond'}
+                  onPress={act(() => askForAdvice(person.id))}
+                  disabled={used(`advice-${person.id}`)}
+                  chevron
+                />
+              )}
+              {isSibling && (
+                <Row
+                  emoji="🪤"
+                  title="Pull a prank"
+                  subtitle={used(`prank-${person.id}`) ? 'Done this year' : '50/50 it lands or backfires'}
+                  onPress={act(() => prankSibling(person.id))}
+                  disabled={used(`prank-${person.id}`)}
+                  chevron
+                />
+              )}
+              {isFriend && (
+                <Row
+                  emoji="🎬"
+                  title={`Go to the movies ($${MOVIE_COST})`}
+                  subtitle={
+                    used(`movie-${person.id}`)
+                      ? 'Done this year'
+                      : money < MOVIE_COST
+                        ? 'Not enough money'
+                        : '+ bond, + happiness'
+                  }
+                  onPress={act(() => watchMovie(person.id))}
+                  disabled={used(`movie-${person.id}`) || money < MOVIE_COST}
+                  chevron
+                />
+              )}
+              {isClassmate && (
+                <Row
+                  emoji="📚"
+                  title="Study together"
+                  subtitle={used(`study-with-${person.id}`) ? 'Done this year' : '+ smarts, + bond'}
+                  onPress={act(() => studyTogether(person.id))}
+                  disabled={used(`study-with-${person.id}`)}
+                  chevron
+                />
+              )}
+              {isWorkPerson && (
+                <Row
+                  emoji="🥪"
+                  title={`Grab lunch ($${LUNCH_COST})`}
+                  subtitle={
+                    used(`lunch-${person.id}`)
+                      ? 'Done this year'
+                      : money < LUNCH_COST
+                        ? 'Not enough money'
+                        : '+ bond, + happiness'
+                  }
+                  onPress={act(() => grabLunch(person.id))}
+                  disabled={used(`lunch-${person.id}`) || money < LUNCH_COST}
+                  chevron
+                />
+              )}
               {isTeacher && (
                 <Row
                   emoji="🍎"
@@ -198,6 +277,20 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                     subtitle={used('date') ? 'Done this year' : '+ bond, + happiness'}
                     onPress={act(goOnDate)}
                     disabled={used('date') || money < DATE_COST}
+                    chevron
+                  />
+                  <Row
+                    emoji="🏝️"
+                    title={`Weekend getaway ($${GETAWAY_COST})`}
+                    subtitle={
+                      used('getaway')
+                        ? 'Done this year'
+                        : money < GETAWAY_COST
+                          ? 'Not enough money'
+                          : '+ + bond, + + happiness'
+                    }
+                    onPress={act(weekendGetaway)}
+                    disabled={used('getaway') || money < GETAWAY_COST}
                     chevron
                   />
                   {partnerStatus === 'dating' && (
@@ -237,6 +330,14 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                   />
                 </>
               )}
+              <Row
+                emoji="🤬"
+                title="Insult"
+                subtitle={used(`insult-${person.id}`) ? 'Done this year' : '- - bond. They may clap back'}
+                onPress={act(() => insult(person.id), 'fail')}
+                disabled={used(`insult-${person.id}`)}
+                chevron
+              />
             </ScrollView>
           )}
 

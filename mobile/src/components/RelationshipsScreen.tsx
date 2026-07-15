@@ -14,9 +14,7 @@ export function RelationshipsScreen() {
   const age = useGameStore((s) => s.age)
   const relationships = useGameStore((s) => s.relationships)
   const partnerStatus = useGameStore((s) => s.partnerStatus)
-  const usedActions = useGameStore((s) => s.usedActions)
   const findLove = useGameStore((s) => s.findLove)
-  const makeFriend = useGameStore((s) => s.makeFriend)
 
   const [personId, setPersonId] = useState<string | null>(null)
 
@@ -25,9 +23,6 @@ export function RelationshipsScreen() {
     .sort((a, b) => SECTION_ORDER.indexOf(a.role) - SECTION_ORDER.indexOf(b.role))
 
   const hasPartner = relationships.some((p) => p.id === 'partner')
-  const livingFriends = relationships.filter((p) => p.role === 'friend' && p.alive).length
-  const canMakeFriend =
-    age >= 5 && livingFriends < MAX_FRIENDS && !usedActions.includes('make-friend')
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -43,27 +38,6 @@ export function RelationshipsScreen() {
           <Text style={styles.bigButtonText}>💘 Find Love</Text>
         </Pressable>
       )}
-      {age >= 5 && (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            playSfx('click')
-            makeFriend()
-          }}
-          disabled={!canMakeFriend}
-          style={({ pressed }) => [
-            styles.bigButton,
-            styles.friendButton,
-            pressed && styles.bigButtonPressed,
-            !canMakeFriend && styles.buttonDisabled,
-          ]}
-        >
-          <Text style={styles.bigButtonText}>
-            🤝 Make a new friend ({livingFriends}/{MAX_FRIENDS})
-          </Text>
-        </Pressable>
-      )}
-
       {people.map((person) => (
         <Row
           key={person.id}

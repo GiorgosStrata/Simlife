@@ -57,6 +57,8 @@ export type PersonRole =
   | 'friend'
   | 'classmate'
   | 'teacher'
+  | 'coworker'
+  | 'boss'
 
 export interface Person {
   /**

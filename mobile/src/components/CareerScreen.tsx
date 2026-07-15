@@ -14,6 +14,7 @@ import { colors } from '../theme'
 import { JobListingsModal } from './JobListingsModal'
 import { Row } from './Row'
 import { SchoolModal } from './SchoolModal'
+import { WorkplaceModal } from './WorkplaceModal'
 
 function educationRow(state: {
   age: number
@@ -54,11 +55,13 @@ export function CareerScreen() {
   const schoolName = useGameStore((s) => s.schoolName)
   const countryCode = useGameStore((s) => s.countryCode)
   const jobOpenings = useGameStore((s) => s.jobOpenings)
+  const raisePercent = useGameStore((s) => s.raisePercent)
   const quitJob = useGameStore((s) => s.quitJob)
   const openUniversityApplication = useGameStore((s) => s.openUniversityApplication)
 
   const [browsingJobs, setBrowsingJobs] = useState(false)
   const [visitingSchool, setVisitingSchool] = useState(false)
+  const [visitingWork, setVisitingWork] = useState(false)
 
   const currentJob = getJob(jobId)
   const inSchool = isInSchool(age) || inUniversity
@@ -97,7 +100,9 @@ export function CareerScreen() {
           <Row
             emoji={currentJob.emoji}
             title={currentJob.title}
-            subtitle={`$${jobSalary(currentJob, countryCode).toLocaleString()}/year`}
+            subtitle={`$${Math.round(jobSalary(currentJob, countryCode) * (1 + raisePercent / 100)).toLocaleString()}/year · Tap to visit your workplace`}
+            onPress={action(() => setVisitingWork(true))}
+            chevron
           />
           <Row emoji="🚪" title="Quit job" subtitle="Walk away" onPress={action(quitJob)} chevron />
         </>
@@ -120,6 +125,7 @@ export function CareerScreen() {
 
       {browsingJobs && <JobListingsModal onClose={() => setBrowsingJobs(false)} />}
       {visitingSchool && <SchoolModal onClose={() => setVisitingSchool(false)} />}
+      {visitingWork && <WorkplaceModal onClose={() => setVisitingWork(false)} />}
     </ScrollView>
   )
 }
