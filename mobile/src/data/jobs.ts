@@ -136,8 +136,8 @@ const LAW_Q: JobQuestion[] = [
   q('Evidence should be...', ['Preserved and documented', 'Improvised', 'Discarded']),
 ]
 
-// [id, title, emoji, salary, minAge, minSmarts, questions, requiresDegree?, requiredMajor?]
-type Row = [string, string, string, number, number, number, JobQuestion[], boolean?, string?]
+// [id, title, emoji, salary, minAge, minSmarts, questions, requiresDegree?, requiredMajor?, tiers?]
+type Row = [string, string, string, number, number, number, JobQuestion[], boolean?, string?, string[]?]
 
 const ROWS: Row[] = [
   // ----- Teen & starter jobs -----
@@ -271,60 +271,60 @@ const ROWS: Row[] = [
   ['actor', 'Stage Actor', '🎭', 26000, 18, 30, CREATIVE_Q],
   ['influencer', 'Content Creator', '🤳', 24000, 18, 25, CREATIVE_Q],
 
-  // ----- Any degree -----
-  ['office-manager', 'Office Manager', '🗄️', 52000, 22, 50, OFFICE_Q, true],
-  ['hr-manager', 'HR Manager', '🤝', 58000, 24, 55, OFFICE_Q, true],
-  ['journalist', 'Journalist', '🗞️', 45000, 22, 60, CREATIVE_Q, true],
-  ['librarian', 'Librarian', '📚', 42000, 22, 55, EDU_Q, true],
+  // ----- Any degree (with promotion ladders) -----
+  ['office-manager', 'Office Manager', '🗄️', 52000, 22, 50, OFFICE_Q, true, undefined, ['Office Assistant', 'Office Manager', 'Senior Manager', 'Operations Director']],
+  ['hr-manager', 'HR Manager', '🤝', 58000, 22, 55, OFFICE_Q, true, undefined, ['HR Associate', 'HR Manager', 'Senior HR Manager', 'Head of People']],
+  ['journalist', 'Journalist', '🗞️', 45000, 22, 60, CREATIVE_Q, true, undefined, ['Junior Reporter', 'Journalist', 'Senior Journalist', 'Editor-in-Chief']],
+  ['librarian', 'Librarian', '📚', 42000, 22, 55, EDU_Q, true, undefined, ['Library Assistant', 'Librarian', 'Senior Librarian', 'Head Librarian']],
 
-  // ----- Major-locked careers -----
-  ['nurse', 'Nurse', '💉', 54000, 22, 55, CARE_Q, true, 'nursing'],
-  ['midwife', 'Midwife', '🤱', 56000, 24, 60, CARE_Q, true, 'nursing'],
-  ['paramedic', 'Paramedic', '🚑', 48000, 22, 50, CARE_Q, true, 'nursing'],
-  ['teacher', 'Teacher', '🏫', 48000, 22, 60, EDU_Q, true, 'education'],
-  ['principal', 'School Principal', '🎓', 72000, 35, 70, EDU_Q, true, 'education'],
-  ['professor', 'University Professor', '👨‍🏫', 85000, 30, 80, EDU_Q, true, 'education'],
-  ['accountant', 'Accountant', '🧾', 62000, 22, 65, FINANCE_Q, true, 'business'],
-  ['financial-analyst', 'Financial Analyst', '📊', 70000, 22, 68, FINANCE_Q, true, 'business'],
-  ['marketing-manager', 'Marketing Manager', '📣', 68000, 25, 60, FINANCE_Q, true, 'business'],
-  ['banker', 'Banker', '🏦', 75000, 24, 65, FINANCE_Q, true, 'business'],
-  ['investment-banker', 'Investment Banker', '💰', 120000, 26, 75, FINANCE_Q, true, 'business'],
-  ['web-developer', 'Web Developer', '🌐', 70000, 22, 65, TECH_Q, true, 'computer-science'],
-  ['software-dev', 'Software Developer', '💻', 85000, 22, 70, TECH_Q, true, 'computer-science'],
-  ['game-developer', 'Game Developer', '🎮', 78000, 22, 70, TECH_Q, true, 'computer-science'],
-  ['data-scientist', 'Data Scientist', '🧮', 95000, 24, 75, TECH_Q, true, 'computer-science'],
-  ['cybersecurity', 'Cybersecurity Analyst', '🛡️', 90000, 24, 72, TECH_Q, true, 'computer-science'],
-  ['civil-engineer', 'Civil Engineer', '🌉', 78000, 22, 72, TRADE_Q, true, 'engineering'],
-  ['mechanical-engineer', 'Mechanical Engineer', '⚙️', 80000, 22, 72, TRADE_Q, true, 'engineering'],
-  ['electrical-engineer', 'Electrical Engineer', '🔌', 82000, 22, 73, TRADE_Q, true, 'engineering'],
-  ['aerospace-engineer', 'Aerospace Engineer', '🚀', 98000, 24, 80, SCIENCE_Q, true, 'engineering'],
-  ['architect', 'Architect', '📐', 85000, 24, 75, CREATIVE_Q, true, 'engineering'],
-  ['lab-tech', 'Lab Technician', '🧪', 52000, 22, 60, SCIENCE_Q, true, 'science'],
-  ['biologist', 'Biologist', '🧬', 68000, 24, 70, SCIENCE_Q, true, 'science'],
-  ['chemist', 'Chemist', '⚗️', 72000, 24, 72, SCIENCE_Q, true, 'science'],
-  ['meteorologist', 'Meteorologist', '🌦️', 65000, 24, 68, SCIENCE_Q, true, 'science'],
-  ['graphic-designer', 'Graphic Designer', '🖌️', 52000, 22, 50, CREATIVE_Q, true, 'arts'],
-  ['author', 'Author', '✍️', 45000, 22, 60, CREATIVE_Q, true, 'arts'],
-  ['film-director', 'Film Director', '🎥', 75000, 28, 65, CREATIVE_Q, true, 'arts'],
-  ['paralegal', 'Paralegal', '📋', 52000, 22, 60, LAW_Q, true, 'law'],
-  ['lawyer', 'Lawyer', '⚖️', 110000, 24, 80, LAW_Q, true, 'law'],
-  ['judge', 'Judge', '👨‍⚖️', 150000, 40, 88, LAW_Q, true, 'law'],
-  ['pharmacist', 'Pharmacist', '💊', 105000, 26, 80, CARE_Q, true, 'medicine'],
-  ['dentist', 'Dentist', '🦷', 130000, 26, 82, CARE_Q, true, 'medicine'],
-  ['veterinarian', 'Veterinarian', '🐕‍🦺', 95000, 26, 78, CARE_Q, true, 'medicine'],
-  ['psychiatrist', 'Psychiatrist', '🛋️', 140000, 28, 85, CARE_Q, true, 'medicine'],
-  ['doctor', 'Doctor', '🩻', 160000, 26, 88, [
+  // ----- Major-locked careers (age gate waived once you hold the degree) -----
+  ['nurse', 'Nurse', '💉', 54000, 22, 55, CARE_Q, true, 'nursing', ['Junior Nurse', 'Nurse', 'Senior Nurse', 'Head Nurse']],
+  ['midwife', 'Midwife', '🤱', 56000, 22, 60, CARE_Q, true, 'nursing', ['Junior Midwife', 'Midwife', 'Senior Midwife', 'Lead Midwife']],
+  ['paramedic', 'Paramedic', '🚑', 48000, 22, 50, CARE_Q, true, 'nursing', ['Trainee Paramedic', 'Paramedic', 'Senior Paramedic', 'Paramedic Supervisor']],
+  ['teacher', 'Teacher', '🏫', 48000, 22, 60, EDU_Q, true, 'education', ['Trainee Teacher', 'Teacher', 'Senior Teacher', 'Head of Department']],
+  ['principal', 'School Principal', '🎓', 72000, 22, 70, EDU_Q, true, 'education', ['Vice Principal', 'Principal', 'District Principal', 'Superintendent']],
+  ['professor', 'University Professor', '👨‍🏫', 85000, 22, 80, EDU_Q, true, 'education', ['Assistant Professor', 'Associate Professor', 'Professor', 'Dean']],
+  ['accountant', 'Accountant', '🧾', 62000, 22, 65, FINANCE_Q, true, 'business', ['Junior Accountant', 'Accountant', 'Senior Accountant', 'Finance Director']],
+  ['financial-analyst', 'Financial Analyst', '📊', 70000, 22, 68, FINANCE_Q, true, 'business', ['Junior Analyst', 'Financial Analyst', 'Senior Analyst', 'Head of Analysis']],
+  ['marketing-manager', 'Marketing Manager', '📣', 68000, 22, 60, FINANCE_Q, true, 'business', ['Marketing Associate', 'Marketing Manager', 'Senior Manager', 'Chief Marketing Officer']],
+  ['banker', 'Banker', '🏦', 75000, 22, 65, FINANCE_Q, true, 'business', ['Associate Banker', 'Banker', 'Senior Banker', 'VP of Banking']],
+  ['investment-banker', 'Investment Banker', '💰', 120000, 22, 75, FINANCE_Q, true, 'business', ['Analyst', 'Associate', 'Vice President', 'Managing Director']],
+  ['web-developer', 'Web Developer', '🌐', 70000, 22, 65, TECH_Q, true, 'computer-science', ['Junior Web Dev', 'Web Developer', 'Senior Web Dev', 'Lead Web Dev']],
+  ['software-dev', 'Software Developer', '💻', 85000, 22, 70, TECH_Q, true, 'computer-science', ['Junior Developer', 'Software Developer', 'Senior Developer', 'Principal Engineer']],
+  ['game-developer', 'Game Developer', '🎮', 78000, 22, 70, TECH_Q, true, 'computer-science', ['Junior Game Dev', 'Game Developer', 'Senior Game Dev', 'Lead Game Dev']],
+  ['data-scientist', 'Data Scientist', '🧮', 95000, 22, 75, TECH_Q, true, 'computer-science', ['Junior Data Scientist', 'Data Scientist', 'Senior Data Scientist', 'Head of Data']],
+  ['cybersecurity', 'Cybersecurity Analyst', '🛡️', 90000, 22, 72, TECH_Q, true, 'computer-science', ['Security Analyst', 'Senior Analyst', 'Security Lead', 'Chief Security Officer']],
+  ['civil-engineer', 'Civil Engineer', '🌉', 78000, 22, 72, TRADE_Q, true, 'engineering', ['Junior Engineer', 'Civil Engineer', 'Senior Engineer', 'Principal Engineer']],
+  ['mechanical-engineer', 'Mechanical Engineer', '⚙️', 80000, 22, 72, TRADE_Q, true, 'engineering', ['Junior Engineer', 'Mechanical Engineer', 'Senior Engineer', 'Principal Engineer']],
+  ['electrical-engineer', 'Electrical Engineer', '🔌', 82000, 22, 73, TRADE_Q, true, 'engineering', ['Junior Engineer', 'Electrical Engineer', 'Senior Engineer', 'Principal Engineer']],
+  ['aerospace-engineer', 'Aerospace Engineer', '🚀', 98000, 22, 80, SCIENCE_Q, true, 'engineering', ['Junior Engineer', 'Aerospace Engineer', 'Senior Engineer', 'Chief Engineer']],
+  ['architect', 'Architect', '📐', 85000, 22, 75, CREATIVE_Q, true, 'engineering', ['Junior Architect', 'Architect', 'Senior Architect', 'Principal Architect']],
+  ['lab-tech', 'Lab Technician', '🧪', 52000, 22, 60, SCIENCE_Q, true, 'science', ['Junior Technician', 'Lab Technician', 'Senior Technician', 'Lab Manager']],
+  ['biologist', 'Biologist', '🧬', 68000, 22, 70, SCIENCE_Q, true, 'science', ['Research Assistant', 'Biologist', 'Senior Biologist', 'Lead Scientist']],
+  ['chemist', 'Chemist', '⚗️', 72000, 22, 72, SCIENCE_Q, true, 'science', ['Research Assistant', 'Chemist', 'Senior Chemist', 'Lead Scientist']],
+  ['meteorologist', 'Meteorologist', '🌦️', 65000, 22, 68, SCIENCE_Q, true, 'science', ['Junior Meteorologist', 'Meteorologist', 'Senior Meteorologist', 'Chief Meteorologist']],
+  ['graphic-designer', 'Graphic Designer', '🖌️', 52000, 22, 50, CREATIVE_Q, true, 'arts', ['Junior Designer', 'Graphic Designer', 'Senior Designer', 'Creative Director']],
+  ['author', 'Author', '✍️', 45000, 22, 60, CREATIVE_Q, true, 'arts', ['Aspiring Author', 'Author', 'Bestselling Author', 'Literary Legend']],
+  ['film-director', 'Film Director', '🎥', 75000, 22, 65, CREATIVE_Q, true, 'arts', ['Assistant Director', 'Film Director', 'Acclaimed Director', 'Legendary Director']],
+  ['paralegal', 'Paralegal', '📋', 52000, 22, 60, LAW_Q, true, 'law', ['Junior Paralegal', 'Paralegal', 'Senior Paralegal', 'Lead Paralegal']],
+  ['lawyer', 'Lawyer', '⚖️', 110000, 22, 80, LAW_Q, true, 'law', ['Associate Lawyer', 'Lawyer', 'Senior Lawyer', 'Partner']],
+  ['judge', 'Judge', '👨‍⚖️', 150000, 22, 88, LAW_Q, true, 'law', ['Magistrate', 'Judge', 'Senior Judge', 'Chief Justice']],
+  ['pharmacist', 'Pharmacist', '💊', 105000, 22, 80, CARE_Q, true, 'medicine', ['Junior Pharmacist', 'Pharmacist', 'Senior Pharmacist', 'Chief Pharmacist']],
+  ['dentist', 'Dentist', '🦷', 130000, 22, 82, CARE_Q, true, 'medicine', ['Associate Dentist', 'Dentist', 'Senior Dentist', 'Practice Owner']],
+  ['veterinarian', 'Veterinarian', '🐕‍🦺', 95000, 22, 78, CARE_Q, true, 'medicine', ['Junior Vet', 'Veterinarian', 'Senior Vet', 'Practice Owner']],
+  ['psychiatrist', 'Psychiatrist', '🛋️', 140000, 22, 85, CARE_Q, true, 'medicine', ['Resident Psychiatrist', 'Psychiatrist', 'Senior Psychiatrist', 'Chief Psychiatrist']],
+  ['doctor', 'Doctor', '🩻', 160000, 22, 88, [
     q('What organ pumps blood?', ['The heart', 'The elbow', 'The hair']),
     q('An X-ray is used to see...', ['Bones', 'The future', 'Wi-Fi']),
     q('A patient has a fever. Their temperature is...', ['Higher than normal', 'Lower than normal', 'Purple']),
     q('What do you do first in an emergency?', ['Check the patient is breathing', 'Update your status', 'Order lunch']),
     q('Antibiotics treat...', ['Bacterial infections', 'Broken hearts', 'Bad luck']),
-  ], true, 'medicine'],
-  ['surgeon', 'Surgeon', '🔪', 220000, 30, 92, CARE_Q, true, 'medicine'],
+  ], true, 'medicine', ['Resident Doctor', 'Doctor', 'Senior Doctor', 'Chief of Medicine']],
+  ['surgeon', 'Surgeon', '🔪', 220000, 22, 92, CARE_Q, true, 'medicine', ['Surgical Resident', 'Surgeon', 'Senior Surgeon', 'Chief Surgeon']],
 ]
 
 export const JOBS: Job[] = ROWS.map(
-  ([id, title, emoji, salary, minAge, minSmarts, questions, requiresDegree, requiredMajor]) => ({
+  ([id, title, emoji, salary, minAge, minSmarts, questions, requiresDegree, requiredMajor, tiers]) => ({
     id,
     title,
     emoji,
@@ -334,5 +334,6 @@ export const JOBS: Job[] = ROWS.map(
     questions,
     ...(requiresDegree ? { requiresDegree } : {}),
     ...(requiredMajor ? { requiredMajor } : {}),
+    ...(tiers ? { tiers } : {}),
   }),
 )

@@ -1,5 +1,5 @@
 import type { GameEvent } from '../types'
-import { TUITION_PER_YEAR, UNIVERSITY_YEARS } from '../store/constants'
+import { UNIVERSITY_YEARS } from '../store/constants'
 
 /**
  * Scripted events fired by the engine at fixed moments,
@@ -11,7 +11,7 @@ export const GRADUATION_EVENT: GameEvent = {
   id: 'special-graduation',
   title: 'Graduation Day 🎓',
   description:
-    `You just graduated from high school! Time to decide what comes next. University takes ${UNIVERSITY_YEARS} years at $${TUITION_PER_YEAR.toLocaleString()}/year — you'll pick a major, and the good programs want good grades. A degree unlocks the best careers.`,
+    `You just graduated from high school! Time to decide what comes next. University takes ${UNIVERSITY_YEARS} years (tuition depends on your country) — you'll pick a major, and the good programs want good grades. A degree unlocks the best careers.`,
   minAge: 18,
   maxAge: 18,
   choices: [

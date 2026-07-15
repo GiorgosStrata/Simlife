@@ -3,8 +3,9 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { playSfx } from '../audio/sfx'
 import {
   MAX_RAISE_PERCENT,
+  annualSalary,
   getJob,
-  jobSalary,
+  jobTitle,
   useGameStore,
 } from '../store/gameStore'
 import { colors } from '../theme'
@@ -18,6 +19,7 @@ interface WorkplaceModalProps {
 /** BitLife-style workplace: your job, your moves, your coworkers. */
 export function WorkplaceModal({ onClose }: WorkplaceModalProps) {
   const jobId = useGameStore((s) => s.jobId)
+  const jobTier = useGameStore((s) => s.jobTier)
   const raisePercent = useGameStore((s) => s.raisePercent)
   const countryCode = useGameStore((s) => s.countryCode)
   const usedActions = useGameStore((s) => s.usedActions)
@@ -36,14 +38,14 @@ export function WorkplaceModal({ onClose }: WorkplaceModalProps) {
 
   const coworkers = relationships.filter((p) => p.role === 'coworker' && p.alive)
   const boss = relationships.find((p) => p.role === 'boss' && p.alive)
-  const salary = Math.round(jobSalary(job, countryCode) * (1 + raisePercent / 100))
+  const salary = annualSalary(job, jobTier, raisePercent, countryCode)
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>
-            {job.emoji} {job.title}
+            {job.emoji} {jobTitle(job, jobTier)}
           </Text>
           <Text style={styles.subtitle}>
             ${salary.toLocaleString()}/year

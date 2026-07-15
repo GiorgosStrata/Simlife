@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { ScrollView, StyleSheet, Text } from 'react-native'
 import { playSfx } from '../audio/sfx'
+import { tuitionPerYear } from '../data/economy'
 import { getMajor } from '../data/majors'
 import {
-  TUITION_PER_YEAR,
   UNIVERSITY_YEARS,
+  annualSalary,
   getJob,
   isInSchool,
-  jobSalary,
+  jobTitle,
   useGameStore,
 } from '../store/gameStore'
 import { colors } from '../theme'
@@ -55,6 +56,7 @@ export function CareerScreen() {
   const schoolName = useGameStore((s) => s.schoolName)
   const countryCode = useGameStore((s) => s.countryCode)
   const jobOpenings = useGameStore((s) => s.jobOpenings)
+  const jobTier = useGameStore((s) => s.jobTier)
   const raisePercent = useGameStore((s) => s.raisePercent)
   const quitJob = useGameStore((s) => s.quitJob)
   const openUniversityApplication = useGameStore((s) => s.openUniversityApplication)
@@ -88,7 +90,7 @@ export function CareerScreen() {
         <Row
           emoji="🏛️"
           title="Apply to university"
-          subtitle={`Pick a major · ${UNIVERSITY_YEARS} years · $${TUITION_PER_YEAR.toLocaleString()}/yr`}
+          subtitle={`Pick a major · ${UNIVERSITY_YEARS} years · $${tuitionPerYear(countryCode).toLocaleString()}/yr`}
           onPress={action(openUniversityApplication)}
           chevron
         />
@@ -99,8 +101,8 @@ export function CareerScreen() {
         <>
           <Row
             emoji={currentJob.emoji}
-            title={currentJob.title}
-            subtitle={`$${Math.round(jobSalary(currentJob, countryCode) * (1 + raisePercent / 100)).toLocaleString()}/year · Tap to visit your workplace`}
+            title={jobTitle(currentJob, jobTier)}
+            subtitle={`$${annualSalary(currentJob, jobTier, raisePercent, countryCode).toLocaleString()}/year · Tap to visit your workplace`}
             onPress={action(() => setVisitingWork(true))}
             chevron
           />

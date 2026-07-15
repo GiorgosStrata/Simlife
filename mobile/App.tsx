@@ -17,7 +17,7 @@ import { SettingsModal } from './src/components/SettingsModal'
 import { StatsPanel } from './src/components/StatsPanel'
 import { TabBar, type TabKey } from './src/components/TabBar'
 import { getMajor } from './src/data/majors'
-import { getJob, isInSchool, useGameStore } from './src/store/gameStore'
+import { getJob, isInSchool, jobTitle, useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
 
 /** BitLife-style avatar: the character's emoji ages with them. */
@@ -43,6 +43,7 @@ function Game() {
   const alive = useGameStore((s) => s.alive)
   const currentEvent = useGameStore((s) => s.currentEvent)
   const jobId = useGameStore((s) => s.jobId)
+  const jobTier = useGameStore((s) => s.jobTier)
   const countryCode = useGameStore((s) => s.countryCode)
   const inUniversity = useGameStore((s) => s.inUniversity)
   const major = useGameStore((s) => s.major)
@@ -67,7 +68,7 @@ function Game() {
 
   const job = getJob(jobId)
   const occupation = job
-    ? `${job.emoji} ${job.title}`
+    ? `${job.emoji} ${jobTitle(job, jobTier)}`
     : inUniversity
       ? `🏛️ Studying ${getMajor(major)?.name ?? ''}`
       : isInSchool(age)

@@ -11,8 +11,10 @@ export function StatsPanel() {
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <Text style={styles.heading}>STATS</Text>
-        <View style={styles.moneyBadge}>
-          <Text style={styles.moneyText}>${money.toLocaleString()}</Text>
+        <View style={[styles.moneyBadge, money < 0 && styles.moneyBadgeDebt]}>
+          <Text style={[styles.moneyText, money < 0 && styles.moneyTextDebt]}>
+            {money < 0 ? `-$${Math.abs(money).toLocaleString()}` : `$${money.toLocaleString()}`}
+          </Text>
         </View>
       </View>
       <StatBar label="Health" value={stats.health} color={colors.rose500} icon="❤️" />
@@ -47,10 +49,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
+  moneyBadgeDebt: {
+    backgroundColor: '#fee2e2',
+  },
   moneyText: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.emerald700,
     fontVariant: ['tabular-nums'],
+  },
+  moneyTextDebt: {
+    color: colors.rose700,
   },
 })

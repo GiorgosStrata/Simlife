@@ -241,3 +241,9 @@ export function countrySalary(baseSalary: number, code: string | null): number {
   const multiplier = getCountry(code)?.multiplier ?? 1
   return Math.max(500, Math.round((baseSalary * multiplier) / 100) * 100)
 }
+
+/** Generic country scaling for costs (tuition, expenses, etc.). */
+export function scaleByCountry(amount: number, code: string | null): number {
+  const multiplier = getCountry(code)?.multiplier ?? 1
+  return Math.round(amount * multiplier)
+}

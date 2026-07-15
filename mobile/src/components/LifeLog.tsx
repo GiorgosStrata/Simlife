@@ -11,11 +11,13 @@ const KIND_COLORS: Record<LogEntry['kind'], string> = {
   death: colors.rose700,
   career: colors.sky600,
   relationship: colors.pink600,
+  money: colors.emerald700,
 }
 
 const KIND_EMOJI: Partial<Record<LogEntry['kind'], string>> = {
   info: '👶',
   death: '🪦',
+  money: '💰',
 }
 
 /** BitLife-style journal: bold "Age N" headers with the year's lines under them. */

@@ -13,6 +13,17 @@ import type {
 import { ACTIVITIES } from '../data/activities'
 import { getAsset, resaleValue } from '../data/assets'
 import { COUNTRIES, countrySalary, getCountry } from '../data/countries'
+import {
+  DEBT_INTEREST,
+  EXPENSES_START_AGE,
+  YEARS_PER_PROMOTION,
+  assetUpkeep,
+  friendCost,
+  partnerCost,
+  personalExpenses,
+  tierMultiplier,
+  tuitionPerYear,
+} from '../data/economy'
 import { EVENTS } from '../data/events'
 import { JOBS } from '../data/jobs'
 import { getMajor } from '../data/majors'
@@ -132,9 +143,46 @@ function rollJobOpenings(major: string | null, hasDegree: boolean): string[] {
   return picked
 }
 
-/** Country-adjusted yearly salary for a job. */
+/** Base country-adjusted yearly salary for a job (tier 0, no raises). */
 export function jobSalary(job: Job, countryCode: string | null): number {
   return countrySalary(job.salary, countryCode)
+}
+
+/** Full take-home salary: country + promotion tier + accumulated raises. */
+export function annualSalary(
+  job: Job,
+  tier: number,
+  raisePercent: number,
+  countryCode: string | null,
+): number {
+  return Math.round(
+    countrySalary(job.salary, countryCode) * tierMultiplier(tier) * (1 + raisePercent / 100),
+  )
+}
+
+/** Job title at the character's current promotion tier. */
+export function jobTitle(job: Job, tier: number): string {
+  return job.tiers?.[tier] ?? job.title
+}
+
+/**
+ * Why the character can't take this job yet, or null if eligible.
+ * Holding the required degree waives the age requirement entirely —
+ * a fresh Medicine grad can be a Doctor without waiting for 26.
+ */
+export function jobBlocker(
+  job: Job,
+  who: { age: number; smarts: number; hasDegree: boolean; major: string | null },
+): string | null {
+  if (job.requiredMajor && who.major !== job.requiredMajor)
+    return `${getMajor(job.requiredMajor)?.name ?? job.requiredMajor} degree required`
+  if (job.requiresDegree && !who.hasDegree) return 'university degree required'
+  // Degree jobs skip the age gate (you've already earned the degree);
+  // everyone else must be old enough.
+  const needsDegree = !!job.requiredMajor || !!job.requiresDegree
+  if (!needsDegree && who.age < job.minAge) return `age ${job.minAge}+`
+  if (who.smarts < job.minSmarts) return `${job.minSmarts} smarts required`
+  return null
 }
 
 /** True while the character is in mandatory schooling. */
@@ -249,6 +297,10 @@ interface GameState {
 
   // Career
   jobId: string | null
+  /** Current promotion tier within the job (0 = entry). */
+  jobTier: number
+  /** Years spent in the current job, drives promotions. */
+  yearsInJob: number
   /** Accumulated raises as a percentage of base salary (0-50). */
   raisePercent: number
   hasDegree: boolean
@@ -344,6 +396,8 @@ function newLifeState() {
     log: [] as LogEntry[],
     usedActions: [] as string[],
     jobId: null,
+    jobTier: 0,
+    yearsInJob: 0,
     raisePercent: 0,
     hasDegree: false,
     inUniversity: false,
@@ -493,16 +547,36 @@ export const useGameStore = create<GameState>()(
             stats.health = clampStat(stats.health - randomInt(0, 2))
           }
 
-          // Salary lands every year you hold a job, scaled by country + raises.
+          // Salary lands every year you hold a job (country + tier + raises).
           const job = getJob(s.jobId)
+          let jobTier = s.jobTier
+          let yearsInJob = s.yearsInJob
+          let grossIncome = 0
           if (job) {
-            money += Math.round(jobSalary(job, s.countryCode) * (1 + s.raisePercent / 100))
+            yearsInJob += 1
+            // Promotion every few years, up the job's ladder.
+            const maxTier = (job.tiers?.length ?? 1) - 1
+            if (jobTier < maxTier && yearsInJob % YEARS_PER_PROMOTION === 0) {
+              jobTier += 1
+              entries.push({
+                id: logId++,
+                age,
+                year,
+                text: `You were promoted to ${jobTitle(job, jobTier)} ${job.emoji}!`,
+                kind: 'career',
+              })
+            }
+            grossIncome = annualSalary(job, jobTier, s.raisePercent, s.countryCode)
+            money += grossIncome
           }
 
-          // University: tuition drains yearly until graduation.
+          // University: country-scaled tuition drains yearly until graduation.
           let { hasDegree, inUniversity, uniYearsLeft } = s
+          let expenses = 0
           if (inUniversity) {
-            money = Math.max(0, money - TUITION_PER_YEAR)
+            const tuition = tuitionPerYear(s.countryCode)
+            money -= tuition
+            expenses += tuition
             uniYearsLeft -= 1
             if (uniYearsLeft <= 0) {
               inUniversity = false
@@ -584,6 +658,49 @@ export const useGameStore = create<GameState>()(
             ...newSchoolPeople,
           ]
 
+          // ----- Yearly cost of living (this is why you keep less than salary) -----
+          // Personal expenses kick in once you're on your own.
+          if (age >= EXPENSES_START_AGE) {
+            const living = personalExpenses(s.countryCode)
+            money -= living
+            expenses += living
+            // Every friend costs a little to keep up with.
+            const livingFriends = relationships.filter((p) => p.role === 'friend' && p.alive).length
+            const friends = livingFriends * friendCost(s.countryCode)
+            money -= friends
+            expenses += friends
+            // A relationship costs more the more serious it gets.
+            if (partnerStatus) {
+              const love = partnerCost(s.countryCode, partnerStatus)
+              money -= love
+              expenses += love
+            }
+          }
+          // Cars, homes, and luxuries need upkeep every year.
+          for (const id of s.ownedAssetIds) {
+            const asset = getAsset(id)
+            if (asset) {
+              const upkeep = assetUpkeep(asset.price, asset.category)
+              money -= upkeep
+              expenses += upkeep
+            }
+          }
+          // Debt grows a little each year you stay in the red.
+          if (money < 0) {
+            money = Math.round(money * (1 + DEBT_INTEREST))
+          }
+          // A quick yearly balance sheet once you're earning/spending.
+          if (age >= EXPENSES_START_AGE && (grossIncome > 0 || expenses > 0)) {
+            const net = grossIncome - expenses
+            entries.push({
+              id: logId++,
+              age,
+              year,
+              text: `Finances: earned $${grossIncome.toLocaleString()}, spent $${expenses.toLocaleString()} — net ${net >= 0 ? '+' : '-'}$${Math.abs(net).toLocaleString()}.`,
+              kind: 'money',
+            })
+          }
+
           if (stats.health <= 0 || oldAgeDeathRoll(age, stats.health) || age >= MAX_AGE) {
             entries.push({
               id: logId++,
@@ -597,6 +714,8 @@ export const useGameStore = create<GameState>()(
               year,
               stats,
               money,
+              jobTier,
+              yearsInJob,
               hasDegree,
               inUniversity,
               uniYearsLeft,
@@ -623,6 +742,8 @@ export const useGameStore = create<GameState>()(
             year,
             stats,
             money,
+            jobTier,
+            yearsInJob,
             hasDegree,
             inUniversity,
             uniYearsLeft,
@@ -654,7 +775,8 @@ export const useGameStore = create<GameState>()(
           for (const key of Object.keys(statDeltas) as (keyof Stats)[]) {
             stats[key] = clampStat(stats[key] + (statDeltas[key] ?? 0))
           }
-          const money = Math.max(0, s.money + moneyDelta)
+          // Events can push you into debt (money may go negative).
+          const money = s.money + moneyDelta
 
           let logId = s.nextLogId
           const entries: LogEntry[] = [
@@ -973,24 +1095,21 @@ export const useGameStore = create<GameState>()(
           const job = getJob(jobId)
           if (!job || !s.alive || s.screen !== 'life' || s.jobId === jobId) return
           if (!s.jobOpenings.includes(jobId)) return
-          if (
-            s.age < job.minAge ||
-            s.stats.smarts < job.minSmarts ||
-            (job.requiredMajor && s.major !== job.requiredMajor) ||
-            (job.requiresDegree && !s.hasDegree)
-          ) {
+          if (jobBlocker(job, { age: s.age, smarts: s.stats.smarts, hasDegree: s.hasDegree, major: s.major })) {
             return
           }
           const crew = rollWorkplacePeople(s.countryCode, s.age, s.nextFriendId)
           set({
             jobId,
+            jobTier: 0,
+            yearsInJob: 0,
             raisePercent: 0,
             relationships: [...withoutWorkPeople(s.relationships), ...crew],
             nextFriendId: s.nextFriendId + crew.length,
           })
           addLog([
             {
-              text: `You aced the interview and were hired as a ${job.title} ${job.emoji} earning $${jobSalary(job, s.countryCode).toLocaleString()}/year!`,
+              text: `You aced the interview and were hired as a ${jobTitle(job, 0)} ${job.emoji} earning $${annualSalary(job, 0, 0, s.countryCode).toLocaleString()}/year!`,
               kind: 'career',
             },
           ])
@@ -1011,10 +1130,12 @@ export const useGameStore = create<GameState>()(
           if (!job || !s.alive) return
           set({
             jobId: null,
+            jobTier: 0,
+            yearsInJob: 0,
             raisePercent: 0,
             relationships: withoutWorkPeople(s.relationships),
           })
-          addLog([{ text: `You quit your job as a ${job.title}.`, kind: 'career' }])
+          addLog([{ text: `You quit your job as a ${jobTitle(job, s.jobTier)}.`, kind: 'career' }])
         },
 
         workHarder: () => {
@@ -1098,7 +1219,7 @@ export const useGameStore = create<GameState>()(
           })
           addLog([
             {
-              text: `You got into ${schoolName}, majoring in ${major.name} ${major.emoji}! Tuition is $${TUITION_PER_YEAR.toLocaleString()}/year for ${UNIVERSITY_YEARS} years.`,
+              text: `You got into ${schoolName}, majoring in ${major.name} ${major.emoji}! Tuition is $${tuitionPerYear(s.countryCode).toLocaleString()}/year for ${UNIVERSITY_YEARS} years.`,
               kind: 'career',
             },
           ])
@@ -1266,7 +1387,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 9,
+      version: 10,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -1366,6 +1487,11 @@ export const useGameStore = create<GameState>()(
         // v8 saves predate belongings.
         if (version < 9) {
           state.ownedAssetIds = []
+        }
+        // v9 saves predate job tiers and the debt/expenses economy.
+        if (version < 10) {
+          state.jobTier = 0
+          state.yearsInJob = 0
         }
         return state as GameState
       },

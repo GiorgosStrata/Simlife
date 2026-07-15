@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ScrollView, StyleSheet, Text } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { getAsset, resaleValue } from '../data/assets'
+import { assetUpkeep } from '../data/economy'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { Row } from './Row'
@@ -36,19 +37,22 @@ export function AssetsScreen() {
       {owned.length === 0 && (
         <Row emoji="📭" title="Nothing yet" subtitle="Buy something from the shop above" />
       )}
-      {owned.map((asset) => (
-        <Row
-          key={asset.id}
-          emoji={asset.emoji}
-          title={asset.name}
-          subtitle={`Sell for $${resaleValue(asset).toLocaleString()}`}
-          onPress={() => {
-            playSfx('click')
-            sellAsset(asset.id)
-          }}
-          right={<Text style={styles.sell}>Sell</Text>}
-        />
-      ))}
+      {owned.map((asset) => {
+        const upkeep = assetUpkeep(asset.price, asset.category)
+        return (
+          <Row
+            key={asset.id}
+            emoji={asset.emoji}
+            title={asset.name}
+            subtitle={`Sell for $${resaleValue(asset).toLocaleString()}${upkeep > 0 ? ` · upkeep $${upkeep.toLocaleString()}/yr` : ''}`}
+            onPress={() => {
+              playSfx('click')
+              sellAsset(asset.id)
+            }}
+            right={<Text style={styles.sell}>Sell</Text>}
+          />
+        )
+      })}
 
       {shopping && <StoreModal onClose={() => setShopping(false)} />}
     </ScrollView>

@@ -43,7 +43,7 @@ export interface LogEntry {
   age: number
   year: number
   text: string
-  kind: 'birthday' | 'event' | 'info' | 'death' | 'career' | 'relationship'
+  kind: 'birthday' | 'event' | 'info' | 'death' | 'career' | 'relationship' | 'money'
 }
 
 export type Gender = 'male' | 'female'
@@ -115,6 +115,11 @@ export interface Job {
   requiresDegree?: boolean
   /** Needs a degree in this specific major (implies requiresDegree). */
   requiredMajor?: string
+  /**
+   * Promotion ladder from entry (index 0) to top. If present, the
+   * shown title and salary climb tiers over the years on the job.
+   */
+  tiers?: string[]
   /** One of these is asked, at random, when applying. */
   questions: JobQuestion[]
 }

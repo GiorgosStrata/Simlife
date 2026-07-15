@@ -1,20 +1,24 @@
 import { useEffect } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
+import { tuitionPerYear } from '../data/economy'
 import { MAJORS } from '../data/majors'
-import { useGameStore } from '../store/gameStore'
+import { UNIVERSITY_YEARS, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { Row } from './Row'
 
 /** Pick a university major — top programs want top grades. */
 export function MajorPickerModal() {
   const smarts = useGameStore((s) => s.stats.smarts)
+  const countryCode = useGameStore((s) => s.countryCode)
   const applyToUniversity = useGameStore((s) => s.applyToUniversity)
   const cancel = useGameStore((s) => s.cancelUniversityApplication)
 
   useEffect(() => {
     playSfx('pop')
   }, [])
+
+  const tuition = tuitionPerYear(countryCode)
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={cancel}>
@@ -23,7 +27,8 @@ export function MajorPickerModal() {
           <Text style={styles.kicker}>UNIVERSITY APPLICATION</Text>
           <Text style={styles.title}>Pick your major</Text>
           <Text style={styles.subtitle}>
-            Your grades: {smarts} smarts. Programs above that bar will reject you.
+            Your grades: {smarts} smarts. Programs above that bar reject you. Tuition: $
+            {tuition.toLocaleString()}/yr × {UNIVERSITY_YEARS} years.
           </Text>
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {MAJORS.map((major) => {

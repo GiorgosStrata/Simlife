@@ -2,27 +2,11 @@ import { useEffect, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { JOBS } from '../data/jobs'
-import { getMajor } from '../data/majors'
-import { getJob, jobSalary, useGameStore } from '../store/gameStore'
+import { annualSalary, getJob, jobBlocker, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Job, JobQuestion } from '../types'
 import { InterviewModal } from './InterviewModal'
 import { Row } from './Row'
-
-function jobBlocker(
-  job: Job,
-  age: number,
-  smarts: number,
-  hasDegree: boolean,
-  major: string | null,
-): string | null {
-  if (age < job.minAge) return `age ${job.minAge}+`
-  if (job.requiredMajor && major !== job.requiredMajor)
-    return `${getMajor(job.requiredMajor)?.name ?? job.requiredMajor} degree required`
-  if (job.requiresDegree && !hasDegree) return 'university degree required'
-  if (smarts < job.minSmarts) return `${job.minSmarts} smarts required`
-  return null
-}
 
 interface Interview {
   job: Job
@@ -84,14 +68,14 @@ export function JobListingsModal({ onClose }: JobListingsModalProps) {
           </Text>
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {openings.map((job) => {
-              const blocker = jobBlocker(job, age, stats.smarts, hasDegree, major)
+              const blocker = jobBlocker(job, { age, smarts: stats.smarts, hasDegree, major })
               const isCurrent = job.id === jobId
               return (
                 <Row
                   key={job.id}
                   emoji={job.emoji}
                   title={job.title}
-                  subtitle={`$${jobSalary(job, countryCode).toLocaleString()}/yr${blocker ? ` · 🔒 ${blocker}` : ''}`}
+                  subtitle={`$${annualSalary(job, 0, 0, countryCode).toLocaleString()}/yr${blocker ? ` · 🔒 ${blocker}` : ''}`}
                   onPress={() => startInterview(job)}
                   disabled={blocker !== null || isCurrent}
                   right={
