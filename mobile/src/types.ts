@@ -49,7 +49,14 @@ export interface LogEntry {
 export type Gender = 'male' | 'female'
 
 /** Someone in the character's life. */
-export type PersonRole = 'mother' | 'father' | 'sibling' | 'partner' | 'friend'
+export type PersonRole =
+  | 'mother'
+  | 'father'
+  | 'sibling'
+  | 'partner'
+  | 'friend'
+  | 'classmate'
+  | 'teacher'
 
 export interface Person {
   /**

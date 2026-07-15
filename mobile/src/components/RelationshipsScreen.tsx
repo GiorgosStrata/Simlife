@@ -1,247 +1,33 @@
+import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
-import {
-  DATE_COST,
-  GIFT_COST,
-  MAX_FRIENDS,
-  PROPOSAL_MIN_RELATIONSHIP,
-  WEDDING_COST,
-  useGameStore,
-} from '../store/gameStore'
+import { MAX_FRIENDS, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
-import type { PartnerStatus, Person } from '../types'
-
-function personEmoji(person: Person): string {
-  const male = person.gender === 'male'
-  switch (person.role) {
-    case 'mother':
-      return '👩'
-    case 'father':
-      return '👨'
-    case 'sibling':
-      return male ? '👦' : '👧'
-    case 'partner':
-      return male ? '👨' : '👩'
-    case 'friend':
-      return male ? '🙋‍♂️' : '🙋‍♀️'
-  }
-}
-
-function roleLabel(person: Person, partnerStatus: PartnerStatus | null): string {
-  const male = person.gender === 'male'
-  if (person.role === 'partner') {
-    if (partnerStatus === 'married') return male ? 'Husband' : 'Wife'
-    if (partnerStatus === 'engaged') return male ? 'Fiancé' : 'Fiancée'
-    return male ? 'Boyfriend' : 'Girlfriend'
-  }
-  if (person.role === 'sibling') return male ? 'Brother' : 'Sister'
-  return person.role.charAt(0).toUpperCase() + person.role.slice(1)
-}
-
-function PersonCard({ person }: { person: Person }) {
-  const age = useGameStore((s) => s.age)
-  const money = useGameStore((s) => s.money)
-  const usedActions = useGameStore((s) => s.usedActions)
-  const partnerStatus = useGameStore((s) => s.partnerStatus)
-  const spendTime = useGameStore((s) => s.spendTime)
-  const giveGift = useGameStore((s) => s.giveGift)
-  const askForMoney = useGameStore((s) => s.askForMoney)
-  const goOnDate = useGameStore((s) => s.goOnDate)
-  const propose = useGameStore((s) => s.propose)
-  const marry = useGameStore((s) => s.marry)
-  const breakUp = useGameStore((s) => s.breakUp)
-
-  if (!person.alive) {
-    return (
-      <View style={[styles.card, styles.cardDeceased]}>
-        <View style={styles.personHeader}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeEmoji}>🪦</Text>
-          </View>
-          <View style={styles.personInfo}>
-            <Text style={styles.personName}>{person.name}</Text>
-            <Text style={styles.personMeta}>
-              {roleLabel(person, partnerStatus)} · passed away at {person.age}
-            </Text>
-          </View>
-        </View>
-      </View>
-    )
-  }
-
-  const isPartner = person.role === 'partner'
-  const isParent = person.role === 'mother' || person.role === 'father'
-  const canPropose =
-    isPartner && partnerStatus === 'dating' && person.relationship >= PROPOSAL_MIN_RELATIONSHIP
-  const canMarry = isPartner && partnerStatus === 'engaged' && money >= WEDDING_COST
-  const askedThisYear = usedActions.includes(`ask-money-${person.id}`)
-  const spentTimeThisYear = usedActions.includes(`time-${person.id}`)
-  const giftedThisYear = usedActions.includes(`gift-${person.id}`)
-  const datedThisYear = usedActions.includes('date')
-
-  const tap = (run: () => void, sfx: 'click' | 'success' | 'fail' = 'click') => () => {
-    playSfx(sfx)
-    run()
-  }
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.personHeader}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeEmoji}>{personEmoji(person)}</Text>
-        </View>
-        <View style={styles.personInfo}>
-          <Text style={styles.personName}>{person.name}</Text>
-          <Text style={styles.personMeta}>
-            {roleLabel(person, partnerStatus)} · age {person.age}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.bondRow}>
-        <Text style={styles.bondLabel}>Bond</Text>
-        <View
-          style={styles.bondTrack}
-          accessibilityRole="progressbar"
-          accessibilityLabel={`Bond with ${person.name}`}
-          accessibilityValue={{ min: 0, max: 100, now: person.relationship }}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={person.relationship}
-        >
-          <View style={[styles.bondFill, { width: `${person.relationship}%` }]} />
-        </View>
-        <Text style={styles.bondValue}>{person.relationship}</Text>
-      </View>
-
-      <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={tap(() => spendTime(person.id))}
-          disabled={spentTimeThisYear}
-          style={({ pressed }) => [
-            styles.actionButton,
-            pressed && styles.actionButtonPressed,
-            spentTimeThisYear && styles.buttonDisabled,
-          ]}
-        >
-          <Text style={styles.actionText}>🕰️ Spend time</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={tap(() => giveGift(person.id))}
-          disabled={money < GIFT_COST || giftedThisYear}
-          style={({ pressed }) => [
-            styles.actionButton,
-            pressed && styles.actionButtonPressed,
-            (money < GIFT_COST || giftedThisYear) && styles.buttonDisabled,
-          ]}
-        >
-          <Text style={styles.actionText}>🎁 Gift (${GIFT_COST})</Text>
-        </Pressable>
-        {isParent && age < 18 && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={tap(() => askForMoney(person.id))}
-            disabled={askedThisYear}
-            style={({ pressed }) => [
-              styles.actionButton,
-              pressed && styles.actionButtonPressed,
-              askedThisYear && styles.buttonDisabled,
-            ]}
-          >
-            <Text style={styles.actionText}>🪙 Ask for pocket money</Text>
-          </Pressable>
-        )}
-        {isPartner && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={tap(goOnDate)}
-            disabled={money < DATE_COST || datedThisYear}
-            style={({ pressed }) => [
-              styles.actionButton,
-              styles.loveButton,
-              pressed && styles.actionButtonPressed,
-              (money < DATE_COST || datedThisYear) && styles.buttonDisabled,
-            ]}
-          >
-            <Text style={styles.actionText}>🌹 Go on a date (${DATE_COST})</Text>
-          </Pressable>
-        )}
-        {isPartner && partnerStatus === 'dating' && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={tap(propose, 'success')}
-            disabled={!canPropose}
-            style={({ pressed }) => [
-              styles.actionButton,
-              styles.loveButton,
-              pressed && styles.actionButtonPressed,
-              !canPropose && styles.buttonDisabled,
-            ]}
-          >
-            <Text style={styles.actionText}>💍 Propose</Text>
-          </Pressable>
-        )}
-        {isPartner && partnerStatus === 'engaged' && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={tap(marry, 'success')}
-            disabled={!canMarry}
-            style={({ pressed }) => [
-              styles.actionButton,
-              styles.loveButton,
-              pressed && styles.actionButtonPressed,
-              !canMarry && styles.buttonDisabled,
-            ]}
-          >
-            <Text style={styles.actionText}>💒 Marry (${WEDDING_COST.toLocaleString()})</Text>
-          </Pressable>
-        )}
-        {isPartner && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={tap(breakUp, 'fail')}
-            style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
-          >
-            <Text style={[styles.actionText, styles.dangerText]}>
-              {partnerStatus === 'married' ? '💔 Divorce' : '💔 Break up'}
-            </Text>
-          </Pressable>
-        )}
-      </View>
-
-      {isPartner && partnerStatus === 'dating' && person.relationship < PROPOSAL_MIN_RELATIONSHIP && (
-        <Text style={styles.hint}>
-          Bond {PROPOSAL_MIN_RELATIONSHIP}+ needed to propose — spend time and go on dates.
-        </Text>
-      )}
-      {isPartner && partnerStatus === 'engaged' && money < WEDDING_COST && (
-        <Text style={styles.hint}>
-          The wedding costs ${WEDDING_COST.toLocaleString()} — save up first.
-        </Text>
-      )}
-    </View>
-  )
-}
+import type { Person } from '../types'
+import { PersonModal, personEmoji, roleLabel } from './PersonModal'
+import { Row } from './Row'
 
 const SECTION_ORDER: Person['role'][] = ['partner', 'mother', 'father', 'sibling', 'friend']
 
+/** Clean BitLife-style list: tap a person to open their interaction sheet. */
 export function RelationshipsScreen() {
   const age = useGameStore((s) => s.age)
   const relationships = useGameStore((s) => s.relationships)
+  const partnerStatus = useGameStore((s) => s.partnerStatus)
   const usedActions = useGameStore((s) => s.usedActions)
   const findLove = useGameStore((s) => s.findLove)
   const makeFriend = useGameStore((s) => s.makeFriend)
+
+  const [personId, setPersonId] = useState<string | null>(null)
+
+  const people = relationships
+    .filter((p) => SECTION_ORDER.includes(p.role))
+    .sort((a, b) => SECTION_ORDER.indexOf(a.role) - SECTION_ORDER.indexOf(b.role))
 
   const hasPartner = relationships.some((p) => p.id === 'partner')
   const livingFriends = relationships.filter((p) => p.role === 'friend' && p.alive).length
   const canMakeFriend =
     age >= 5 && livingFriends < MAX_FRIENDS && !usedActions.includes('make-friend')
-
-  const sorted = [...relationships].sort(
-    (a, b) => SECTION_ORDER.indexOf(a.role) - SECTION_ORDER.indexOf(b.role),
-  )
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -277,9 +63,49 @@ export function RelationshipsScreen() {
           </Text>
         </Pressable>
       )}
-      {sorted.map((person) => (
-        <PersonCard key={person.id} person={person} />
+
+      {people.map((person) => (
+        <Row
+          key={person.id}
+          emoji={person.alive ? personEmoji(person) : '🪦'}
+          title={person.name}
+          subtitle={
+            person.alive
+              ? `${roleLabel(person, partnerStatus)} · age ${person.age} · Bond ${person.relationship}`
+              : `${roleLabel(person, partnerStatus)} · passed away at ${person.age}`
+          }
+          onPress={
+            person.alive
+              ? () => {
+                  playSfx('click')
+                  setPersonId(person.id)
+                }
+              : undefined
+          }
+          disabled={!person.alive}
+          chevron={person.alive}
+          right={
+            person.alive ? (
+              <View style={styles.bondPill}>
+                <View
+                  style={styles.bondTrack}
+                  accessibilityRole="progressbar"
+                  accessibilityLabel={`Bond with ${person.name}`}
+                  accessibilityValue={{ min: 0, max: 100, now: person.relationship }}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={person.relationship}
+                >
+                  <View style={[styles.bondFill, { width: `${person.relationship}%` }]} />
+                </View>
+                <Text style={styles.chevron}>›</Text>
+              </View>
+            ) : undefined
+          }
+        />
       ))}
+
+      {personId && <PersonModal personId={personId} onClose={() => setPersonId(null)} />}
     </ScrollView>
   )
 }
@@ -289,7 +115,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: 10,
+    gap: 8,
     paddingBottom: 110,
   },
   bigButton: {
@@ -304,64 +130,22 @@ const styles = StyleSheet.create({
   bigButtonPressed: {
     backgroundColor: colors.cyan400,
   },
+  buttonDisabled: {
+    opacity: 0.45,
+  },
   bigButtonText: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.white,
   },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 16,
-  },
-  cardDeceased: {
-    opacity: 0.6,
-  },
-  personHeader: {
+  bondPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
-  },
-  badge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.slate100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeEmoji: {
-    fontSize: 22,
-  },
-  personInfo: {
-    flex: 1,
-  },
-  personName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.slate800,
-    flexShrink: 1,
-  },
-  personMeta: {
-    fontSize: 12,
-    color: colors.slate500,
-    marginTop: 1,
-  },
-  bondRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  bondLabel: {
-    width: 34,
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.slate600,
+    gap: 6,
   },
   bondTrack: {
-    flex: 1,
-    height: 10,
+    width: 52,
+    height: 8,
     borderRadius: 999,
     backgroundColor: colors.slate200,
     overflow: 'hidden',
@@ -371,45 +155,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: colors.pink600,
   },
-  bondValue: {
-    width: 30,
-    fontSize: 12,
-    textAlign: 'right',
-    color: colors.slate500,
-    fontVariant: ['tabular-nums'],
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  actionButton: {
-    backgroundColor: colors.slate100,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  loveButton: {
-    backgroundColor: colors.cyan50,
-  },
-  actionButtonPressed: {
-    backgroundColor: colors.slate200,
-  },
-  buttonDisabled: {
-    opacity: 0.45,
-  },
-  actionText: {
-    fontSize: 13,
+  chevron: {
+    fontSize: 24,
+    color: colors.slate400,
     fontWeight: '600',
-    color: colors.slate600,
-  },
-  dangerText: {
-    color: colors.rose700,
-  },
-  hint: {
-    marginTop: 8,
-    fontSize: 12,
-    color: colors.slate500,
   },
 })

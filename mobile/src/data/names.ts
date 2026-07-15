@@ -165,8 +165,13 @@ const COUNTRY_POOL: Record<string, keyof typeof POOLS> = {
   LS: 'african', SZ: 'african', MU: 'african', SC: 'african',
 }
 
+/** The cultural pool key a country belongs to (shared with schools.ts). */
+export function poolKeyFor(countryCode: string | null): string {
+  return COUNTRY_POOL[countryCode ?? ''] ?? 'anglo'
+}
+
 function poolFor(countryCode: string | null): NamePool {
-  return POOLS[COUNTRY_POOL[countryCode ?? ''] ?? 'anglo']
+  return POOLS[poolKeyFor(countryCode)]
 }
 
 function pick<T>(arr: T[]): T {

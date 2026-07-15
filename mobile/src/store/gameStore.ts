@@ -15,6 +15,7 @@ import { EVENTS } from '../data/events'
 import { JOBS } from '../data/jobs'
 import { getMajor } from '../data/majors'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
+import { schoolNameFor, schoolStageFor, teacherName, type SchoolStage } from '../data/schools'
 import { GRADUATION_EVENT } from '../data/specialEvents'
 import {
   DATE_COST,
@@ -139,6 +140,49 @@ export function isInSchool(age: number): boolean {
   return age >= 6 && age < 18
 }
 
+const CLASSMATE_COUNT = 4
+const TEACHER_COUNT = 2
+
+/** A fresh classroom for a school stage: classmates + teachers. */
+function rollSchoolPeople(
+  countryCode: string,
+  stage: SchoolStage,
+  playerAge: number,
+  idStart: number,
+): Person[] {
+  const people: Person[] = []
+  let id = idStart
+  for (let i = 0; i < CLASSMATE_COUNT; i++) {
+    const gender = randomGender()
+    people.push({
+      id: `classmate-${id++}`,
+      role: 'classmate',
+      gender,
+      name: `${randomFirstName(countryCode, gender)} ${randomLastName(countryCode)}`,
+      age: Math.max(5, playerAge + (Math.random() < 0.5 ? 0 : Math.random() < 0.5 ? -1 : 1)),
+      alive: true,
+      relationship: 20 + Math.floor(Math.random() * 31),
+    })
+  }
+  const teachers = stage === 'university' ? TEACHER_COUNT : TEACHER_COUNT
+  for (let i = 0; i < teachers; i++) {
+    const gender = randomGender()
+    people.push({
+      id: `teacher-${id++}`,
+      role: 'teacher',
+      gender,
+      name:
+        stage === 'university'
+          ? `Prof. ${randomLastName(countryCode)}`
+          : teacherName(countryCode, gender),
+      age: 28 + Math.floor(Math.random() * 33),
+      alive: true,
+      relationship: 30 + Math.floor(Math.random() * 31),
+    })
+  }
+  return people
+}
+
 interface GameState {
   /** 'creation' shows the character creation screen; 'life' is the game. */
   screen: 'creation' | 'life'
@@ -170,6 +214,8 @@ interface GameState {
   uniYearsLeft: number
   /** The university major (see majors.ts); set when accepted. */
   major: string | null
+  /** Current school's name, e.g. "Palm Street High School". */
+  schoolName: string | null
   /** Job ids hiring this year; rerolled every Age Up. */
   jobOpenings: string[]
   /** True while the major-picker is open (from the grad popup or Career tab). */
@@ -190,10 +236,13 @@ interface GameState {
   chooseOption: (choiceIndex: number) => void
   startNewLife: () => void
 
-  // School (ages 6-17, once per year each)
+  // School (once per year each)
   studyHarder: () => void
-  hangWithClassmates: () => void
-  askTeacherForHelp: () => void
+
+  // Person interactions (once per person per year)
+  compliment: (personId: string) => void
+  askTeacherHelp: (personId: string) => void
+  befriendClassmate: (personId: string) => void
 
   // Career
   applyForJob: (jobId: string) => void
@@ -238,6 +287,7 @@ function newLifeState() {
     inUniversity: false,
     uniYearsLeft: 0,
     major: null,
+    schoolName: null,
     jobOpenings: rollJobOpenings(null, false),
     applyingToUniversity: false,
     // Family is generated in startLife, once country and name are final.
@@ -407,19 +457,42 @@ export const useGameStore = create<GameState>()(
           }
 
           // School milestones (flavor only; enrollment is automatic).
-          const milestone: Record<number, string> = {
-            6: 'You started primary school.',
-            12: 'You moved up to middle school.',
-            15: 'You started high school.',
-            18: 'You graduated from high school. 🎉',
-          }
-          if (milestone[age]) {
-            entries.push({ id: logId++, age, year, text: milestone[age], kind: 'career' })
+          // School stage transitions: new school name, new classroom.
+          const prevStage = schoolStageFor(s.age, s.inUniversity)
+          const newStage = schoolStageFor(age, inUniversity)
+          let schoolName = s.schoolName
+          let newSchoolPeople: Person[] = []
+          let nextFriendId = s.nextFriendId
+          const stageChanged = newStage !== prevStage
+          if (stageChanged) {
+            if (newStage && newStage !== 'university') {
+              schoolName = schoolNameFor(s.countryCode, newStage)
+              newSchoolPeople = rollSchoolPeople(s.countryCode, newStage, age, nextFriendId)
+              nextFriendId += newSchoolPeople.length
+              entries.push({
+                id: logId++,
+                age,
+                year,
+                text: `You started at ${schoolName}! 🎒`,
+                kind: 'career',
+              })
+            } else if (!newStage) {
+              schoolName = null
+              if (prevStage === 'high') {
+                entries.push({
+                  id: logId++,
+                  age,
+                  year,
+                  text: 'You graduated from high school. 🎉',
+                  kind: 'career',
+                })
+              }
+            }
           }
 
           // The people in your life age too — and drift if neglected.
           let partnerStatus = s.partnerStatus
-          const relationships = s.relationships.map((p) => {
+          const agedRelationships = s.relationships.map((p) => {
             if (!p.alive) return p
             const pAge = p.age + 1
             if (familyDeathRoll(pAge)) {
@@ -440,6 +513,13 @@ export const useGameStore = create<GameState>()(
               relationship: clampRelationship(p.relationship - randomInt(0, 3)),
             }
           })
+          // Old classmates and teachers move on when the stage changes.
+          const relationships = [
+            ...(stageChanged
+              ? agedRelationships.filter((p) => p.role !== 'classmate' && p.role !== 'teacher')
+              : agedRelationships),
+            ...newSchoolPeople,
+          ]
 
           if (stats.health <= 0 || oldAgeDeathRoll(age, stats.health) || age >= MAX_AGE) {
             entries.push({
@@ -459,6 +539,8 @@ export const useGameStore = create<GameState>()(
               uniYearsLeft,
               relationships,
               partnerStatus,
+              schoolName,
+              nextFriendId,
               alive: false,
               currentEvent: null,
               usedActions: [],
@@ -483,6 +565,8 @@ export const useGameStore = create<GameState>()(
             uniYearsLeft,
             relationships,
             partnerStatus,
+            schoolName,
+            nextFriendId,
             currentEvent: event,
             usedEventIds:
               event && event !== GRADUATION_EVENT
@@ -557,40 +641,45 @@ export const useGameStore = create<GameState>()(
           addLog([{ text: 'You hit the books and studied extra hard this year.', kind: 'career' }])
         },
 
-        hangWithClassmates: () => {
+        compliment: (personId: string) => {
           const s = get()
-          if (!s.alive || !(isInSchool(s.age) || s.inUniversity)) return
-          if (!useYearlyAction('classmates')) return
-          const friends = s.relationships.filter((p) => p.role === 'friend' && p.alive)
-          const madeFriend = friends.length < MAX_FRIENDS && Math.random() < 0.5
-          set({
-            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + randomInt(3, 6)) },
-          })
-          if (madeFriend) {
-            const friend = rollNewFriend(randomInt(-2, 2))
-            set({
-              relationships: [...get().relationships, friend],
-              nextFriendId: get().nextFriendId + 1,
-            })
-            addLog([
-              { text: `You hung out with your classmates and became friends with ${friend.name}!`, kind: 'relationship' },
-            ])
-          } else {
-            addLog([
-              { text: 'You goofed around with your classmates between lessons.', kind: 'relationship' },
-            ])
-          }
-        },
-
-        askTeacherForHelp: () => {
-          const s = get()
-          if (!s.alive || !(isInSchool(s.age) || s.inUniversity)) return
-          if (!useYearlyAction('teacher')) return
-          set({
-            stats: { ...s.stats, smarts: clampStat(s.stats.smarts + randomInt(1, 3)) },
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive) return
+          if (!useYearlyAction(`compliment-${personId}`)) return
+          updatePerson(personId, {
+            relationship: clampRelationship(person.relationship + randomInt(3, 7)),
           })
           addLog([
-            { text: 'You stayed after class for extra help. The teacher was delighted someone asked.', kind: 'career' },
+            { text: `You paid ${person.name} a genuine compliment. They beamed.`, kind: 'relationship' },
+          ])
+        },
+
+        askTeacherHelp: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive || person.role !== 'teacher') return
+          if (!useYearlyAction(`teacher-help-${personId}`)) return
+          updatePerson(personId, {
+            relationship: clampRelationship(person.relationship + randomInt(2, 5)),
+          })
+          set({
+            stats: { ...get().stats, smarts: clampStat(get().stats.smarts + randomInt(1, 3)) },
+          })
+          addLog([
+            { text: `${person.name} stayed after class to help you. It actually made sense this time.`, kind: 'career' },
+          ])
+        },
+
+        befriendClassmate: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive || person.role !== 'classmate') return
+          if (person.relationship < 60) return
+          const friends = s.relationships.filter((p) => p.role === 'friend' && p.alive)
+          if (friends.length >= MAX_FRIENDS) return
+          updatePerson(personId, { role: 'friend' })
+          addLog([
+            { text: `You and ${person.name} are officially friends now. 🤝`, kind: 'relationship' },
           ])
         },
 
@@ -657,10 +746,22 @@ export const useGameStore = create<GameState>()(
             ])
             return
           }
-          set({ inUniversity: true, uniYearsLeft: UNIVERSITY_YEARS, major: majorId })
+          const schoolName = schoolNameFor(s.countryCode, 'university')
+          const campus = rollSchoolPeople(s.countryCode, 'university', s.age, s.nextFriendId)
+          set({
+            inUniversity: true,
+            uniYearsLeft: UNIVERSITY_YEARS,
+            major: majorId,
+            schoolName,
+            relationships: [
+              ...s.relationships.filter((p) => p.role !== 'classmate' && p.role !== 'teacher'),
+              ...campus,
+            ],
+            nextFriendId: s.nextFriendId + campus.length,
+          })
           addLog([
             {
-              text: `You got into university, majoring in ${major.name} ${major.emoji}! Tuition is $${TUITION_PER_YEAR.toLocaleString()}/year for ${UNIVERSITY_YEARS} years.`,
+              text: `You got into ${schoolName}, majoring in ${major.name} ${major.emoji}! Tuition is $${TUITION_PER_YEAR.toLocaleString()}/year for ${UNIVERSITY_YEARS} years.`,
               kind: 'career',
             },
           ])
@@ -828,7 +929,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 6,
+      version: 7,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -894,6 +995,23 @@ export const useGameStore = create<GameState>()(
                     : randomGender()
             return { ...p, gender }
           })
+        }
+        // v6 saves predate school names and classrooms.
+        if (version < 7) {
+          state.schoolName = null
+          const stage = schoolStageFor(state.age ?? 0, !!state.inUniversity)
+          if (stage) {
+            const country = state.countryCode ?? 'US'
+            state.schoolName = schoolNameFor(country, stage)
+            const people = rollSchoolPeople(
+              country,
+              stage,
+              state.age ?? 10,
+              state.nextFriendId ?? 1,
+            )
+            state.relationships = [...(state.relationships ?? []), ...people]
+            state.nextFriendId = (state.nextFriendId ?? 1) + people.length
+          }
         }
         return state as GameState
       },

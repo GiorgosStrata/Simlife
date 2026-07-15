@@ -13,28 +13,33 @@ import {
 import { colors } from '../theme'
 import { JobListingsModal } from './JobListingsModal'
 import { Row } from './Row'
+import { SchoolModal } from './SchoolModal'
 
-function educationLabel(state: {
+function educationRow(state: {
   age: number
   hasDegree: boolean
   inUniversity: boolean
   uniYearsLeft: number
   major: string | null
+  schoolName: string | null
 }): { emoji: string; title: string; subtitle: string } {
-  const { age, hasDegree, inUniversity, uniYearsLeft, major } = state
+  const { age, hasDegree, inUniversity, uniYearsLeft, major, schoolName } = state
   const majorName = getMajor(major)?.name
-  if (hasDegree)
-    return { emoji: '🎓', title: `${majorName ?? 'University'} graduate`, subtitle: 'Degree earned' }
   if (inUniversity)
     return {
       emoji: '🏛️',
-      title: `University — ${majorName ?? '...'}`,
-      subtitle: `${uniYearsLeft} year${uniYearsLeft === 1 ? '' : 's'} to go · $${TUITION_PER_YEAR.toLocaleString()}/yr tuition`,
+      title: schoolName ?? 'University',
+      subtitle: `${majorName ?? '...'} · ${uniYearsLeft} year${uniYearsLeft === 1 ? '' : 's'} to go`,
     }
+  if (isInSchool(age))
+    return {
+      emoji: age < 12 ? '🎒' : age < 15 ? '📗' : '📘',
+      title: schoolName ?? 'School',
+      subtitle: 'Tap to visit your school',
+    }
+  if (hasDegree)
+    return { emoji: '🎓', title: `${majorName ?? 'University'} graduate`, subtitle: 'Degree earned' }
   if (age < 6) return { emoji: '🧸', title: 'Too young for school', subtitle: 'Enjoy it while it lasts' }
-  if (age < 12) return { emoji: '🎒', title: 'Primary school', subtitle: 'Student' }
-  if (age < 15) return { emoji: '📗', title: 'Middle school', subtitle: 'Student' }
-  if (age < 18) return { emoji: '📘', title: 'High school', subtitle: 'Student' }
   return { emoji: '📜', title: 'High school graduate', subtitle: 'No degree yet' }
 }
 
@@ -46,20 +51,18 @@ export function CareerScreen() {
   const inUniversity = useGameStore((s) => s.inUniversity)
   const uniYearsLeft = useGameStore((s) => s.uniYearsLeft)
   const major = useGameStore((s) => s.major)
+  const schoolName = useGameStore((s) => s.schoolName)
   const countryCode = useGameStore((s) => s.countryCode)
   const jobOpenings = useGameStore((s) => s.jobOpenings)
-  const usedActions = useGameStore((s) => s.usedActions)
   const quitJob = useGameStore((s) => s.quitJob)
   const openUniversityApplication = useGameStore((s) => s.openUniversityApplication)
-  const studyHarder = useGameStore((s) => s.studyHarder)
-  const hangWithClassmates = useGameStore((s) => s.hangWithClassmates)
-  const askTeacherForHelp = useGameStore((s) => s.askTeacherForHelp)
 
   const [browsingJobs, setBrowsingJobs] = useState(false)
+  const [visitingSchool, setVisitingSchool] = useState(false)
 
   const currentJob = getJob(jobId)
   const inSchool = isInSchool(age) || inUniversity
-  const edu = educationLabel({ age, hasDegree, inUniversity, uniYearsLeft, major })
+  const edu = educationRow({ age, hasDegree, inUniversity, uniYearsLeft, major, schoolName })
   const workingAge = age >= 16
 
   const action = (run: () => void) => () => {
@@ -69,37 +72,14 @@ export function CareerScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionHeading}>{inSchool ? '🎓 SCHOOL' : '🎓 EDUCATION'}</Text>
-      <Row emoji={edu.emoji} title={edu.title} subtitle={edu.subtitle} />
-
-      {inSchool && (
-        <>
-          <Row
-            emoji="📖"
-            title="Study harder"
-            subtitle={usedActions.includes('study') ? 'Done this year' : '+ smarts'}
-            onPress={action(studyHarder)}
-            disabled={usedActions.includes('study')}
-            chevron
-          />
-          <Row
-            emoji="🎒"
-            title="Hang out with classmates"
-            subtitle={usedActions.includes('classmates') ? 'Done this year' : '+ happiness, maybe a friend'}
-            onPress={action(hangWithClassmates)}
-            disabled={usedActions.includes('classmates')}
-            chevron
-          />
-          <Row
-            emoji="🍎"
-            title="Ask a teacher for help"
-            subtitle={usedActions.includes('teacher') ? 'Done this year' : '+ smarts'}
-            onPress={action(askTeacherForHelp)}
-            disabled={usedActions.includes('teacher')}
-            chevron
-          />
-        </>
-      )}
+      <Text style={styles.sectionHeading}>🎓 EDUCATION</Text>
+      <Row
+        emoji={edu.emoji}
+        title={edu.title}
+        subtitle={edu.subtitle}
+        onPress={inSchool ? action(() => setVisitingSchool(true)) : undefined}
+        chevron={inSchool}
+      />
 
       {age >= 18 && !hasDegree && !inUniversity && (
         <Row
@@ -139,6 +119,7 @@ export function CareerScreen() {
       )}
 
       {browsingJobs && <JobListingsModal onClose={() => setBrowsingJobs(false)} />}
+      {visitingSchool && <SchoolModal onClose={() => setVisitingSchool(false)} />}
     </ScrollView>
   )
 }
