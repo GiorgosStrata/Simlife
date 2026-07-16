@@ -29,7 +29,7 @@ import { JOBS } from '../data/jobs'
 import { getMajor } from '../data/majors'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
 import { schoolNameFor, schoolStageFor, teacherName, type SchoolStage } from '../data/schools'
-import { GRADUATION_EVENT } from '../data/specialEvents'
+import { DIVORCE_EVENT, GRADUATION_EVENT } from '../data/specialEvents'
 import {
   DATE_COST,
   GIFT_COST,
@@ -319,6 +319,8 @@ interface GameState {
   relationships: Person[]
   partnerStatus: PartnerStatus | null
   nextFriendId: number
+  /** True once the character's parents have divorced (fires at most once). */
+  parentsDivorced: boolean
 
   // Belongings
   ownedAssetIds: string[]
@@ -410,6 +412,7 @@ function newLifeState() {
     relationships: [] as Person[],
     partnerStatus: null as PartnerStatus | null,
     nextFriendId: 1,
+    parentsDivorced: false,
     ownedAssetIds: [] as string[],
   }
 }
@@ -732,11 +735,18 @@ export const useGameStore = create<GameState>()(
             return
           }
 
-          // At 18 the graduation decision pops instead of a random event.
+          // Scripted moments take priority over the random event pool.
+          const parentsAlive =
+            relationships.some((p) => p.role === 'mother' && p.alive) &&
+            relationships.some((p) => p.role === 'father' && p.alive)
+          const divorceRolls =
+            age >= 5 && age <= 16 && !s.parentsDivorced && parentsAlive && Math.random() < 0.03
           const event =
             age === 18 && !hasDegree && !inUniversity
               ? GRADUATION_EVENT
-              : drawEvent(age, s.usedEventIds)
+              : divorceRolls
+                ? DIVORCE_EVENT
+                : drawEvent(age, s.usedEventIds)
           set({
             age,
             year,
@@ -753,7 +763,7 @@ export const useGameStore = create<GameState>()(
             nextFriendId,
             currentEvent: event,
             usedEventIds:
-              event && event !== GRADUATION_EVENT
+              event && !event.id.startsWith('special-')
                 ? [...s.usedEventIds, event.id]
                 : s.usedEventIds,
             usedActions: [],
@@ -805,6 +815,16 @@ export const useGameStore = create<GameState>()(
 
           if (!died && choice.action === 'enrollUniversity' && canApplyToUniversity()) {
             set({ applyingToUniversity: true })
+          }
+          if (!died && choice.action === 'parentsDivorce') {
+            set({
+              parentsDivorced: true,
+              relationships: get().relationships.map((p) =>
+                p.role === 'mother' || p.role === 'father'
+                  ? { ...p, relationship: clampRelationship(p.relationship - randomInt(10, 20)) }
+                  : p,
+              ),
+            })
           }
         },
 
@@ -1387,7 +1407,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 10,
+      version: 11,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -1492,6 +1512,10 @@ export const useGameStore = create<GameState>()(
         if (version < 10) {
           state.jobTier = 0
           state.yearsInJob = 0
+        }
+        // v10 saves predate the parents-divorce flag.
+        if (version < 11) {
+          state.parentsDivorced = false
         }
         return state as GameState
       },

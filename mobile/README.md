@@ -61,6 +61,7 @@ src/
 - **Love tab** — parents (and often a sibling) at birth; friends via "Make a new friend" (once/year, max 4) or hanging out with classmates. Actions: spend time, gift, ask parents for pocket money (under 18, once/year each), date your partner, propose at 70+ bond, marry, break up/divorce. Family ages and eventually passes away.
 - **Sounds** — small synthesized effects (expo-audio) for taps, popups, wins, fails, and death; assets in `assets/sfx/`, playback in `src/audio/sfx.ts`.
 - **Settings (⚙️ in the header)** — sound volume (Off/Low/Medium/High, persisted across lives) and a confirm-guarded character reset.
-- Events, stats, aging, and death work as on the web version. Scripted moments (like graduation) live in `src/data/specialEvents.ts`.
+- Events, stats, aging, and death work as on the web version. Scripted moments (graduation, parents divorcing) live in `src/data/specialEvents.ts`.
+- **Random events** — every event card shows a big illustration emoji (`emoji` field). ~45 events including edgier BitLife-style ones (schoolyard bully picking a fight, a drug dealer's shady offer, getting mugged, viral videos, jury duty, speeding tickets), **illnesses** (flu, food poisoning, broken arm, appendicitis — see a doctor or tough it out), and a scripted **parents-divorce** event that fires once in childhood and drops both parents' bonds.
 
 The game content (`types.ts`, `data/events.ts`) is kept identical to the web app's `src/` — if you add events, copy the file between the two apps. The career/relationship systems are currently mobile-only.

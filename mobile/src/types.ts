@@ -23,11 +23,13 @@ export interface EventChoice {
   outcome: string
   effects: Effects
   /** Optional game action triggered on top of the stat effects. */
-  action?: 'enrollUniversity'
+  action?: 'enrollUniversity' | 'parentsDivorce'
 }
 
 export interface GameEvent {
   id: string
+  /** Big illustration emoji shown on the event card. */
+  emoji: string
   /** Headline shown on the event card, e.g. "A Stray Dog". */
   title: string
   /** The situation presented to the player. */

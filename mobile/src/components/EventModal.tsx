@@ -27,6 +27,9 @@ export function EventModal() {
       <View style={styles.backdrop}>
         {currentEvent && (
           <View style={styles.card}>
+            <View style={styles.illustration}>
+              <Text style={styles.illustrationEmoji}>{currentEvent.emoji}</Text>
+            </View>
             <Text style={styles.title}>{currentEvent.title}</Text>
             <Text style={styles.description}>{currentEvent.description}</Text>
             <View style={styles.choices}>
@@ -64,10 +67,24 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 22,
   },
+  illustration: {
+    alignSelf: 'center',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.cyan50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  illustrationEmoji: {
+    fontSize: 52,
+  },
   title: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.slate800,
+    textAlign: 'center',
   },
   description: {
     marginTop: 8,

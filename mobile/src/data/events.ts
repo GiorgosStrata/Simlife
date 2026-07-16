@@ -9,6 +9,7 @@ import type { GameEvent } from '../types'
 export const EVENTS: GameEvent[] = [
   {
     id: 'stray-dog',
+    emoji: '🐕',
     title: 'A Stray Dog',
     description:
       'A scruffy stray dog follows you home and sits at your door, looking up at you hopefully.',
@@ -34,6 +35,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'school-talent-show',
+    emoji: '🎤',
     title: 'School Talent Show',
     description:
       'Your school is holding a talent show. Sign-ups close today and your friends are daring you to enter.',
@@ -59,6 +61,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'found-wallet',
+    emoji: '👛',
     title: 'A Lost Wallet',
     description:
       'You spot a fat wallet on the sidewalk. There is an ID inside and quite a lot of cash.',
@@ -84,6 +87,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'gym-membership',
+    emoji: '🏋️',
     title: 'New Year, New You?',
     description:
       'A flashy gym near your home is offering a discounted yearly membership. The trainer swears by results.',
@@ -109,6 +113,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'exam-week',
+    emoji: '📝',
     title: 'Exam Week',
     description:
       'A brutal exam week is coming up. Your notes are a mess and a friend is hosting a party the night before.',
@@ -134,6 +139,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'street-food',
+    emoji: '🌭',
     title: 'Mystery Street Food',
     description:
       'A street vendor is selling something delicious-smelling that you cannot identify. The line is suspiciously short.',
@@ -154,6 +160,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'lottery-ticket',
+    emoji: '🎟️',
     title: 'Feeling Lucky?',
     description:
       'The corner shop jackpot has rolled over three times. A ticket costs almost nothing. Almost.',
@@ -179,6 +186,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'old-friend',
+    emoji: '👋',
     title: 'A Familiar Face',
     description:
       'An old friend you lost touch with years ago messages you out of the blue, asking to catch up.',
@@ -199,6 +207,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'health-checkup',
+    emoji: '🩺',
     title: 'Routine Checkup',
     description:
       'Your annual health checkup is due. The clinic has an opening this week, but so does your favorite show.',
@@ -219,6 +228,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'night-classes',
+    emoji: '🎨',
     title: 'Night Classes',
     description:
       'The local community center is offering evening classes: painting, coding, or conversational Italian.',
@@ -244,6 +254,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'first-bicycle',
+    emoji: '🚲',
     title: 'Two Wheels of Freedom',
     description:
       'Your parents offer to teach you to ride a bike without training wheels. The driveway looks very long and very hard.',
@@ -264,6 +275,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'school-bully',
+    emoji: '😠',
     title: 'The Bully',
     description:
       'A kid at school keeps knocking your books out of your hands. Today they did it in front of everyone.',
@@ -289,6 +301,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'summer-camp',
+    emoji: '🏕️',
     title: 'Summer Camp',
     description:
       'You’re off to summer camp for two weeks. On day one, the counselors ask everyone to pick a specialty.',
@@ -314,6 +327,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'garage-band',
+    emoji: '🎸',
     title: 'Garage Band',
     description:
       'Your friends are starting a band in someone’s garage. They need one more member and they’re looking at you.',
@@ -339,6 +353,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'road-trip',
+    emoji: '🚐',
     title: 'The Road Trip',
     description:
       'Friends are planning a week-long road trip along the coast. It leaves in two days and the car smells like fries.',
@@ -359,6 +374,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'overtime-request',
+    emoji: '💼',
     title: 'Crunch Time',
     description:
       'Things are hectic at work and you’re asked to put in serious overtime this month. It would not go unnoticed.',
@@ -379,6 +395,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'neighbor-dispute',
+    emoji: '🌳',
     title: 'The Hedge War',
     description:
       'Your neighbor’s hedge has crossed the property line and is slowly consuming your garden. Diplomacy has failed.',
@@ -404,6 +421,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'charity-drive',
+    emoji: '🎗️',
     title: 'A Good Cause',
     description:
       'A local charity is raising money to fix up the community playground. A volunteer is at your door with a clipboard.',
@@ -429,6 +447,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'cooking-disaster',
+    emoji: '🍳',
     title: 'Chef’s Special',
     description:
       'You attempt an ambitious new recipe for guests arriving in one hour. The kitchen is starting to smoke. Slightly.',
@@ -449,6 +468,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'retirement-hobby',
+    emoji: '🌷',
     title: 'New Horizons',
     description:
       'With more free time on your hands these days, you’ve been thinking about finally picking up something new.',
@@ -474,6 +494,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'sleepover',
+    emoji: '🛌',
     title: 'Sleepover!',
     description:
       'Your best friend invites you to a sleepover. Their parents have promised pizza and exactly one scary movie.',
@@ -499,6 +520,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'new-kid',
+    emoji: '🧑',
     title: 'The New Kid',
     description:
       'A new kid joins your class mid-year. At lunch, they’re sitting alone, poking at a sandwich.',
@@ -524,6 +546,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'group-project',
+    emoji: '📊',
     title: 'The Group Project',
     description:
       'You’ve been assigned a big group project. One teammate has vanished and the deadline is Friday.',
@@ -549,6 +572,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'first-crush',
+    emoji: '💘',
     title: 'The Crush',
     description:
       'You have a crush on someone in your class, and your friends have noticed. They are being extremely unsubtle about it.',
@@ -574,6 +598,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'video-game-marathon',
+    emoji: '🎮',
     title: 'One More Level',
     description:
       'A friend lends you the game everyone is talking about. It is 11pm on a school night and you just reached a save point.',
@@ -594,6 +619,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'friend-moving-away',
+    emoji: '📦',
     title: 'Moving Trucks',
     description:
       'One of your closest friends tells you their family is moving to another city next month.',
@@ -619,6 +645,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'prom-night',
+    emoji: '🕺',
     title: 'Prom Night',
     description:
       'Prom is coming up. Tickets are pricey, the dress code is strict, and everyone is talking about it.',
@@ -644,6 +671,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'surprise-party',
+    emoji: '🎉',
     title: 'Surprise!',
     description:
       'Your friends are throwing a surprise party for someone you all know — and you’ve been put in charge of the cake.',
@@ -669,6 +697,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'friend-in-trouble',
+    emoji: '🆘',
     title: 'A Friend in Need',
     description:
       'A good friend calls you late at night. They’re in a rough patch and ask to borrow some money.',
@@ -694,6 +723,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'reunion',
+    emoji: '🎓',
     title: 'The Reunion',
     description:
       'An invitation arrives: your old school class is having a reunion. Everyone will be there. Everyone.',
@@ -719,6 +749,7 @@ export const EVENTS: GameEvent[] = [
   },
   {
     id: 'grandparent-story',
+    emoji: '👴',
     title: 'Grandpa’s Stories',
     description:
       'Your grandfather wants to tell you the full, unabridged story of his youth. Again. It takes hours.',
@@ -734,6 +765,256 @@ export const EVENTS: GameEvent[] = [
         label: 'Sneak away to play',
         outcome: 'You snuck out the back door. The neighborhood game of tag was fierce.',
         effects: { health: 3, happiness: 4, smarts: -2 },
+      },
+    ],
+  },
+
+  // ----- Edgier / BitLife-style random events -----
+  {
+    id: 'schoolyard-bully',
+    emoji: '👊',
+    title: 'The Bully Wants a Fight',
+    description:
+      'The school bully corners you at recess, shoves you into the lockers, and dares you to do something about it.',
+    minAge: 7,
+    maxAge: 17,
+    choices: [
+      {
+        label: 'Fight back',
+        outcome: 'You swung back. You both got detention, but the shoving stopped for good.',
+        effects: { happiness: 6, health: -6, looks: -2 },
+      },
+      {
+        label: 'Walk away',
+        outcome: 'You kept your cool and walked off. It stung, but you kept your teeth.',
+        effects: { happiness: -5, smarts: 2 },
+      },
+      {
+        label: 'Report them',
+        outcome: 'You told the principal. The bully got suspended and now glares at you in the hall.',
+        effects: { happiness: 2 },
+      },
+    ],
+  },
+  {
+    id: 'drug-dealer',
+    emoji: '💊',
+    title: 'A Shady Offer',
+    description:
+      'A guy in a hoodie sidles up to you behind the corner store. "First one’s free," he grins, holding out a little baggie.',
+    minAge: 14,
+    maxAge: 40,
+    choices: [
+      {
+        label: 'Say no thanks',
+        outcome: 'You said no and walked off fast. Some doors are better left unopened.',
+        effects: { smarts: 3, happiness: 1 },
+      },
+      {
+        label: 'Take it',
+        outcome: 'You took the baggie. The high was brief; the regret, less so.',
+        effects: { happiness: 5, health: -12, smarts: -4 },
+      },
+      {
+        label: 'Report him to the cops',
+        outcome: 'You tipped off the police. The corner’s quieter now. You feel weirdly proud.',
+        effects: { happiness: 4, smarts: 2 },
+      },
+    ],
+  },
+  {
+    id: 'mugged',
+    emoji: '🔪',
+    title: 'Mugged!',
+    description:
+      'A stranger steps out of an alley and demands your wallet and phone. They might be bluffing. Might.',
+    minAge: 14,
+    maxAge: 80,
+    choices: [
+      {
+        label: 'Hand it over',
+        outcome: 'You gave them your stuff. Shaken, but unhurt. Replaceable things are replaceable.',
+        effects: { money: -400, happiness: -8 },
+      },
+      {
+        label: 'Fight for it',
+        outcome: 'You resisted. You kept your wallet but earned a black eye and a limp.',
+        effects: { health: -15, looks: -4, happiness: -3 },
+      },
+      {
+        label: 'Run',
+        outcome: 'You sprinted away and lost them around a corner. Cardio pays off.',
+        effects: { health: -2, happiness: -2 },
+      },
+    ],
+  },
+  {
+    id: 'schoolyard-rumor',
+    emoji: '🗣️',
+    title: 'A Nasty Rumor',
+    description:
+      'Someone started a wild rumor about you and the whole school is whispering. It is completely made up. Mostly.',
+    minAge: 11,
+    maxAge: 18,
+    choices: [
+      {
+        label: 'Laugh it off',
+        outcome: 'You leaned into the joke and it fizzled out by Friday. Legend behaviour.',
+        effects: { happiness: 4, looks: 2 },
+      },
+      {
+        label: 'Confront the source',
+        outcome: 'You found who started it and set the record straight. Loudly.',
+        effects: { happiness: -2, smarts: 1 },
+      },
+    ],
+  },
+  {
+    id: 'viral-video',
+    emoji: '📱',
+    title: 'You Went Viral',
+    description:
+      'A clip of you doing something ridiculous blew up online overnight. Millions of views. Your name is trending.',
+    minAge: 13,
+    maxAge: 50,
+    choices: [
+      {
+        label: 'Lean into the fame',
+        outcome: 'You posted a follow-up and gained a following. Brand deals, baby.',
+        effects: { happiness: 10, looks: 4, money: 500 },
+      },
+      {
+        label: 'Delete everything',
+        outcome: 'You went dark and waited for the internet to forget. It did, eventually.',
+        effects: { happiness: -3, smarts: 2 },
+      },
+    ],
+  },
+  {
+    id: 'jury-duty',
+    emoji: '⚖️',
+    title: 'Jury Duty',
+    description:
+      'A letter summons you to jury duty. The trial could last weeks and your boss is already sighing.',
+    minAge: 21,
+    maxAge: 75,
+    choices: [
+      {
+        label: 'Serve your civic duty',
+        outcome: 'You sat through a long trial and helped deliver a fair verdict. Democracy!',
+        effects: { smarts: 4, happiness: 2, money: -100 },
+      },
+      {
+        label: 'Try to get out of it',
+        outcome: 'You mumbled something biased and got dismissed in ten minutes. Back to work.',
+        effects: { happiness: 3, smarts: -1 },
+      },
+    ],
+  },
+  {
+    id: 'speeding-ticket',
+    emoji: '🚓',
+    title: 'Pulled Over',
+    description:
+      'Flashing lights fill your mirror. You were definitely speeding. The officer strolls up to your window.',
+    minAge: 18,
+    maxAge: 85,
+    choices: [
+      {
+        label: 'Apologize politely',
+        outcome: 'You were courteous and got off with a warning. Charm: 1, Fine: 0.',
+        effects: { happiness: 3 },
+      },
+      {
+        label: 'Argue with the cop',
+        outcome: 'You argued. The ticket got bigger and so did your blood pressure.',
+        effects: { money: -300, happiness: -6 },
+      },
+    ],
+  },
+
+  // ----- Illnesses -----
+  {
+    id: 'the-flu',
+    emoji: '🤒',
+    title: 'Down With the Flu',
+    description:
+      'You wake up aching, feverish, and miserable. The flu has you flat on your back.',
+    minAge: 3,
+    maxAge: 95,
+    choices: [
+      {
+        label: 'See a doctor',
+        outcome: 'The doctor sorted you out with meds and rest. Back on your feet in a week.',
+        effects: { health: 4, money: -120 },
+      },
+      {
+        label: 'Tough it out',
+        outcome: 'You rode it out under a blanket fort of tissues. It took a while.',
+        effects: { health: -8, happiness: -4 },
+      },
+    ],
+  },
+  {
+    id: 'food-poisoning',
+    emoji: '🤢',
+    title: 'Food Poisoning',
+    description:
+      'That gas-station sushi was a mistake. A catastrophic, all-night, bathroom-floor mistake.',
+    minAge: 5,
+    maxAge: 95,
+    choices: [
+      {
+        label: 'Rest and hydrate',
+        outcome: 'You survived on flat soda and crackers. Never again. (Until next time.)',
+        effects: { health: -5, happiness: -3 },
+      },
+      {
+        label: 'Go to the ER',
+        outcome: 'The ER hooked you up to an IV and you bounced back fast.',
+        effects: { health: 2, money: -600 },
+      },
+    ],
+  },
+  {
+    id: 'broken-arm',
+    emoji: '🦴',
+    title: 'A Nasty Fall',
+    description:
+      'You took a bad tumble and heard a sickening crack. Your arm is bent at a very wrong angle.',
+    minAge: 4,
+    maxAge: 90,
+    choices: [
+      {
+        label: 'Get it set at the hospital',
+        outcome: 'A cast, a sling, and six weeks of signatures later, you healed up fine.',
+        effects: { health: -6, money: -500 },
+      },
+      {
+        label: 'Just wrap it and hope',
+        outcome: 'You wrapped it in a tea towel. It... mostly healed. Mostly.',
+        effects: { health: -14, looks: -2 },
+      },
+    ],
+  },
+  {
+    id: 'appendicitis',
+    emoji: '🏥',
+    title: 'Sudden Sharp Pain',
+    description:
+      'A stabbing pain in your side drops you to your knees. This is not a stomach ache — this is serious.',
+    minAge: 8,
+    maxAge: 80,
+    choices: [
+      {
+        label: 'Rush to surgery',
+        outcome: 'It was your appendix, about to burst. The surgeons got it just in time. 😮‍💨',
+        effects: { health: -10, money: -3000, happiness: -4 },
+      },
+      {
+        label: 'Wait and see',
+        outcome: 'You waited too long. It burst. A grim week in intensive care followed.',
+        effects: { health: -30, money: -6000, happiness: -10 },
       },
     ],
   },
