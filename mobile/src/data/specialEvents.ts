@@ -6,6 +6,25 @@ import { UNIVERSITY_YEARS } from '../store/constants'
  * not drawn from the random pool.
  */
 
+/** Pops when a language pursuit reaches fluency. */
+export function languageCompleteEvent(label: string): GameEvent {
+  return {
+    id: 'special-language',
+    emoji: '🎉',
+    title: `Fluent in ${label}!`,
+    description: `After five years of study, you are now fluent in ${label}. Your mind feels sharper for it.`,
+    minAge: 0,
+    maxAge: 120,
+    choices: [
+      {
+        label: 'Excellent!',
+        outcome: `You became fluent in ${label}. 🎉`,
+        effects: { smarts: 12, happiness: 8 },
+      },
+    ],
+  }
+}
+
 /** Fires once in childhood when the parents split up. */
 export const DIVORCE_EVENT: GameEvent = {
   id: 'special-divorce',

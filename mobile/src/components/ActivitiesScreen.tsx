@@ -1,62 +1,59 @@
+import { useState } from 'react'
 import { ScrollView, StyleSheet, Text } from 'react-native'
 import { playSfx } from '../audio/sfx'
-import { ACTIVITIES } from '../data/activities'
+import { getActivity } from '../data/activities'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import type { ActivityCategory } from '../types'
+import { CrimeModal } from './CrimeModal'
+import { PursuitModal } from './PursuitModal'
 import { Row } from './Row'
 
-/** BitLife-style activities menu: one row per thing you can do this year. */
+/** BitLife-style activities menu: pick a category, then an activity. */
 export function ActivitiesScreen() {
-  const age = useGameStore((s) => s.age)
-  const money = useGameStore((s) => s.money)
-  const usedActions = useGameStore((s) => s.usedActions)
-  const doActivity = useGameStore((s) => s.doActivity)
+  const pursuits = useGameStore((s) => s.pursuits)
+  const [category, setCategory] = useState<ActivityCategory | null>(null)
+  const [crime, setCrime] = useState(false)
 
-  const available = ACTIVITIES.filter((a) => age >= a.minAge)
+  const activeLabel = (cat: ActivityCategory): string => {
+    const active = pursuits[cat]
+    if (!active) return 'Nothing yet — tap to start'
+    const a = getActivity(active.id)
+    if (active.label) return `Learning ${active.label} · ${active.years}/${a?.durationYears} yrs`
+    return `Currently: ${a?.name ?? '...'}`
+  }
+
+  const open = (cat: ActivityCategory) => () => {
+    playSfx('click')
+    setCategory(cat)
+  }
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <Text style={styles.sectionHeading}>🎯 ACTIVITIES</Text>
-      {available.length === 0 && (
-        <Row emoji="🧸" title="Nothing yet" subtitle="More unlocks as you grow up" />
-      )}
-      {available.map((activity) => {
-        const done = usedActions.includes(`activity-${activity.id}`)
-        const tooPoor = money < activity.cost
-        const costLabel = activity.cost > 0 ? `$${activity.cost.toLocaleString()}` : 'Free'
-        return (
-          <Row
-            key={activity.id}
-            emoji={activity.emoji}
-            title={activity.name}
-            subtitle={
-              done
-                ? 'Done this year'
-                : tooPoor
-                  ? `${costLabel} · not enough money`
-                  : `${costLabel} · ${activity.description}`
-            }
-            onPress={() => {
-              playSfx('click')
-              doActivity(activity.id)
-            }}
-            disabled={done || tooPoor}
-            chevron
-          />
-        )
-      })}
+      <Row emoji="🏅" title="Sport" subtitle={activeLabel('sport')} onPress={open('sport')} chevron />
+      <Row emoji="🧠" title="Mind" subtitle={activeLabel('mind')} onPress={open('mind')} chevron />
+      <Row emoji="🎨" title="Hobbies" subtitle={activeLabel('hobby')} onPress={open('hobby')} chevron />
+      <Row
+        emoji="🦹"
+        title="Crime"
+        subtitle="Risky one-off jobs — you might get caught"
+        onPress={() => {
+          playSfx('click')
+          setCrime(true)
+        }}
+        chevron
+      />
+
+      {category && <PursuitModal category={category} onClose={() => setCategory(null)} />}
+      {crime && <CrimeModal onClose={() => setCrime(false)} />}
     </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    gap: 8,
-    paddingBottom: 110,
-  },
+  scroll: { flex: 1 },
+  content: { gap: 8, paddingBottom: 110 },
   sectionHeading: {
     marginTop: 8,
     fontSize: 12,

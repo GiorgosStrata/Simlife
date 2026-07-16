@@ -79,6 +79,53 @@ export interface Person {
 
 export type PartnerStatus = 'dating' | 'engaged' | 'married'
 
+export type ActivityCategory = 'sport' | 'mind' | 'hobby'
+
+/**
+ * An ongoing pursuit. You pick one per category and keep doing it every
+ * year (auto) until you switch or stop. It boosts a stat yearly and
+ * quietly costs money each year from age 18 (the "hidden" cost).
+ */
+export interface OngoingActivity {
+  id: string
+  category: ActivityCategory
+  emoji: string
+  name: string
+  description: string
+  minAge: number
+  /** Stat changes applied every year while active. */
+  yearly: Effects
+  /** Hidden yearly cost (country-scaled), charged from age 18. */
+  cost: number
+  /** Timed pursuits (e.g. a language) complete after this many years. */
+  durationYears?: number
+}
+
+/** A one-time crime. You either get away with it or get caught. */
+export interface CrimeAction {
+  id: string
+  emoji: string
+  name: string
+  description: string
+  minAge: number
+  /** 0-1 chance of getting caught. */
+  catchChance: number
+  /** Typical payout on success (randomized around this; 0 = no payout). */
+  reward: number
+  /** Stat changes if you get away with it. */
+  success: Effects
+  /** Stat/money changes if you get caught. */
+  caught: Effects
+}
+
+/** A pursuit the character is currently doing. */
+export interface ActivePursuit {
+  id: string
+  years: number
+  /** For timed pursuits, the thing being learned (e.g. "Spanish"). */
+  label?: string
+}
+
 /** One multiple-choice interview question. Kept obvious on purpose. */
 export interface JobQuestion {
   q: string

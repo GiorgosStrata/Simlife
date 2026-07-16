@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type {
+  ActivePursuit,
+  ActivityCategory,
   GameEvent,
   Gender,
   Job,
@@ -10,9 +12,9 @@ import type {
   Person,
   Stats,
 } from '../types'
-import { ACTIVITIES } from '../data/activities'
+import { LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, resaleValue } from '../data/assets'
-import { COUNTRIES, countrySalary, getCountry } from '../data/countries'
+import { COUNTRIES, countrySalary, getCountry, scaleByCountry } from '../data/countries'
 import {
   DEBT_INTEREST,
   EXPENSES_START_AGE,
@@ -29,7 +31,7 @@ import { JOBS } from '../data/jobs'
 import { getMajor } from '../data/majors'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
 import { schoolNameFor, schoolStageFor, teacherName, type SchoolStage } from '../data/schools'
-import { DIVORCE_EVENT, GRADUATION_EVENT } from '../data/specialEvents'
+import { DIVORCE_EVENT, GRADUATION_EVENT, languageCompleteEvent } from '../data/specialEvents'
 import {
   DATE_COST,
   GIFT_COST,
@@ -325,6 +327,10 @@ interface GameState {
   // Belongings
   ownedAssetIds: string[]
 
+  // Activities: one ongoing pursuit per category; crime is one-off.
+  pursuits: Record<ActivityCategory, ActivePursuit | null>
+  criminalRecord: boolean
+
   setSfxVolume: (volume: number) => void
 
   gender: Gender
@@ -355,7 +361,9 @@ interface GameState {
   askForRaise: () => void
 
   // Activities & belongings
-  doActivity: (activityId: string) => void
+  startPursuit: (activityId: string) => void
+  stopPursuit: (category: ActivityCategory) => void
+  commitCrime: (crimeId: string) => void
   buyAsset: (assetId: string) => void
   sellAsset: (assetId: string) => void
 
@@ -414,6 +422,11 @@ function newLifeState() {
     nextFriendId: 1,
     parentsDivorced: false,
     ownedAssetIds: [] as string[],
+    pursuits: { sport: null, mind: null, hobby: null } as Record<
+      ActivityCategory,
+      ActivePursuit | null
+    >,
+    criminalRecord: false,
   }
 }
 
@@ -688,6 +701,41 @@ export const useGameStore = create<GameState>()(
               expenses += upkeep
             }
           }
+
+          // ----- Ongoing pursuits: apply their yearly effects + hidden cost -----
+          const pursuits: Record<ActivityCategory, ActivePursuit | null> = { ...s.pursuits }
+          let pursuitPopEvent: GameEvent | null = null
+          for (const category of ['sport', 'mind', 'hobby'] as ActivityCategory[]) {
+            const active = pursuits[category]
+            if (!active) continue
+            const activity = getActivity(active.id)
+            if (!activity) {
+              pursuits[category] = null
+              continue
+            }
+            // Yearly stat boost.
+            const { money: _m, ...deltas } = activity.yearly
+            for (const key of Object.keys(deltas) as (keyof Stats)[]) {
+              stats[key] = clampStat(stats[key] + (deltas[key] ?? 0))
+            }
+            // Hidden yearly cost, country-scaled, from age 18.
+            if (age >= EXPENSES_START_AGE && activity.cost > 0) {
+              const cost = scaleByCountry(activity.cost, s.countryCode)
+              money -= cost
+              expenses += cost
+            }
+            const years = active.years + 1
+            // Timed pursuit (language) completes and pops a notification.
+            if (activity.durationYears && years >= activity.durationYears) {
+              pursuits[category] = null
+              if (!pursuitPopEvent) {
+                pursuitPopEvent = languageCompleteEvent(active.label ?? 'a new language')
+              }
+            } else {
+              pursuits[category] = { ...active, years }
+            }
+          }
+
           // Debt grows a little each year you stay in the red.
           if (money < 0) {
             money = Math.round(money * (1 + DEBT_INTEREST))
@@ -726,6 +774,7 @@ export const useGameStore = create<GameState>()(
               partnerStatus,
               schoolName,
               nextFriendId,
+              pursuits,
               alive: false,
               currentEvent: null,
               usedActions: [],
@@ -744,9 +793,11 @@ export const useGameStore = create<GameState>()(
           const event =
             age === 18 && !hasDegree && !inUniversity
               ? GRADUATION_EVENT
-              : divorceRolls
-                ? DIVORCE_EVENT
-                : drawEvent(age, s.usedEventIds)
+              : pursuitPopEvent
+                ? pursuitPopEvent
+                : divorceRolls
+                  ? DIVORCE_EVENT
+                  : drawEvent(age, s.usedEventIds)
           set({
             age,
             year,
@@ -761,6 +812,7 @@ export const useGameStore = create<GameState>()(
             partnerStatus,
             schoolName,
             nextFriendId,
+            pursuits,
             currentEvent: event,
             usedEventIds:
               event && !event.id.startsWith('special-')
@@ -859,60 +911,71 @@ export const useGameStore = create<GameState>()(
           ])
         },
 
-        doActivity: (activityId: string) => {
+        startPursuit: (activityId: string) => {
           const s = get()
-          const activity = ACTIVITIES.find((a) => a.id === activityId)
+          const activity = getActivity(activityId)
           if (!activity || !s.alive || s.age < activity.minAge) return
-          if (s.money < activity.cost) return
-          if (!useYearlyAction(`activity-${activityId}`)) return
+          const label = activity.durationYears ? pick(LANGUAGES) : undefined
+          set({
+            pursuits: { ...s.pursuits, [activity.category]: { id: activityId, years: 0, label } },
+          })
+          addLog([
+            {
+              text: label
+                ? `You started learning ${label}. ${activity.durationYears} years to fluency.`
+                : `You took up ${activity.name.toLowerCase()}.`,
+              kind: 'career',
+            },
+          ])
+        },
+
+        stopPursuit: (category: ActivityCategory) => {
+          const s = get()
+          const active = s.pursuits[category]
+          if (!active) return
+          const activity = getActivity(active.id)
+          set({ pursuits: { ...s.pursuits, [category]: null } })
+          addLog([{ text: `You gave up ${activity?.name.toLowerCase() ?? 'an activity'}.`, kind: 'career' }])
+        },
+
+        commitCrime: (crimeId: string) => {
+          const s = get()
+          const crime = getCrime(crimeId)
+          if (!crime || !s.alive || s.age < crime.minAge) return
+          if (!useYearlyAction(`crime-${crimeId}`)) return
 
           const stats = { ...s.stats }
-          const applyEffects = (e: typeof activity.effects) => {
+          let money = s.money
+          const apply = (e: typeof crime.success) => {
             const { money: m = 0, ...statDeltas } = e
             for (const key of Object.keys(statDeltas) as (keyof Stats)[]) {
               stats[key] = clampStat(stats[key] + (statDeltas[key] ?? 0))
             }
-            return m
+            money += m
           }
 
-          let money = s.money - activity.cost
-          money += applyEffects(activity.effects)
-
-          if (activity.special === 'casino') {
-            const won = Math.random() < 0.45
-            const amount = randomInt(100, 2000)
-            if (won) {
-              money += amount
-              stats.happiness = clampStat(stats.happiness + 6)
-              set({ money: Math.max(0, money), stats })
-              addLog([{ text: `You won $${amount.toLocaleString()} at the casino! 🎉`, kind: 'event' }])
-            } else {
-              money = Math.max(0, money - amount)
-              stats.happiness = clampStat(stats.happiness - 6)
-              set({ money, stats })
-              addLog([{ text: `You lost $${amount.toLocaleString()} at the casino. The house wins again.`, kind: 'event' }])
-            }
-            return
+          const caught = Math.random() < crime.catchChance
+          if (caught) {
+            apply(crime.caught)
+            set({ money, stats, criminalRecord: true })
+            addLog([
+              { text: `You tried to ${crime.name.toLowerCase()} — and got caught. The law was not kind.`, kind: 'death' },
+            ])
+          } else {
+            const payout = crime.reward > 0 ? randomInt(Math.round(crime.reward * 0.5), Math.round(crime.reward * 1.5)) : 0
+            money += payout
+            apply(crime.success)
+            set({ money, stats })
+            addLog([
+              {
+                text:
+                  payout > 0
+                    ? `You pulled off the ${crime.name.toLowerCase()} and got away with $${payout.toLocaleString()}. 😈`
+                    : `You committed ${crime.name.toLowerCase()} and slipped away into the night.`,
+                kind: 'event',
+              },
+            ])
           }
-
-          if (activity.special === 'surgery') {
-            const botched = Math.random() < 0.2
-            if (botched) {
-              stats.looks = clampStat(stats.looks - randomInt(5, 12))
-              stats.health = clampStat(stats.health - randomInt(8, 18))
-              set({ money: Math.max(0, money), stats })
-              addLog([{ text: 'The plastic surgery went badly. That is... not what you asked for.', kind: 'event' }])
-            } else {
-              stats.looks = clampStat(stats.looks + randomInt(15, 25))
-              stats.happiness = clampStat(stats.happiness + 6)
-              set({ money: Math.max(0, money), stats })
-              addLog([{ text: 'Your plastic surgery was a stunning success. Heads turn. 💃', kind: 'event' }])
-            }
-            return
-          }
-
-          set({ money: Math.max(0, money), stats })
-          addLog([{ text: `${activity.name}: done. ${activity.description}`, kind: 'event' }])
         },
 
         buyAsset: (assetId: string) => {
@@ -1407,7 +1470,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 11,
+      version: 12,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -1516,6 +1579,11 @@ export const useGameStore = create<GameState>()(
         // v10 saves predate the parents-divorce flag.
         if (version < 11) {
           state.parentsDivorced = false
+        }
+        // v11 saves predate the pursuits/crime activities overhaul.
+        if (version < 12) {
+          state.pursuits = { sport: null, mind: null, hobby: null }
+          state.criminalRecord = false
         }
         return state as GameState
       },
