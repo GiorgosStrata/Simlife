@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { playSfx } from '../audio/sfx'
+import { randomAvatarConfig, type AvatarConfig } from '../data/avatar'
 import type {
   ActivePursuit,
   ActivityCategory,
@@ -288,6 +289,8 @@ interface GameState {
   /** 'creation' shows the character creation screen; 'life' is the game. */
   screen: 'creation' | 'life'
   name: string
+  /** The player's chosen avatar look (DiceBear avataaars config). */
+  avatarConfig: AvatarConfig
   /** ISO2 country code; scales every salary (see data/countries.ts). */
   countryCode: string
   alive: boolean
@@ -350,7 +353,13 @@ interface GameState {
   gender: Gender
 
   rerollStats: () => void
-  startLife: (firstName: string, lastName: string, countryCode: string, gender: Gender) => void
+  startLife: (
+    firstName: string,
+    lastName: string,
+    countryCode: string,
+    gender: Gender,
+    avatarConfig: AvatarConfig,
+  ) => void
   ageUp: () => void
   chooseOption: (choiceIndex: number) => void
   startNewLife: () => void
@@ -413,6 +422,7 @@ function newLifeState() {
     screen: 'creation' as const,
     name: `${randomFirstName(countryCode, gender)} ${randomLastName(countryCode)}`,
     gender,
+    avatarConfig: randomAvatarConfig(gender),
     countryCode,
     alive: true,
     age: 0,
@@ -537,7 +547,13 @@ export const useGameStore = create<GameState>()(
           set({ stats: rollStats() })
         },
 
-        startLife: (firstName: string, lastName: string, countryCode: string, gender: Gender) => {
+        startLife: (
+          firstName: string,
+          lastName: string,
+          countryCode: string,
+          gender: Gender,
+          avatarConfig: AvatarConfig,
+        ) => {
           const s = get()
           if (s.screen !== 'creation') return
           const country = getCountry(countryCode) ?? pick(COUNTRIES)
@@ -549,6 +565,7 @@ export const useGameStore = create<GameState>()(
           set({
             name,
             gender,
+            avatarConfig,
             countryCode: country.code,
             screen: 'life',
             relationships: makeFamily(country.code, familyLastName),
@@ -1604,7 +1621,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 13,
+      version: 14,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -1722,6 +1739,10 @@ export const useGameStore = create<GameState>()(
         // v12 saves predate the phone / social media follower counts.
         if (version < 13) {
           state.followers = { rizzgram: 0, flicktok: 0 }
+        }
+        // v13 saves predate customizable avatars.
+        if (version < 14) {
+          state.avatarConfig = randomAvatarConfig(state.gender ?? 'male')
         }
         return state as GameState
       },

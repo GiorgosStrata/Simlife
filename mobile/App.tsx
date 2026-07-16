@@ -28,7 +28,7 @@ function Game() {
   const hasHydrated = useGameStore((s) => s.hasHydrated)
   const screen = useGameStore((s) => s.screen)
   const name = useGameStore((s) => s.name)
-  const gender = useGameStore((s) => s.gender)
+  const avatarConfig = useGameStore((s) => s.avatarConfig)
   const age = useGameStore((s) => s.age)
   const year = useGameStore((s) => s.year)
   const alive = useGameStore((s) => s.alive)
@@ -97,7 +97,7 @@ function Game() {
         {/* Header: avatar, name, occupation, age/year, settings */}
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Avatar seed={name} gender={gender} age={age} alive={alive} size={46} />
+            <Avatar config={avatarConfig} alive={alive} size={46} />
           </View>
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>

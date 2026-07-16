@@ -8,6 +8,17 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import {
+  FACIAL_HAIR,
+  FEMALE_TOPS,
+  GLASSES,
+  HAIR_COLORS,
+  MALE_TOPS,
+  SKIN_TONES,
+  randomAvatarConfig,
+  retargetGender,
+  type AvatarConfig,
+} from '../data/avatar'
 import { COUNTRIES, getCountry } from '../data/countries'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
 import { useGameStore } from '../store/gameStore'
@@ -22,6 +33,29 @@ function randomCountryCode(): string {
   return COUNTRIES[Math.floor(Math.random() * COUNTRIES.length)].code
 }
 
+/** A labelled ‹ › stepper for cycling an avatar option. */
+function Stepper({
+  label,
+  onPrev,
+  onNext,
+}: {
+  label: string
+  onPrev: () => void
+  onNext: () => void
+}) {
+  return (
+    <View style={styles.stepper}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${label} previous`} onPress={onPrev} style={({ pressed }) => [styles.stepperBtn, pressed && styles.stepperBtnPressed]}>
+        <Text style={styles.stepperArrow}>‹</Text>
+      </Pressable>
+      <Text style={styles.stepperLabel}>{label}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${label} next`} onPress={onNext} style={({ pressed }) => [styles.stepperBtn, pressed && styles.stepperBtnPressed]}>
+        <Text style={styles.stepperArrow}>›</Text>
+      </Pressable>
+    </View>
+  )
+}
+
 export function CharacterCreation() {
   const stats = useGameStore((s) => s.stats)
   const year = useGameStore((s) => s.year)
@@ -33,7 +67,10 @@ export function CharacterCreation() {
   const [first, setFirst] = useState(() => randomFirstName(countryCode, gender))
   const [last, setLast] = useState(() => randomLastName(countryCode))
   const [pickingCountry, setPickingCountry] = useState(false)
+  const [avatar, setAvatar] = useState<AvatarConfig>(() => randomAvatarConfig(gender))
   const country = getCountry(countryCode) ?? COUNTRIES[0]
+
+  const tops = gender === 'male' ? MALE_TOPS : FEMALE_TOPS
 
   const rollName = (code: string, g: Gender) => {
     setFirst(randomFirstName(code, g))
@@ -48,6 +85,16 @@ export function CharacterCreation() {
   const changeGender = (g: Gender) => {
     setGender(g)
     setFirst(randomFirstName(countryCode, g))
+    setAvatar((a) => retargetGender(a, g))
+  }
+
+  const setField = (patch: Partial<AvatarConfig>) => setAvatar((a) => ({ ...a, ...patch }))
+
+  /** Step a value forward/back within a list (wrapping). */
+  const cycle = (list: string[], current: string, dir: number): string => {
+    const i = list.indexOf(current)
+    const next = (i + dir + list.length) % list.length
+    return list[next]
   }
 
   return (
@@ -57,7 +104,7 @@ export function CharacterCreation() {
     >
       <View style={styles.header}>
         <View style={styles.headerAvatar}>
-          <Avatar seed={`${first} ${last}`.trim()} gender={gender} age={18} size={64} />
+          <Avatar config={avatar} size={64} />
         </View>
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>New Life</Text>
@@ -117,6 +164,75 @@ export function CharacterCreation() {
 
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
+          <Text style={styles.cardHeading}>APPEARANCE</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setAvatar(randomAvatarConfig(gender))}
+            style={({ pressed }) => [styles.smallButton, pressed && styles.smallButtonPressed]}
+          >
+            <Text style={styles.smallButtonText}>🎲 Surprise me</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.appearancePreview}>
+          <Avatar config={avatar} size={104} />
+        </View>
+
+        <Text style={styles.fieldLabel}>Skin tone</Text>
+        <View style={styles.swatchRow}>
+          {SKIN_TONES.map((c) => (
+            <Pressable
+              key={c}
+              accessibilityRole="button"
+              accessibilityLabel={`Skin ${c}`}
+              onPress={() => setField({ skinColor: c })}
+              style={[
+                styles.swatch,
+                { backgroundColor: `#${c}` },
+                avatar.skinColor === c && styles.swatchSelected,
+              ]}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.fieldLabel}>Hair colour</Text>
+        <View style={styles.swatchRow}>
+          {HAIR_COLORS.map((c) => (
+            <Pressable
+              key={c}
+              accessibilityRole="button"
+              accessibilityLabel={`Hair ${c}`}
+              onPress={() => setField({ hairColor: c })}
+              style={[
+                styles.swatch,
+                { backgroundColor: `#${c}` },
+                avatar.hairColor === c && styles.swatchSelected,
+              ]}
+            />
+          ))}
+        </View>
+
+        <Stepper
+          label="Hairstyle"
+          onPrev={() => setField({ top: cycle(tops, avatar.top, -1) })}
+          onNext={() => setField({ top: cycle(tops, avatar.top, 1) })}
+        />
+        <Stepper
+          label={avatar.glasses ? 'Glasses' : 'No glasses'}
+          onPrev={() => setField({ glasses: cycle(GLASSES, avatar.glasses, -1) })}
+          onNext={() => setField({ glasses: cycle(GLASSES, avatar.glasses, 1) })}
+        />
+        {gender === 'male' && (
+          <Stepper
+            label={avatar.facialHair ? 'Facial hair' : 'Clean-shaven'}
+            onPrev={() => setField({ facialHair: cycle(FACIAL_HAIR, avatar.facialHair, -1) })}
+            onNext={() => setField({ facialHair: cycle(FACIAL_HAIR, avatar.facialHair, 1) })}
+          />
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
           <Text style={styles.cardHeading}>COUNTRY</Text>
           <Pressable
             accessibilityRole="button"
@@ -158,7 +274,7 @@ export function CharacterCreation() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() => startLife(first, last, countryCode, gender)}
+        onPress={() => startLife(first, last, countryCode, gender, avatar)}
         style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}
       >
         <Text style={styles.startButtonText}>Start Life 🍼</Text>
@@ -275,6 +391,73 @@ const styles = StyleSheet.create({
   },
   genderLabelActive: {
     color: colors.cyan600,
+  },
+  appearancePreview: {
+    alignSelf: 'center',
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    overflow: 'hidden',
+    marginBottom: 14,
+    borderWidth: 3,
+    borderColor: colors.cyan100,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.slate500,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  swatchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  swatch: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: colors.slate200,
+  },
+  swatchSelected: {
+    borderColor: colors.cyan500,
+    borderWidth: 3,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.slate100,
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    marginTop: 10,
+  },
+  stepperBtn: {
+    width: 40,
+    height: 36,
+    borderRadius: 9,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnPressed: {
+    backgroundColor: colors.cyan50,
+  },
+  stepperArrow: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.cyan600,
+    lineHeight: 24,
+  },
+  stepperLabel: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.slate800,
   },
   inputRow: {
     flexDirection: 'row',

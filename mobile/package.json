@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@dicebear/collection": "^9.4.2",
+    "@dicebear/core": "^9.4.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "country-flag-icons": "^1.6.20",
     "expo": "~57.0.4",
