@@ -10,6 +10,7 @@ import type {
   LogEntry,
   PartnerStatus,
   Person,
+  SocialApp,
   Stats,
 } from '../types'
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
@@ -200,6 +201,15 @@ export const MOVIE_COST = 20
 export const LUNCH_COST = 15
 export const GETAWAY_COST = 300
 
+/** The two social platforms you can post to once you own a phone. */
+export const SOCIAL_APPS: Record<SocialApp, { name: string; emoji: string; kind: string }> = {
+  rizzgram: { name: 'Rizzgram', emoji: '📸', kind: 'photos' },
+  flicktok: { name: 'FlickTok', emoji: '🎵', kind: 'short videos' },
+}
+
+/** Followers needed before a platform will pay you. */
+export const MONETIZE_MIN_FOLLOWERS = 10000
+
 /** A fresh classroom for a school stage: classmates + teachers. */
 function rollSchoolPeople(
   countryCode: string,
@@ -327,6 +337,9 @@ interface GameState {
   // Belongings
   ownedAssetIds: string[]
 
+  // Phone: social media follower counts per app.
+  followers: Record<SocialApp, number>
+
   // Activities: one ongoing pursuit per category; crime is one-off.
   pursuits: Record<ActivityCategory, ActivePursuit | null>
   criminalRecord: boolean
@@ -382,6 +395,11 @@ interface GameState {
   goOnDate: () => void
   makeFriend: () => void
   findLove: () => void
+  beginRelationship: (name: string, gender: Gender, age: number) => void
+
+  // Phone apps
+  socialPost: (app: SocialApp) => void
+  monetizeSocial: (app: SocialApp) => void
   propose: () => void
   marry: () => void
   breakUp: () => void
@@ -422,6 +440,7 @@ function newLifeState() {
     nextFriendId: 1,
     parentsDivorced: false,
     ownedAssetIds: [] as string[],
+    followers: { rizzgram: 0, flicktok: 0 } as Record<SocialApp, number>,
     pursuits: { sport: null, mind: null, hobby: null } as Record<
       ActivityCategory,
       ActivePursuit | null
@@ -1414,6 +1433,93 @@ export const useGameStore = create<GameState>()(
           }
         },
 
+        beginRelationship: (name: string, gender: Gender, age: number) => {
+          const s = get()
+          if (!s.alive || s.age < 18 || s.relationships.some((p) => p.id === 'partner')) return
+          const partner: Person = {
+            id: 'partner',
+            role: 'partner',
+            gender,
+            name,
+            age: Math.max(18, age),
+            alive: true,
+            relationship: randomInt(35, 55),
+          }
+          set({
+            relationships: [...s.relationships, partner],
+            partnerStatus: 'dating',
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 4) },
+          })
+          addLog([
+            { text: `You matched with ${name} on Cinder and started dating. 🔥`, kind: 'relationship' },
+          ])
+        },
+
+        // ----- Phone: social media -----
+
+        socialPost: (app: SocialApp) => {
+          const s = get()
+          if (!s.alive) return
+          if (!useYearlyAction(`post-${app}`)) return
+          const meta = SOCIAL_APPS[app]
+          // Looks and existing reach help; there's a small viral jackpot.
+          const roll = Math.random()
+          let gained: number
+          let flop = false
+          if (roll < 0.08) {
+            // Viral: a huge spike, bigger the more looks you have.
+            gained = randomInt(2000, 20000) + Math.round(s.stats.looks * 200)
+          } else if (roll < 0.2) {
+            // Flop: it barely lands, you even shed a few followers.
+            gained = -randomInt(0, 30)
+            flop = true
+          } else {
+            // Normal growth, nudged by looks and your current audience.
+            const base = randomInt(10, 120) + Math.round(s.stats.looks / 2)
+            gained = base + Math.round(s.followers[app] * 0.02)
+          }
+          const next = Math.max(0, s.followers[app] + gained)
+          set({
+            followers: { ...s.followers, [app]: next },
+            stats: {
+              ...s.stats,
+              happiness: clampStat(s.stats.happiness + (flop ? -1 : gained > 1000 ? 5 : 2)),
+            },
+          })
+          addLog([
+            {
+              text: flop
+                ? `Your ${meta.name} post flopped. The algorithm was not kind.`
+                : gained > 1000
+                  ? `Your ${meta.name} post went viral! +${gained.toLocaleString()} followers. 🚀`
+                  : `You posted on ${meta.name} and gained ${gained.toLocaleString()} followers.`,
+              kind: 'relationship',
+            },
+          ])
+        },
+
+        monetizeSocial: (app: SocialApp) => {
+          const s = get()
+          if (!s.alive) return
+          const count = s.followers[app]
+          if (count < MONETIZE_MIN_FOLLOWERS) return
+          if (!useYearlyAction(`monetize-${app}`)) return
+          const meta = SOCIAL_APPS[app]
+          // Roughly $2–5 per hundred followers, country-scaled like other pay.
+          const gross = Math.round(count * (randomInt(2, 5) / 100))
+          const payout = scaleByCountry(gross, s.countryCode)
+          set({
+            money: s.money + payout,
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 3) },
+          })
+          addLog([
+            {
+              text: `You cashed in your ${meta.name} following for $${payout.toLocaleString()} in brand deals. 💰`,
+              kind: 'money',
+            },
+          ])
+        },
+
         propose: () => {
           const s = get()
           const partner = s.relationships.find((p) => p.id === 'partner')
@@ -1470,7 +1576,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 12,
+      version: 13,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -1584,6 +1690,10 @@ export const useGameStore = create<GameState>()(
         if (version < 12) {
           state.pursuits = { sport: null, mind: null, hobby: null }
           state.criminalRecord = false
+        }
+        // v12 saves predate the phone / social media follower counts.
+        if (version < 13) {
+          state.followers = { rizzgram: 0, flicktok: 0 }
         }
         return state as GameState
       },

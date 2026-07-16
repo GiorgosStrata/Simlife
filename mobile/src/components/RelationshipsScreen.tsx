@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
+import { getAsset } from '../data/assets'
 import { MAX_FRIENDS, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Person } from '../types'
 import { PersonModal, personEmoji, roleLabel } from './PersonModal'
+import { PhoneModal } from './PhoneModal'
 import { Row } from './Row'
 
 const SECTION_ORDER: Person['role'][] = ['partner', 'mother', 'father', 'sibling', 'friend']
@@ -15,8 +17,12 @@ export function RelationshipsScreen() {
   const relationships = useGameStore((s) => s.relationships)
   const partnerStatus = useGameStore((s) => s.partnerStatus)
   const findLove = useGameStore((s) => s.findLove)
+  const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
 
   const [personId, setPersonId] = useState<string | null>(null)
+  const [phoneOpen, setPhoneOpen] = useState(false)
+
+  const hasPhone = ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')
 
   const people = relationships
     .filter((p) => SECTION_ORDER.includes(p.role))
@@ -26,6 +32,25 @@ export function RelationshipsScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <Row
+        emoji="📱"
+        title="Phone"
+        subtitle={
+          hasPhone
+            ? 'Open social media, dating & investing apps'
+            : 'Buy a phone in the Shop to unlock apps'
+        }
+        onPress={
+          hasPhone
+            ? () => {
+                playSfx('click')
+                setPhoneOpen(true)
+              }
+            : undefined
+        }
+        disabled={!hasPhone}
+        chevron={hasPhone}
+      />
       {age >= 18 && !hasPartner && (
         <Pressable
           accessibilityRole="button"
@@ -80,6 +105,7 @@ export function RelationshipsScreen() {
       ))}
 
       {personId && <PersonModal personId={personId} onClose={() => setPersonId(null)} />}
+      {phoneOpen && <PhoneModal onClose={() => setPhoneOpen(false)} />}
     </ScrollView>
   )
 }

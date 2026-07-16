@@ -79,6 +79,9 @@ export interface Person {
 
 export type PartnerStatus = 'dating' | 'engaged' | 'married'
 
+/** Social media apps on the character's phone. */
+export type SocialApp = 'rizzgram' | 'flicktok'
+
 export type ActivityCategory = 'sport' | 'mind' | 'hobby'
 
 /**
