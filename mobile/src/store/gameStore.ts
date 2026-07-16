@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { playSfx } from '../audio/sfx'
 import type {
   ActivePursuit,
   ActivityCategory,
@@ -562,6 +563,7 @@ export const useGameStore = create<GameState>()(
             ],
             nextLogId: 1,
           })
+          playSfx('baby')
         },
 
         ageUp: () => {
@@ -600,6 +602,7 @@ export const useGameStore = create<GameState>()(
                 text: `You were promoted to ${jobTitle(job, jobTier)} ${job.emoji}!`,
                 kind: 'career',
               })
+              playSfx('levelup')
             }
             grossIncome = annualSalary(job, jobTier, s.raisePercent, s.countryCode)
             money += grossIncome
@@ -625,6 +628,7 @@ export const useGameStore = create<GameState>()(
                 text: `You graduated from university with a degree in ${majorName}! 🎓`,
                 kind: 'career',
               })
+              playSfx('graduate')
             }
           }
 
@@ -658,6 +662,7 @@ export const useGameStore = create<GameState>()(
                   text: 'You graduated from high school. 🎉',
                   kind: 'career',
                 })
+                playSfx('graduate')
               }
             }
           }
@@ -884,6 +889,14 @@ export const useGameStore = create<GameState>()(
             nextLogId: logId,
           })
 
+          // Give the outcome an appropriate sting (death handled by the modal).
+          if (!died) {
+            const hpDelta = statDeltas.health ?? 0
+            if (choice.sfx) playSfx(choice.sfx)
+            else if (hpDelta <= -6) playSfx('hurt')
+            else if (moneyDelta >= 40) playSfx('cash')
+          }
+
           if (!died && choice.action === 'enrollUniversity' && canApplyToUniversity()) {
             set({ applyingToUniversity: true })
           }
@@ -938,6 +951,7 @@ export const useGameStore = create<GameState>()(
           set({
             pursuits: { ...s.pursuits, [activity.category]: { id: activityId, years: 0, label } },
           })
+          playSfx(activity.category === 'sport' ? 'gym' : 'success')
           addLog([
             {
               text: label
@@ -977,6 +991,7 @@ export const useGameStore = create<GameState>()(
           if (caught) {
             apply(crime.caught)
             set({ money, stats, criminalRecord: true })
+            playSfx('police')
             addLog([
               { text: `You tried to ${crime.name.toLowerCase()} — and got caught. The law was not kind.`, kind: 'death' },
             ])
@@ -985,6 +1000,7 @@ export const useGameStore = create<GameState>()(
             money += payout
             apply(crime.success)
             set({ money, stats })
+            if (payout > 0) playSfx('cash')
             addLog([
               {
                 text:
@@ -1007,6 +1023,7 @@ export const useGameStore = create<GameState>()(
             ownedAssetIds: [...s.ownedAssetIds, assetId],
             stats: { ...s.stats, happiness: clampStat(s.stats.happiness + asset.joy) },
           })
+          playSfx(asset.category === 'car' ? 'honk' : 'cash')
           addLog([
             { text: `You bought a ${asset.name} ${asset.emoji} for $${asset.price.toLocaleString()}!`, kind: 'event' },
           ])
@@ -1021,6 +1038,7 @@ export const useGameStore = create<GameState>()(
             money: s.money + value,
             ownedAssetIds: s.ownedAssetIds.filter((id) => id !== assetId),
           })
+          playSfx('cash')
           addLog([
             { text: `You sold your ${asset.name} for $${value.toLocaleString()}.`, kind: 'event' },
           ])
@@ -1031,6 +1049,7 @@ export const useGameStore = create<GameState>()(
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive) return
           if (!useYearlyAction(`insult-${personId}`)) return
+          playSfx('punch')
           updatePerson(personId, {
             relationship: clampRelationship(person.relationship - randomInt(8, 18)),
           })
@@ -1269,6 +1288,7 @@ export const useGameStore = create<GameState>()(
           if (Math.random() < chance) {
             const bump = randomInt(5, 12)
             set({ raisePercent: Math.min(MAX_RAISE_PERCENT, s.raisePercent + bump) })
+            playSfx('levelup')
             addLog([
               { text: `Your raise request was approved — salary up ${bump}%! 💸`, kind: 'career' },
             ])
@@ -1363,6 +1383,7 @@ export const useGameStore = create<GameState>()(
           if (person.relationship >= 40) {
             const amount = randomInt(20, 100)
             set({ money: s.money + amount })
+            playSfx('cash')
             addLog([
               { text: `You asked ${person.name} for pocket money and got $${amount}.`, kind: 'relationship' },
             ])
@@ -1424,9 +1445,11 @@ export const useGameStore = create<GameState>()(
               relationship: randomInt(40, 65),
             }
             set({ relationships: [...s.relationships, partner], partnerStatus: 'dating' })
+            playSfx('match')
             addLog([{ text: `You started dating ${partner.name}. 💕`, kind: 'relationship' }])
           } else {
             set({ stats: { ...s.stats, happiness: clampStat(s.stats.happiness - 2) } })
+            playSfx('fail')
             addLog([
               { text: 'You put yourself out there, but love did not cooperate this year.', kind: 'relationship' },
             ])
@@ -1450,6 +1473,7 @@ export const useGameStore = create<GameState>()(
             partnerStatus: 'dating',
             stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 4) },
           })
+          playSfx('match')
           addLog([
             { text: `You matched with ${name} on Cinder and started dating. 🔥`, kind: 'relationship' },
           ])
@@ -1486,6 +1510,7 @@ export const useGameStore = create<GameState>()(
               happiness: clampStat(s.stats.happiness + (flop ? -1 : gained > 1000 ? 5 : 2)),
             },
           })
+          playSfx(flop ? 'fail' : gained > 1000 ? 'levelup' : 'success')
           addLog([
             {
               text: flop
@@ -1512,6 +1537,7 @@ export const useGameStore = create<GameState>()(
             money: s.money + payout,
             stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 3) },
           })
+          playSfx('cash')
           addLog([
             {
               text: `You cashed in your ${meta.name} following for $${payout.toLocaleString()} in brand deals. 💰`,
@@ -1552,6 +1578,7 @@ export const useGameStore = create<GameState>()(
             money: get().money - WEDDING_COST,
             stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 15) },
           })
+          playSfx('wedding')
           addLog([{ text: `You married ${partner.name}! 💒`, kind: 'relationship' }])
         },
 
@@ -1566,6 +1593,7 @@ export const useGameStore = create<GameState>()(
             money: divorced ? Math.floor(s.money / 2) : s.money,
             stats: { ...s.stats, happiness: clampStat(s.stats.happiness - 10) },
           })
+          playSfx('heartbreak')
           addLog([
             divorced
               ? { text: `You divorced ${partner.name}. They took half of everything.`, kind: 'relationship' }

@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
@@ -13,9 +13,23 @@ export function EventModal() {
   const currentEvent = useGameStore((s) => s.currentEvent)
   const chooseOption = useGameStore((s) => s.chooseOption)
 
+  // Pop the illustration in with a little spring + wiggle each new event.
+  const pop = useRef(new Animated.Value(0)).current
+
   useEffect(() => {
-    if (currentEvent) playSfx('pop')
-  }, [currentEvent])
+    if (!currentEvent) return
+    playSfx('pop')
+    pop.setValue(0)
+    Animated.spring(pop, {
+      toValue: 1,
+      friction: 5,
+      tension: 90,
+      useNativeDriver: true,
+    }).start()
+  }, [currentEvent, pop])
+
+  const scale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] })
+  const rotate = pop.interpolate({ inputRange: [0, 0.6, 1], outputRange: ['-12deg', '6deg', '0deg'] })
 
   return (
     <Modal
@@ -27,9 +41,9 @@ export function EventModal() {
       <View style={styles.backdrop}>
         {currentEvent && (
           <View style={styles.card}>
-            <View style={styles.illustration}>
+            <Animated.View style={[styles.illustration, { transform: [{ scale }, { rotate }] }]}>
               <Text style={styles.illustrationEmoji}>{currentEvent.emoji}</Text>
-            </View>
+            </Animated.View>
             <Text style={styles.title}>{currentEvent.title}</Text>
             <Text style={styles.description}>{currentEvent.description}</Text>
             <View style={styles.choices}>

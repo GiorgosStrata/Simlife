@@ -61,10 +61,7 @@ export function StoreModal({ onClose }: StoreModalProps) {
                   emoji={asset.emoji}
                   title={asset.name}
                   subtitle={`$${asset.price.toLocaleString()}`}
-                  onPress={() => {
-                    playSfx('success')
-                    buyAsset(asset.id)
-                  }}
+                  onPress={() => buyAsset(asset.id)}
                   disabled={owned || tooPoor}
                   right={
                     <View style={[styles.pill, (owned || tooPoor) && styles.pillOff]}>

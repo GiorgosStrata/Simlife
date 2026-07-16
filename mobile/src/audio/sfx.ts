@@ -7,14 +7,42 @@ import { useGameStore } from '../store/gameStore'
  */
 
 const SOURCES = {
-  /** Button taps: Age Up, picking a choice. */
+  /** Button taps: Age Up, list rows. */
   click: require('../../assets/sfx/click.wav'),
-  /** A modal popping up (events, interviews). */
+  /** A modal popping up (events, interviews, sheets). */
   pop: require('../../assets/sfx/pop.wav'),
-  /** Good news: hired, graduated, engaged, married. */
+  /** Swipes and light transitions (Cinder, opening the phone). */
+  whoosh: require('../../assets/sfx/whoosh.wav'),
+  /** Good news: hired, accepted, engaged. */
   success: require('../../assets/sfx/success.wav'),
-  /** Bad news: flunked interview, rejection, breakup. */
+  /** Money coming in: sale, pocket money, monetizing, payout. */
+  cash: require('../../assets/sfx/cash.wav'),
+  /** A promotion or an approved raise. */
+  levelup: require('../../assets/sfx/levelup.wav'),
+  /** Graduating school or university. */
+  graduate: require('../../assets/sfx/graduate.wav'),
+  /** Matching with someone on the dating app / finding love. */
+  match: require('../../assets/sfx/match.wav'),
+  /** Getting married. */
+  wedding: require('../../assets/sfx/wedding.wav'),
+  /** A new life begins. */
+  baby: require('../../assets/sfx/baby.wav'),
+  /** Bad news: flunked interview, rejection. */
   fail: require('../../assets/sfx/fail.wav'),
+  /** Taking damage: a bully, a mugging, an illness. */
+  hurt: require('../../assets/sfx/hurt.wav'),
+  /** Throwing a hit / an insult. */
+  punch: require('../../assets/sfx/punch.wav'),
+  /** Pulling off (or attempting) a crime. */
+  crime: require('../../assets/sfx/crime.wav'),
+  /** Getting caught. */
+  police: require('../../assets/sfx/police.wav'),
+  /** A breakup or divorce. */
+  heartbreak: require('../../assets/sfx/heartbreak.wav'),
+  /** Working out / taking up a sport. */
+  gym: require('../../assets/sfx/gym.wav'),
+  /** Buying a car. */
+  honk: require('../../assets/sfx/honk.wav'),
   /** Rest in peace. */
   death: require('../../assets/sfx/death.wav'),
 } as const

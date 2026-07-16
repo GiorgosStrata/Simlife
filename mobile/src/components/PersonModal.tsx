@@ -313,7 +313,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                       emoji="💒"
                       title={`Get married ($${WEDDING_COST.toLocaleString()})`}
                       subtitle={canMarry ? 'Tie the knot' : 'Save up for the wedding'}
-                      onPress={act(marry, 'success')}
+                      onPress={act(marry, 'wedding')}
                       disabled={!canMarry}
                       chevron
                     />
@@ -323,7 +323,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                     title={partnerStatus === 'married' ? 'Divorce' : 'Break up'}
                     subtitle={partnerStatus === 'married' ? 'They take half of everything' : 'End it'}
                     onPress={() => {
-                      playSfx('fail')
+                      playSfx('heartbreak')
                       breakUp()
                       onClose()
                     }}
@@ -335,7 +335,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                 emoji="🤬"
                 title="Insult"
                 subtitle={used(`insult-${person.id}`) ? 'Done this year' : '- - bond. They may clap back'}
-                onPress={act(() => insult(person.id), 'fail')}
+                onPress={act(() => insult(person.id), 'punch')}
                 disabled={used(`insult-${person.id}`)}
                 chevron
               />

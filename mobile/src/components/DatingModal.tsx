@@ -71,7 +71,7 @@ export function DatingModal({ onClose }: DatingModalProps) {
   }, [])
 
   const pass = () => {
-    playSfx('click')
+    playSfx('whoosh')
     setProfile(makeProfile())
   }
 
@@ -79,17 +79,16 @@ export function DatingModal({ onClose }: DatingModalProps) {
     // Mutual-match chance rises with both people's looks.
     const chance = 0.25 + (playerLooks + profile.looks) / 400
     if (Math.random() < chance) {
-      playSfx('success')
+      playSfx('match')
       setMatched(profile)
     } else {
-      playSfx('fail')
+      playSfx('whoosh')
       setProfile(makeProfile())
     }
   }
 
   const startDating = () => {
     if (!matched) return
-    playSfx('success')
     beginRelationship(matched.name, matched.gender, matched.age)
     onClose()
   }

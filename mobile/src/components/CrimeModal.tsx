@@ -48,7 +48,7 @@ export function CrimeModal({ onClose }: CrimeModalProps) {
                         : `${risk} · ${crime.description}`
                   }
                   onPress={() => {
-                    playSfx('click')
+                    playSfx('crime')
                     commitCrime(crime.id)
                     onClose()
                   }}

@@ -783,6 +783,7 @@ export const EVENTS: GameEvent[] = [
         label: 'Fight back',
         outcome: 'You swung back. You both got detention, but the shoving stopped for good.',
         effects: { happiness: 6, health: -6, looks: -2 },
+        sfx: 'punch',
       },
       {
         label: 'Walk away',

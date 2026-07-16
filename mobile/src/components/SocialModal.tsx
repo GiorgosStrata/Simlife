@@ -48,10 +48,7 @@ export function SocialModal({ app, onClose }: SocialModalProps) {
               subtitle={
                 posted ? 'Already posted this year' : 'Grow your following — you might go viral'
               }
-              onPress={() => {
-                playSfx('click')
-                socialPost(app)
-              }}
+              onPress={() => socialPost(app)}
               disabled={posted}
               chevron
             />
@@ -65,10 +62,7 @@ export function SocialModal({ app, onClose }: SocialModalProps) {
                     ? 'Land some brand deals'
                     : `Needs ${MONETIZE_MIN_FOLLOWERS.toLocaleString()}+ followers`
               }
-              onPress={() => {
-                playSfx('success')
-                monetizeSocial(app)
-              }}
+              onPress={() => monetizeSocial(app)}
               disabled={monetized || !canMonetize}
               chevron
             />

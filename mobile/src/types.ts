@@ -24,6 +24,8 @@ export interface EventChoice {
   effects: Effects
   /** Optional game action triggered on top of the stat effects. */
   action?: 'enrollUniversity' | 'parentsDivorce'
+  /** Optional sound to play on this outcome (overrides the auto sting). */
+  sfx?: import('./audio/sfx').SfxName
 }
 
 export interface GameEvent {

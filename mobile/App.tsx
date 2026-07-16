@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar'
-import { useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { playSfx } from './src/audio/sfx'
 import { ActivitiesScreen } from './src/components/ActivitiesScreen'
@@ -21,6 +21,8 @@ import { getMajor } from './src/data/majors'
 import { getJob, isInSchool, jobTitle, useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+
 function Game() {
   const [tab, setTab] = useState<TabKey>('life')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -40,6 +42,26 @@ function Game() {
   const major = useGameStore((s) => s.major)
   const applyingToUniversity = useGameStore((s) => s.applyingToUniversity)
   const ageUp = useGameStore((s) => s.ageUp)
+
+  // Gentle looping pulse on the Age button so it feels alive (BitLife style).
+  // Declared before any early return so hook order stays stable.
+  const pulse = useRef(new Animated.Value(0)).current
+  const pulseIdle = !alive || currentEvent !== null
+  useEffect(() => {
+    if (pulseIdle) {
+      pulse.stopAnimation()
+      pulse.setValue(0)
+      return
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 850, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 850, useNativeDriver: true }),
+      ]),
+    )
+    loop.start()
+    return () => loop.stop()
+  }, [pulseIdle, pulse])
 
   if (!hasHydrated) {
     return (
@@ -69,6 +91,7 @@ function Game() {
           : '🛋️ Unemployed'
 
   const ageUpDisabled = !alive || currentEvent !== null
+  const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] })
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -117,7 +140,7 @@ function Game() {
       </View>
 
       {/* Big round Age button, BitLife style: fixed, never moves. */}
-      <Pressable
+      <AnimatedPressable
         onPress={() => {
           playSfx('click')
           ageUp()
@@ -125,6 +148,7 @@ function Game() {
         disabled={ageUpDisabled}
         style={({ pressed }) => [
           styles.ageUpButton,
+          { transform: [{ scale: pulseScale }] },
           pressed && styles.ageUpButtonPressed,
           ageUpDisabled && styles.ageUpButtonDisabled,
         ]}
@@ -133,7 +157,7 @@ function Game() {
       >
         <Text style={styles.ageUpPlus}>＋</Text>
         <Text style={styles.ageUpText}>Age</Text>
-      </Pressable>
+      </AnimatedPressable>
 
       <EventModal />
       <GameOverModal />
