@@ -15,6 +15,7 @@ import { colors } from '../theme'
 import { JobListingsModal } from './JobListingsModal'
 import { Row } from './Row'
 import { SchoolModal } from './SchoolModal'
+import { SpecialJobsModal } from './SpecialJobsModal'
 import { WorkplaceModal } from './WorkplaceModal'
 
 function educationRow(state: {
@@ -64,6 +65,7 @@ export function CareerScreen() {
   const [browsingJobs, setBrowsingJobs] = useState(false)
   const [visitingSchool, setVisitingSchool] = useState(false)
   const [visitingWork, setVisitingWork] = useState(false)
+  const [specialJobs, setSpecialJobs] = useState(false)
 
   const currentJob = getJob(jobId)
   const inSchool = isInSchool(age) || inUniversity
@@ -125,9 +127,23 @@ export function CareerScreen() {
         />
       )}
 
+      {workingAge && (
+        <>
+          <Text style={styles.sectionHeading}>🌟 SPECIAL JOBS</Text>
+          <Row
+            emoji="🌟"
+            title="Fame & fortune"
+            subtitle="Try out as an athlete or entertainer"
+            onPress={action(() => setSpecialJobs(true))}
+            chevron
+          />
+        </>
+      )}
+
       {browsingJobs && <JobListingsModal onClose={() => setBrowsingJobs(false)} />}
       {visitingSchool && <SchoolModal onClose={() => setVisitingSchool(false)} />}
       {visitingWork && <WorkplaceModal onClose={() => setVisitingWork(false)} />}
+      {specialJobs && <SpecialJobsModal onClose={() => setSpecialJobs(false)} />}
     </ScrollView>
   )
 }

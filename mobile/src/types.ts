@@ -176,4 +176,14 @@ export interface Job {
   tiers?: string[]
   /** One of these is asked, at random, when applying. */
   questions: JobQuestion[]
+  /**
+   * Fame careers (athlete, singer, actor). These skip the normal job
+   * board and interview — you try out, and a stat roll decides if you
+   * make it.
+   */
+  special?: boolean
+  /** Stat the tryout is judged on (special jobs only). */
+  auditionStat?: StatKey
+  /** Stat level where you have a fair shot at the tryout. */
+  auditionMin?: number
 }

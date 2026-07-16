@@ -323,17 +323,80 @@ const ROWS: Row[] = [
   ['surgeon', 'Surgeon', '🔪', 220000, 22, 92, CARE_Q, true, 'medicine', ['Surgical Resident', 'Surgeon', 'Senior Surgeon', 'Chief Surgeon']],
 ]
 
-export const JOBS: Job[] = ROWS.map(
-  ([id, title, emoji, salary, minAge, minSmarts, questions, requiresDegree, requiredMajor, tiers]) => ({
-    id,
-    title,
-    emoji,
-    salary,
-    minAge,
-    minSmarts,
-    questions,
-    ...(requiresDegree ? { requiresDegree } : {}),
-    ...(requiredMajor ? { requiredMajor } : {}),
-    ...(tiers ? { tiers } : {}),
-  }),
-)
+/**
+ * Fame careers. You don't apply on the job board — you try out, and a
+ * roll on `auditionStat` (vs `auditionMin`) decides whether you make it.
+ * Salaries are high and climb steeply as you rise to stardom.
+ */
+export const SPECIAL_JOBS: Job[] = [
+  {
+    id: 'basketball-player',
+    title: 'Basketball Player',
+    emoji: '🏀',
+    salary: 150000,
+    minAge: 16,
+    minSmarts: 0,
+    questions: [],
+    special: true,
+    auditionStat: 'health',
+    auditionMin: 60,
+    tiers: ['Rookie', 'Starter', 'All-Star', 'Hall of Famer'],
+  },
+  {
+    id: 'football-player',
+    title: 'Football Player',
+    emoji: '⚽',
+    salary: 150000,
+    minAge: 16,
+    minSmarts: 0,
+    questions: [],
+    special: true,
+    auditionStat: 'health',
+    auditionMin: 60,
+    tiers: ['Academy Prospect', 'Pro Footballer', 'Star Player', 'Legend'],
+  },
+  {
+    id: 'singer',
+    title: 'Singer',
+    emoji: '🎤',
+    salary: 90000,
+    minAge: 16,
+    minSmarts: 0,
+    questions: [],
+    special: true,
+    auditionStat: 'looks',
+    auditionMin: 50,
+    tiers: ['Bar Singer', 'Recording Artist', 'Chart-Topper', 'Music Icon'],
+  },
+  {
+    id: 'actor',
+    title: 'Actor',
+    emoji: '🎬',
+    salary: 90000,
+    minAge: 16,
+    minSmarts: 0,
+    questions: [],
+    special: true,
+    auditionStat: 'looks',
+    auditionMin: 55,
+    tiers: ['Extra', 'TV Actor', 'Movie Star', 'Hollywood Legend'],
+  },
+]
+
+export const JOBS: Job[] = [
+  ...ROWS.map(
+    ([id, title, emoji, salary, minAge, minSmarts, questions, requiresDegree, requiredMajor, tiers]) => ({
+      id,
+      title,
+      emoji,
+      salary,
+      minAge,
+      minSmarts,
+      questions,
+      ...(requiresDegree ? { requiresDegree } : {}),
+      ...(requiredMajor ? { requiredMajor } : {}),
+      ...(tiers ? { tiers } : {}),
+    }),
+  ),
+  ...SPECIAL_JOBS,
+]

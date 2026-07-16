@@ -143,7 +143,8 @@ function rollJobOpenings(major: string | null, hasDegree: boolean): string[] {
     const matching = shuffle(JOBS.filter((j) => j.requiredMajor === major))
     picked.push(...matching.slice(0, MAJOR_MATCHED_OPENINGS).map((j) => j.id))
   }
-  const rest = shuffle(JOBS.filter((j) => !picked.includes(j.id)))
+  // Fame careers (special jobs) never show on the normal board.
+  const rest = shuffle(JOBS.filter((j) => !j.special && !picked.includes(j.id)))
   picked.push(...rest.slice(0, OPENINGS_PER_YEAR - picked.length).map((j) => j.id))
   return picked
 }
@@ -393,6 +394,7 @@ interface GameState {
   // Career
   applyForJob: (jobId: string) => void
   failInterview: (jobId: string) => void
+  tryoutForSpecialJob: (jobId: string) => void
   quitJob: () => void
   openUniversityApplication: () => void
   cancelUniversityApplication: () => void
@@ -1260,6 +1262,46 @@ export const useGameStore = create<GameState>()(
           addLog([
             { text: `You flubbed the interview question for the ${job.title} job. Awkward.`, kind: 'career' },
           ])
+        },
+
+        tryoutForSpecialJob: (jobId: string) => {
+          const s = get()
+          const job = getJob(jobId)
+          if (!job || !job.special || !s.alive || s.screen !== 'life' || s.jobId === jobId) return
+          if (s.age < job.minAge) return
+          // One attempt per fame career per year.
+          if (!useYearlyAction(`tryout-${jobId}`)) return
+
+          const stat = job.auditionStat ? s.stats[job.auditionStat] : 50
+          const min = job.auditionMin ?? 50
+          // Better stats → better odds; there's always a slim/​capped chance.
+          const chance = Math.max(0.05, Math.min(0.9, (stat - min) / 50 + 0.3))
+          if (Math.random() < chance) {
+            const crew = rollWorkplacePeople(s.countryCode, s.age, s.nextFriendId)
+            set({
+              jobId,
+              jobTier: 0,
+              yearsInJob: 0,
+              raisePercent: 0,
+              relationships: [...withoutWorkPeople(s.relationships), ...crew],
+              nextFriendId: s.nextFriendId + crew.length,
+            })
+            playSfx('levelup')
+            addLog([
+              {
+                text: `You made it! You're now a ${jobTitle(job, 0)} ${job.emoji}, earning $${annualSalary(job, 0, 0, s.countryCode).toLocaleString()}/year. Stardom awaits! 🌟`,
+                kind: 'career',
+              },
+            ])
+          } else {
+            playSfx('fail')
+            addLog([
+              {
+                text: `You tried out to be a ${job.title.toLowerCase()}, but didn't make the cut this time. Keep training.`,
+                kind: 'career',
+              },
+            ])
+          }
         },
 
         quitJob: () => {
