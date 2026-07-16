@@ -26,6 +26,8 @@ export function personEmoji(person: Person): string {
       return '👨'
     case 'sibling':
       return male ? '👦' : '👧'
+    case 'child':
+      return male ? '👦' : '👧'
     case 'partner':
       return male ? '👨' : '👩'
     case 'friend':
@@ -49,6 +51,7 @@ export function roleLabel(person: Person, partnerStatus: PartnerStatus | null): 
     return male ? 'Boyfriend' : 'Girlfriend'
   }
   if (person.role === 'sibling') return male ? 'Brother' : 'Sister'
+  if (person.role === 'child') return male ? 'Son' : 'Daughter'
   return person.role.charAt(0).toUpperCase() + person.role.slice(1)
 }
 
@@ -82,6 +85,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const propose = useGameStore((s) => s.propose)
   const marry = useGameStore((s) => s.marry)
   const breakUp = useGameStore((s) => s.breakUp)
+  const tryForBaby = useGameStore((s) => s.tryForBaby)
 
   useEffect(() => {
     playSfx('pop')
@@ -292,6 +296,22 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                     }
                     onPress={act(weekendGetaway)}
                     disabled={used('getaway') || money < GETAWAY_COST}
+                    chevron
+                  />
+                  <Row
+                    emoji="👶"
+                    title="Try for a baby"
+                    subtitle={
+                      used('try-baby')
+                        ? 'Done this year'
+                        : age < 18 || age > 55
+                          ? 'Not the right time in life'
+                          : partnerStatus === 'married'
+                            ? 'Good odds'
+                            : 'Possible, but harder unmarried'
+                    }
+                    onPress={act(tryForBaby, 'baby')}
+                    disabled={used('try-baby') || age < 18 || age > 55}
                     chevron
                   />
                   {partnerStatus === 'dating' && (

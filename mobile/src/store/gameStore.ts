@@ -5,6 +5,7 @@ import { playSfx } from '../audio/sfx'
 import type { ThemeName } from '../theme'
 import { randomAvatarConfig, type AvatarConfig } from '../data/avatar'
 import type {
+  Ancestor,
   ActivePursuit,
   ActivityCategory,
   GameEvent,
@@ -13,6 +14,7 @@ import type {
   LogEntry,
   PartnerStatus,
   Person,
+  PersonRole,
   SocialApp,
   SportState,
   Stats,
@@ -345,6 +347,12 @@ interface GameState {
   /** True once the character's parents have divorced (fires at most once). */
   parentsDivorced: boolean
 
+  // Lineage (generational play)
+  /** Past playable characters in your bloodline, oldest first. */
+  ancestors: Ancestor[]
+  /** 1 for the founder, +1 each time you continue as your child. */
+  generation: number
+
   // Belongings
   ownedAssetIds: string[]
 
@@ -420,6 +428,10 @@ interface GameState {
   makeFriend: () => void
   findLove: () => void
   beginRelationship: (name: string, gender: Gender, age: number) => void
+  tryForBaby: () => void
+
+  // Lineage
+  continueAsChild: (childId: string) => void
 
   // Phone apps
   socialPost: (app: SocialApp) => void
@@ -465,6 +477,8 @@ function newLifeState() {
     partnerStatus: null as PartnerStatus | null,
     nextFriendId: 1,
     parentsDivorced: false,
+    ancestors: [] as Ancestor[],
+    generation: 1,
     ownedAssetIds: [] as string[],
     followers: { rizzgram: 0, flicktok: 0 } as Record<SocialApp, number>,
     pursuits: { sport: null, mind: null, hobby: null } as Record<
@@ -1879,11 +1893,138 @@ export const useGameStore = create<GameState>()(
               : { text: `You broke up with ${partner.name}.`, kind: 'relationship' },
           ])
         },
+
+        tryForBaby: () => {
+          const s = get()
+          const partner = s.relationships.find((p) => p.id === 'partner' && p.alive)
+          if (!s.alive || !partner || s.age < 18 || s.age > 55) return
+          const kids = s.relationships.filter((p) => p.role === 'child')
+          if (kids.length >= 8) return
+          if (!useYearlyAction('try-baby')) return
+          const chance = s.partnerStatus === 'married' ? 0.65 : 0.4
+          if (Math.random() < chance) {
+            const gender = randomGender()
+            const lastName = s.name.split(' ').slice(-1)[0] ?? ''
+            const baby: Person = {
+              id: `child-${s.nextFriendId}`,
+              role: 'child',
+              gender,
+              name: `${randomFirstName(s.countryCode, gender)} ${lastName}`.trim(),
+              age: 0,
+              alive: true,
+              relationship: randomInt(80, 100),
+            }
+            set({
+              relationships: [...s.relationships, baby],
+              nextFriendId: s.nextFriendId + 1,
+              stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 8) },
+            })
+            playSfx('baby')
+            addLog([
+              { text: `You had a baby${partner ? ` with ${partner.name}` : ''}! Welcome ${baby.name}. 👶`, kind: 'relationship' },
+            ])
+          } else {
+            playSfx('fail')
+            addLog([{ text: 'You tried for a baby this year, but it wasn’t meant to be.', kind: 'relationship' }])
+          }
+        },
+
+        // ----- Lineage: continue the bloodline through your child -----
+
+        continueAsChild: (childId: string) => {
+          const s = get()
+          if (s.alive) return
+          const heir = s.relationships.find((p) => p.id === childId && p.role === 'child' && p.alive)
+          if (!heir) return
+
+          // Estate split evenly among living children; the heir keeps a share.
+          const livingKids = s.relationships.filter((p) => p.role === 'child' && p.alive)
+          const inheritance = s.money > 0 ? Math.floor(s.money / livingKids.length) : 0
+
+          const ancestor: Ancestor = {
+            name: s.name,
+            gender: s.gender,
+            bornYear: s.year - s.age,
+            diedYear: s.year,
+            ageAtDeath: s.age,
+            generation: s.generation,
+          }
+
+          // The heir's new family: surviving partner becomes a parent, the
+          // deceased you becomes the other (late) parent, siblings are your
+          // other kids. Everyone else moves on.
+          const rebuilt: Person[] = []
+          const partner = s.relationships.find((p) => p.id === 'partner' && p.alive)
+          const youRole: PersonRole = s.gender === 'male' ? 'father' : 'mother'
+          if (partner) {
+            rebuilt.push({
+              ...partner,
+              id: partner.gender === 'male' ? 'father' : 'mother',
+              role: partner.gender === 'male' ? 'father' : 'mother',
+            })
+          }
+          rebuilt.push({
+            id: youRole,
+            role: youRole,
+            gender: s.gender,
+            name: s.name,
+            age: s.age,
+            alive: false,
+            relationship: 100,
+          })
+          let nextFriendId = s.nextFriendId
+          for (const kid of livingKids) {
+            if (kid === heir) continue
+            rebuilt.push({ ...kid, id: `sibling-${nextFriendId++}`, role: 'sibling' })
+          }
+
+          const heirGender = heir.gender
+          const stage = schoolStageFor(heir.age, false)
+          let schoolName: string | null = null
+          if (stage && stage !== 'university') {
+            schoolName = schoolNameFor(s.countryCode, stage)
+            const classroom = rollSchoolPeople(s.countryCode, stage, heir.age, nextFriendId)
+            nextFriendId += classroom.length
+            rebuilt.push(...classroom)
+          }
+
+          set({
+            ...newLifeState(),
+            screen: 'life',
+            name: heir.name,
+            gender: heirGender,
+            avatarConfig: { ...randomAvatarConfig(heirGender), skinColor: s.avatarConfig.skinColor },
+            countryCode: s.countryCode,
+            age: heir.age,
+            year: s.year,
+            stats: rollStats(),
+            money: inheritance,
+            relationships: rebuilt,
+            nextFriendId,
+            schoolName,
+            ancestors: [...s.ancestors, ancestor],
+            generation: s.generation + 1,
+            alive: true,
+            log: [
+              {
+                id: 0,
+                age: heir.age,
+                year: s.year,
+                text:
+                  `You continue the family story as ${heir.name}, generation ${s.generation + 1}.` +
+                  (inheritance > 0 ? ` You inherited $${inheritance.toLocaleString()}.` : ''),
+                kind: 'info',
+              },
+            ],
+            nextLogId: 1,
+          })
+          playSfx('baby')
+        },
       }
     },
     {
       name: 'simlife-save',
-      version: 16,
+      version: 17,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -2013,6 +2154,11 @@ export const useGameStore = create<GameState>()(
         // v15 saves predate the dark-mode setting.
         if (version < 16) {
           state.theme = 'light'
+        }
+        // v16 saves predate kids/inheritance/lineage.
+        if (version < 17) {
+          state.ancestors = []
+          state.generation = 1
         }
         return state as GameState
       },

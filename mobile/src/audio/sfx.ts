@@ -62,7 +62,12 @@ export function playSfx(name: SfxName): void {
     }
     player.volume = volume
     player.seekTo(0)
-    player.play()
+    // play() can reject asynchronously on web before the first user gesture;
+    // swallow that so it never bubbles up as an unhandled rejection.
+    const maybePromise = player.play() as unknown as Promise<void> | void
+    if (maybePromise && typeof (maybePromise as Promise<void>).then === 'function') {
+      ;(maybePromise as Promise<void>).catch(() => {})
+    }
   } catch {
     // Audio must never crash the game (e.g. web autoplay restrictions).
   }

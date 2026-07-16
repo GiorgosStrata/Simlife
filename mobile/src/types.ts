@@ -58,6 +58,7 @@ export type PersonRole =
   | 'father'
   | 'sibling'
   | 'partner'
+  | 'child'
   | 'friend'
   | 'classmate'
   | 'teacher'
@@ -80,6 +81,17 @@ export interface Person {
 }
 
 export type PartnerStatus = 'dating' | 'engaged' | 'married'
+
+/** A past playable character in your bloodline (for the family tree). */
+export interface Ancestor {
+  name: string
+  gender: Gender
+  bornYear: number
+  diedYear: number
+  ageAtDeath: number
+  /** 1 = the founder, climbing with each generation. */
+  generation: number
+}
 
 /** Live state for a pro sports career (basketball/football). */
 export interface SportState {

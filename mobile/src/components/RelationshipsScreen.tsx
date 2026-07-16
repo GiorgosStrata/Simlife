@@ -6,11 +6,19 @@ import { MAX_FRIENDS, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Person } from '../types'
 import { PersonAvatar } from './Avatar'
+import { FamilyTreeModal } from './FamilyTreeModal'
 import { PersonModal, roleLabel } from './PersonModal'
 import { PhoneModal } from './PhoneModal'
 import { Row } from './Row'
 
-const SECTION_ORDER: Person['role'][] = ['partner', 'mother', 'father', 'sibling', 'friend']
+const SECTION_ORDER: Person['role'][] = [
+  'partner',
+  'child',
+  'mother',
+  'father',
+  'sibling',
+  'friend',
+]
 
 /** Clean BitLife-style list: tap a person to open their interaction sheet. */
 export function RelationshipsScreen() {
@@ -22,6 +30,9 @@ export function RelationshipsScreen() {
 
   const [personId, setPersonId] = useState<string | null>(null)
   const [phoneOpen, setPhoneOpen] = useState(false)
+  const [treeOpen, setTreeOpen] = useState(false)
+  const generation = useGameStore((s) => s.generation)
+  const ancestors = useGameStore((s) => s.ancestors)
 
   const hasPhone = ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')
 
@@ -51,6 +62,20 @@ export function RelationshipsScreen() {
         }
         disabled={!hasPhone}
         chevron={hasPhone}
+      />
+      <Row
+        emoji="🌳"
+        title="Family tree"
+        subtitle={
+          generation > 1
+            ? `Generation ${generation} · ${ancestors.length} ancestor${ancestors.length === 1 ? '' : 's'}`
+            : 'Your bloodline starts with you'
+        }
+        onPress={() => {
+          playSfx('click')
+          setTreeOpen(true)
+        }}
+        chevron
       />
       {age >= 18 && !hasPartner && (
         <Pressable
@@ -108,6 +133,7 @@ export function RelationshipsScreen() {
 
       {personId && <PersonModal personId={personId} onClose={() => setPersonId(null)} />}
       {phoneOpen && <PhoneModal onClose={() => setPhoneOpen(false)} />}
+      {treeOpen && <FamilyTreeModal onClose={() => setTreeOpen(false)} />}
     </ScrollView>
   )
 }
