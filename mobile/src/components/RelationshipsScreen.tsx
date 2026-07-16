@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   bigButtonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.white,
+    color: colors.onColor,
   },
   bondPill: {
     flexDirection: 'row',

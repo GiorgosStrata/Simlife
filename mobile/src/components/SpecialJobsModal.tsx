@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   listContent: { gap: 8, paddingBottom: 8 },
   pill: { backgroundColor: colors.violet500, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   pillLocked: { backgroundColor: colors.slate200 },
-  pillText: { fontSize: 13, fontWeight: '700', color: colors.white },
+  pillText: { fontSize: 13, fontWeight: '700', color: colors.onColor },
   cancel: { marginTop: 8, alignItems: 'center', paddingVertical: 8 },
   cancelText: { fontSize: 14, fontWeight: '700', color: colors.slate500 },
 })

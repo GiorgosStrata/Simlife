@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     paddingHorizontal: 28,
   },
-  startBtnText: { fontSize: 15, fontWeight: '800', color: colors.white },
+  startBtnText: { fontSize: 15, fontWeight: '800', color: colors.onColor },
   emptyBox: { alignItems: 'center', paddingVertical: 30, paddingHorizontal: 10 },
   emptyEmoji: { fontSize: 52 },
   emptyText: { fontSize: 14, color: colors.slate500, textAlign: 'center', marginTop: 12 },

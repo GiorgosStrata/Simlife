@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { playSfx } from '../audio/sfx'
+import type { ThemeName } from '../theme'
 import { randomAvatarConfig, type AvatarConfig } from '../data/avatar'
 import type {
   ActivePursuit,
@@ -313,6 +314,7 @@ interface GameState {
 
   // Settings (survive new lives)
   sfxVolume: number
+  theme: ThemeName
 
   // Career
   jobId: string | null
@@ -354,6 +356,7 @@ interface GameState {
   criminalRecord: boolean
 
   setSfxVolume: (volume: number) => void
+  setTheme: (theme: ThemeName) => void
 
   gender: Gender
 
@@ -641,9 +644,14 @@ export const useGameStore = create<GameState>()(
         ...newLifeState(),
         hasHydrated: false,
         sfxVolume: 1,
+        theme: 'light' as ThemeName,
 
         setSfxVolume: (volume: number) => {
           set({ sfxVolume: Math.max(0, Math.min(1, volume)) })
+        },
+
+        setTheme: (theme: ThemeName) => {
+          set({ theme })
         },
 
         rerollStats: () => {
@@ -1875,7 +1883,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 15,
+      version: 16,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -2001,6 +2009,10 @@ export const useGameStore = create<GameState>()(
         // v14 saves predate pro-sports leagues.
         if (version < 15) {
           state.sport = null
+        }
+        // v15 saves predate the dark-mode setting.
+        if (version < 16) {
+          state.theme = 'light'
         }
         return state as GameState
       },

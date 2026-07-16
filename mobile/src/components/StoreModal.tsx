@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.white,
+    color: colors.onColor,
   },
   cancel: {
     marginTop: 8,

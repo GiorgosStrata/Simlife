@@ -15,9 +15,16 @@ interface SettingsModalProps {
   onClose: () => void
 }
 
+const THEME_OPTIONS = [
+  { label: '☀️ Light', value: 'light' as const },
+  { label: '🌙 Dark', value: 'dark' as const },
+]
+
 export function SettingsModal({ onClose }: SettingsModalProps) {
   const sfxVolume = useGameStore((s) => s.sfxVolume)
   const setSfxVolume = useGameStore((s) => s.setSfxVolume)
+  const theme = useGameStore((s) => s.theme)
+  const setTheme = useGameStore((s) => s.setTheme)
   const startNewLife = useGameStore((s) => s.startNewLife)
   const [confirmingReset, setConfirmingReset] = useState(false)
 
@@ -30,6 +37,29 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             <Pressable accessibilityRole="button" onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeText}>✕</Text>
             </Pressable>
+          </View>
+
+          <Text style={styles.sectionHeading}>APPEARANCE</Text>
+          <View style={styles.volumeRow}>
+            {THEME_OPTIONS.map((opt) => {
+              const active = theme === opt.value
+              return (
+                <Pressable
+                  key={opt.value}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${opt.value} theme`}
+                  onPress={() => {
+                    setTheme(opt.value)
+                    playSfx('click')
+                  }}
+                  style={[styles.volumeButton, active && styles.volumeButtonActive]}
+                >
+                  <Text style={[styles.volumeText, active && styles.volumeTextActive]}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              )
+            })}
           </View>
 
           <Text style={styles.sectionHeading}>SOUND EFFECTS</Text>
@@ -158,7 +188,7 @@ const styles = StyleSheet.create({
     color: colors.slate600,
   },
   volumeTextActive: {
-    color: colors.white,
+    color: colors.onColor,
   },
   dangerButton: {
     borderRadius: 12,
@@ -201,7 +231,7 @@ const styles = StyleSheet.create({
   resetButtonText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.white,
+    color: colors.onColor,
   },
   cancelButton: {
     flex: 1,

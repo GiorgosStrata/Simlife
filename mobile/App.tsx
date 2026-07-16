@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Animated, ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { playSfx } from './src/audio/sfx'
+import { applyTheme } from './src/applyTheme'
 import { ActivitiesScreen } from './src/components/ActivitiesScreen'
 import { AssetsScreen } from './src/components/AssetsScreen'
 import { Avatar } from './src/components/Avatar'
@@ -40,6 +41,12 @@ function Game() {
   const major = useGameStore((s) => s.major)
   const applyingToUniversity = useGameStore((s) => s.applyingToUniversity)
   const ageUp = useGameStore((s) => s.ageUp)
+  const theme = useGameStore((s) => s.theme)
+
+  // Apply the light/dark theme on web whenever it changes.
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme])
 
   // Gentle looping pulse on the Age button so it feels alive (BitLife style).
   // Declared before any early return so hook order stays stable.
@@ -224,7 +231,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 16,
     fontWeight: '800',
-    color: colors.white,
+    color: colors.onColor,
   },
   headerOccupation: {
     fontSize: 12,
@@ -239,7 +246,7 @@ const styles = StyleSheet.create({
   headerAge: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.white,
+    color: colors.onColor,
     textAlign: 'right',
     fontVariant: ['tabular-nums'],
   },
@@ -276,7 +283,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 4,
-    borderColor: colors.white,
+    borderColor: colors.onColor,
     shadowColor: colors.cyan500,
     shadowOpacity: 0.5,
     shadowRadius: 14,
@@ -292,13 +299,13 @@ const styles = StyleSheet.create({
   ageUpPlus: {
     fontSize: 22,
     fontWeight: '800',
-    color: colors.white,
+    color: colors.onColor,
     lineHeight: 24,
   },
   ageUpText: {
     fontSize: 13,
     fontWeight: '800',
-    color: colors.white,
+    color: colors.onColor,
     marginTop: -2,
   },
 })

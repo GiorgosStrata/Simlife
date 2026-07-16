@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   pillOff: { backgroundColor: colors.slate200 },
-  pillText: { fontSize: 13, fontWeight: '700', color: colors.white },
+  pillText: { fontSize: 13, fontWeight: '700', color: colors.onColor },
   cancel: { marginTop: 8, alignItems: 'center', paddingVertical: 8 },
   cancelText: { fontSize: 14, fontWeight: '700', color: colors.slate500 },
 })
