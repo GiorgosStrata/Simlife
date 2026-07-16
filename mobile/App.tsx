@@ -21,8 +21,6 @@ import { getMajor } from './src/data/majors'
 import { getJob, isInSchool, jobTitle, useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
-
 function Game() {
   const [tab, setTab] = useState<TabKey>('life')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -139,25 +137,32 @@ function Game() {
         <TabBar active={tab} onChange={setTab} />
       </View>
 
-      {/* Big round Age button, BitLife style: fixed, never moves. */}
-      <AnimatedPressable
-        onPress={() => {
-          playSfx('click')
-          ageUp()
-        }}
-        disabled={ageUpDisabled}
-        style={({ pressed }) => [
-          styles.ageUpButton,
-          { transform: [{ scale: pulseScale }] },
-          pressed && styles.ageUpButtonPressed,
-          ageUpDisabled && styles.ageUpButtonDisabled,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Age Up"
+      {/* Big round Age button, BitLife style: fixed, never moves.
+          The pulse lives on a wrapper View so the Pressable keeps its
+          normal styling (animating the Pressable directly drops styles
+          on web). */}
+      <Animated.View
+        pointerEvents="box-none"
+        style={[styles.ageUpWrap, { transform: [{ scale: pulseScale }] }]}
       >
-        <Text style={styles.ageUpPlus}>＋</Text>
-        <Text style={styles.ageUpText}>Age</Text>
-      </AnimatedPressable>
+        <Pressable
+          onPress={() => {
+            playSfx('click')
+            ageUp()
+          }}
+          disabled={ageUpDisabled}
+          style={({ pressed }) => [
+            styles.ageUpButton,
+            pressed && styles.ageUpButtonPressed,
+            ageUpDisabled && styles.ageUpButtonDisabled,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Age Up"
+        >
+          <Text style={styles.ageUpPlus}>＋</Text>
+          <Text style={styles.ageUpText}>Age</Text>
+        </Pressable>
+      </Animated.View>
 
       <EventModal />
       <GameOverModal />
@@ -258,10 +263,12 @@ const styles = StyleSheet.create({
   settingsIcon: {
     fontSize: 16,
   },
-  ageUpButton: {
+  ageUpWrap: {
     position: 'absolute',
     bottom: 96,
     alignSelf: 'center',
+  },
+  ageUpButton: {
     width: 78,
     height: 78,
     borderRadius: 39,
