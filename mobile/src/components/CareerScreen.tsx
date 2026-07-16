@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ScrollView, StyleSheet, Text } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { tuitionPerYear } from '../data/economy'
+import { jobSport } from '../data/leagues'
 import { getMajor } from '../data/majors'
 import {
   UNIVERSITY_YEARS,
@@ -16,6 +17,7 @@ import { JobListingsModal } from './JobListingsModal'
 import { Row } from './Row'
 import { SchoolModal } from './SchoolModal'
 import { SpecialJobsModal } from './SpecialJobsModal'
+import { SportsHubModal } from './SportsHubModal'
 import { WorkplaceModal } from './WorkplaceModal'
 
 function educationRow(state: {
@@ -65,9 +67,11 @@ export function CareerScreen() {
   const [browsingJobs, setBrowsingJobs] = useState(false)
   const [visitingSchool, setVisitingSchool] = useState(false)
   const [visitingWork, setVisitingWork] = useState(false)
+  const [visitingTeam, setVisitingTeam] = useState(false)
   const [specialJobs, setSpecialJobs] = useState(false)
 
   const currentJob = getJob(jobId)
+  const isSport = jobSport(jobId) !== null
   const inSchool = isInSchool(age) || inUniversity
   const edu = educationRow({ age, hasDegree, inUniversity, uniYearsLeft, major, schoolName })
   const workingAge = age >= 16
@@ -104,11 +108,13 @@ export function CareerScreen() {
           <Row
             emoji={currentJob.emoji}
             title={jobTitle(currentJob, jobTier)}
-            subtitle={`$${annualSalary(currentJob, jobTier, raisePercent, countryCode).toLocaleString()}/year · Tap to visit your workplace`}
-            onPress={action(() => setVisitingWork(true))}
+            subtitle={`$${annualSalary(currentJob, jobTier, raisePercent, countryCode).toLocaleString()}/year · Tap to visit your ${isSport ? 'team' : 'workplace'}`}
+            onPress={action(() => (isSport ? setVisitingTeam(true) : setVisitingWork(true)))}
             chevron
           />
-          <Row emoji="🚪" title="Quit job" subtitle="Walk away" onPress={action(quitJob)} chevron />
+          {!isSport && (
+            <Row emoji="🚪" title="Quit job" subtitle="Walk away" onPress={action(quitJob)} chevron />
+          )}
         </>
       ) : (
         <Row
@@ -143,6 +149,7 @@ export function CareerScreen() {
       {browsingJobs && <JobListingsModal onClose={() => setBrowsingJobs(false)} />}
       {visitingSchool && <SchoolModal onClose={() => setVisitingSchool(false)} />}
       {visitingWork && <WorkplaceModal onClose={() => setVisitingWork(false)} />}
+      {visitingTeam && <SportsHubModal onClose={() => setVisitingTeam(false)} />}
       {specialJobs && <SpecialJobsModal onClose={() => setSpecialJobs(false)} />}
     </ScrollView>
   )

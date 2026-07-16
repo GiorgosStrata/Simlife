@@ -81,6 +81,21 @@ export interface Person {
 
 export type PartnerStatus = 'dating' | 'engaged' | 'married'
 
+/** Live state for a pro sports career (basketball/football). */
+export interface SportState {
+  /** Team id (see data/leagues.ts). */
+  teamId: string
+  /** 0-100 skill rating; grows with training, peaks then declines with age. */
+  skill: number
+  /** Championships won. */
+  titles: number
+  /** MVP awards. */
+  mvps: number
+  /** Last season's record. */
+  wins: number
+  losses: number
+}
+
 /** Social media apps on the character's phone. */
 export type SocialApp = 'rizzgram' | 'flicktok'
 

@@ -13,8 +13,10 @@ import type {
   PartnerStatus,
   Person,
   SocialApp,
+  SportState,
   Stats,
 } from '../types'
+import { LEAGUES, getTeam, jobSport, leagueForJob } from '../data/leagues'
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, resaleValue } from '../data/assets'
 import { COUNTRIES, countrySalary, getCountry, scaleByCountry } from '../data/countries'
@@ -320,6 +322,8 @@ interface GameState {
   yearsInJob: number
   /** Accumulated raises as a percentage of base salary (0-50). */
   raisePercent: number
+  /** Pro sports career state (set when you join a basketball/football team). */
+  sport: SportState | null
   hasDegree: boolean
   inUniversity: boolean
   uniYearsLeft: number
@@ -396,6 +400,11 @@ interface GameState {
   failInterview: (jobId: string) => void
   tryoutForSpecialJob: (jobId: string) => void
   quitJob: () => void
+
+  // Pro sports (leagues)
+  trainAthlete: () => void
+  askPlayingTime: () => void
+  requestTrade: () => void
   openUniversityApplication: () => void
   cancelUniversityApplication: () => void
   applyToUniversity: (majorId: string) => void
@@ -440,6 +449,7 @@ function newLifeState() {
     jobTier: 0,
     yearsInJob: 0,
     raisePercent: 0,
+    sport: null as SportState | null,
     hasDegree: false,
     inUniversity: false,
     uniYearsLeft: 0,
@@ -480,6 +490,98 @@ function oldAgeDeathRoll(age: number, health: number): boolean {
 /** Family members face their own mortality past 72. */
 function familyDeathRoll(age: number): boolean {
   return age > 72 && Math.random() < (age - 72) * 0.02
+}
+
+type SeasonLine = Pick<LogEntry, 'text' | 'kind'>
+
+/**
+ * Simulate one pro season: skill drifts with age, a win/loss record is
+ * drawn, and championships, MVPs and injuries roll out with bonuses. Pure
+ * — returns the new sport state and deltas for ageUp to apply.
+ */
+function simulateSeason(
+  sport: SportState,
+  age: number,
+  health: number,
+  countryCode: string,
+): {
+  sport: SportState
+  healthDelta: number
+  moneyDelta: number
+  lines: SeasonLine[]
+  sound: 'graduate' | 'levelup' | 'hurt' | null
+} {
+  const info = getTeam(sport.teamId)
+  const league = info?.league ?? LEAGUES[0]
+  const teamLabel = info?.team.name ?? 'your team'
+
+  // Athletes peak in their late 20s, then decline.
+  let skill = sport.skill
+  if (age <= 29) skill += randomInt(0, 2)
+  else if (age <= 32) skill += randomInt(-1, 1)
+  else skill -= randomInt(1, 3)
+  skill = clampStat(skill)
+
+  const winRate = Math.max(
+    0.15,
+    Math.min(0.85, 0.3 + (skill - 50) / 120 + (Math.random() - 0.5) * 0.2),
+  )
+  const wins = Math.round(league.games * winRate)
+  const losses = league.games - wins
+
+  const lines: SeasonLine[] = []
+  const perGame =
+    league.sport === 'basketball'
+      ? `${Math.round(skill / 3.5)} pts/game`
+      : `${Math.round(skill / 6)} goals`
+  lines.push({ text: `Season with the ${teamLabel}: ${wins}–${losses}, ${perGame}.`, kind: 'career' })
+
+  let titles = sport.titles
+  let mvps = sport.mvps
+  let moneyDelta = 0
+  let healthDelta = 0
+  let sound: 'graduate' | 'levelup' | 'hurt' | null = null
+
+  // Championship — the better your record, the better your shot.
+  if (Math.random() < Math.max(0, winRate - 0.55) * 0.9) {
+    titles += 1
+    const bonus = scaleByCountry(250000, countryCode)
+    moneyDelta += bonus
+    lines.push({
+      text: `🏆 You won the championship with the ${teamLabel}! Bonus $${bonus.toLocaleString()}.`,
+      kind: 'money',
+    })
+    sound = 'graduate'
+  }
+
+  // MVP — for the standout stars.
+  if (skill >= 82 && Math.random() < 0.18) {
+    mvps += 1
+    const bonus = scaleByCountry(120000, countryCode)
+    moneyDelta += bonus
+    lines.push({
+      text: `🌟 You were named league MVP! Bonus $${bonus.toLocaleString()}.`,
+      kind: 'money',
+    })
+    if (!sound) sound = 'levelup'
+  }
+
+  // Injuries — more likely if you're run down (and rougher in football).
+  const injuryChance = 0.08 + (100 - health) / 400 + (league.sport === 'football' ? 0.03 : 0)
+  if (Math.random() < injuryChance) {
+    const hit = randomInt(5, 15)
+    healthDelta -= hit
+    lines.push({ text: `🤕 You picked up an injury this season (-${hit} health).`, kind: 'event' })
+    if (!sound) sound = 'hurt'
+  }
+
+  return {
+    sport: { ...sport, skill, wins, losses, titles, mvps },
+    healthDelta,
+    moneyDelta,
+    lines,
+    sound,
+  }
 }
 
 export const useGameStore = create<GameState>()(
@@ -625,6 +727,17 @@ export const useGameStore = create<GameState>()(
             }
             grossIncome = annualSalary(job, jobTier, s.raisePercent, s.countryCode)
             money += grossIncome
+          }
+
+          // Pro sports season: record, championships, MVPs, injuries, bonuses.
+          let sport = s.sport
+          if (job && sport && jobSport(job.id)) {
+            const res = simulateSeason(sport, age, stats.health, s.countryCode)
+            sport = res.sport
+            stats.health = clampStat(stats.health + res.healthDelta)
+            money += res.moneyDelta
+            for (const l of res.lines) entries.push({ id: logId++, age, year, ...l })
+            if (res.sound) playSfx(res.sound)
           }
 
           // University: country-scaled tuition drains yearly until graduation.
@@ -810,6 +923,7 @@ export const useGameStore = create<GameState>()(
               money,
               jobTier,
               yearsInJob,
+              sport,
               hasDegree,
               inUniversity,
               uniYearsLeft,
@@ -848,6 +962,7 @@ export const useGameStore = create<GameState>()(
             money,
             jobTier,
             yearsInJob,
+            sport,
             hasDegree,
             inUniversity,
             uniYearsLeft,
@@ -1278,18 +1393,34 @@ export const useGameStore = create<GameState>()(
           const chance = Math.max(0.05, Math.min(0.9, (stat - min) / 50 + 0.3))
           if (Math.random() < chance) {
             const crew = rollWorkplacePeople(s.countryCode, s.age, s.nextFriendId)
+            // Sports careers draft you onto a random team in their league.
+            const league = leagueForJob(jobId)
+            let sport: SportState | null = null
+            if (league) {
+              const team = pick(league.teams)
+              sport = {
+                teamId: team.id,
+                skill: clampStat(45 + Math.round((s.stats.health - 60) / 2) + randomInt(0, 10)),
+                titles: 0,
+                mvps: 0,
+                wins: 0,
+                losses: 0,
+              }
+            }
             set({
               jobId,
               jobTier: 0,
               yearsInJob: 0,
               raisePercent: 0,
+              sport,
               relationships: [...withoutWorkPeople(s.relationships), ...crew],
               nextFriendId: s.nextFriendId + crew.length,
             })
             playSfx('levelup')
+            const where = sport ? ` for the ${getTeam(sport.teamId)?.team.name}` : ''
             addLog([
               {
-                text: `You made it! You're now a ${jobTitle(job, 0)} ${job.emoji}, earning $${annualSalary(job, 0, 0, s.countryCode).toLocaleString()}/year. Stardom awaits! 🌟`,
+                text: `You made it! You're now a ${jobTitle(job, 0)} ${job.emoji}${where}, earning $${annualSalary(job, 0, 0, s.countryCode).toLocaleString()}/year. Stardom awaits! 🌟`,
                 kind: 'career',
               },
             ])
@@ -1308,14 +1439,95 @@ export const useGameStore = create<GameState>()(
           const s = get()
           const job = getJob(s.jobId)
           if (!job || !s.alive) return
+          const retiring = !!s.sport
+          const titles = s.sport?.titles ?? 0
+          const mvps = s.sport?.mvps ?? 0
           set({
             jobId: null,
             jobTier: 0,
             yearsInJob: 0,
             raisePercent: 0,
+            sport: null,
             relationships: withoutWorkPeople(s.relationships),
           })
-          addLog([{ text: `You quit your job as a ${jobTitle(job, s.jobTier)}.`, kind: 'career' }])
+          if (retiring) {
+            const honours =
+              titles || mvps
+                ? ` You retire with ${titles} title${titles === 1 ? '' : 's'} and ${mvps} MVP${mvps === 1 ? '' : 's'}. A legend.`
+                : ''
+            playSfx('graduate')
+            addLog([
+              { text: `You retired from ${jobTitle(job, s.jobTier).toLowerCase()}.${honours}`, kind: 'career' },
+            ])
+          } else {
+            addLog([{ text: `You quit your job as a ${jobTitle(job, s.jobTier)}.`, kind: 'career' }])
+          }
+        },
+
+        // ----- Pro sports -----
+
+        trainAthlete: () => {
+          const s = get()
+          if (!s.alive || !s.sport) return
+          if (!useYearlyAction('train-athlete')) return
+          const gain = randomInt(2, 5)
+          const coach = s.relationships.find((p) => p.role === 'boss' && p.alive)
+          set({
+            sport: { ...s.sport, skill: clampStat(s.sport.skill + gain) },
+            stats: { ...s.stats, health: clampStat(s.stats.health + randomInt(1, 3)) },
+          })
+          if (coach)
+            updatePerson(coach.id, {
+              relationship: clampRelationship(coach.relationship + randomInt(2, 5)),
+            })
+          playSfx('gym')
+          addLog([
+            { text: `You put in extra training this year. Skill up ${gain}. 💪`, kind: 'career' },
+          ])
+        },
+
+        askPlayingTime: () => {
+          const s = get()
+          if (!s.alive || !s.sport) return
+          const coach = s.relationships.find((p) => p.role === 'boss' && p.alive)
+          if (!useYearlyAction('playing-time')) return
+          const chance = 0.4 + (coach ? coach.relationship / 200 : 0)
+          if (Math.random() < chance) {
+            const gain = randomInt(2, 4)
+            set({ sport: { ...s.sport, skill: clampStat(s.sport.skill + gain) } })
+            playSfx('success')
+            addLog([
+              { text: 'The coach gave you more minutes on the court. Your game sharpened.', kind: 'career' },
+            ])
+          } else {
+            playSfx('fail')
+            addLog([{ text: 'The coach told you to earn it in practice first.', kind: 'career' }])
+          }
+        },
+
+        requestTrade: () => {
+          const s = get()
+          if (!s.alive || !s.sport) return
+          const league = leagueForJob(s.jobId)
+          if (!league) return
+          if (!useYearlyAction('request-trade')) return
+          const others = league.teams.filter((t) => t.id !== s.sport!.teamId)
+          if (others.length === 0) return
+          if (Math.random() < 0.7) {
+            const team = pick(others)
+            // A trade shakes up the locker room — new teammates and coach.
+            const crew = rollWorkplacePeople(s.countryCode, s.age, s.nextFriendId)
+            set({
+              sport: { ...s.sport, teamId: team.id, wins: 0, losses: 0 },
+              relationships: [...withoutWorkPeople(s.relationships), ...crew],
+              nextFriendId: s.nextFriendId + crew.length,
+            })
+            playSfx('whoosh')
+            addLog([{ text: `You were traded to the ${team.name}! Fresh start. 🔁`, kind: 'career' }])
+          } else {
+            playSfx('fail')
+            addLog([{ text: 'You asked for a trade, but the front office said no.', kind: 'career' }])
+          }
         },
 
         workHarder: () => {
@@ -1663,7 +1875,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 14,
+      version: 15,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -1785,6 +1997,10 @@ export const useGameStore = create<GameState>()(
         // v13 saves predate customizable avatars.
         if (version < 14) {
           state.avatarConfig = randomAvatarConfig(state.gender ?? 'male')
+        }
+        // v14 saves predate pro-sports leagues.
+        if (version < 15) {
+          state.sport = null
         }
         return state as GameState
       },
