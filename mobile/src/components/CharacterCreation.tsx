@@ -13,6 +13,7 @@ import { randomFirstName, randomGender, randomLastName } from '../data/names'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Gender } from '../types'
+import { Avatar } from './Avatar'
 import { CountryPickerModal } from './CountryPickerModal'
 import { Flag } from './Flag'
 import { StatBar } from './StatBar'
@@ -55,8 +56,13 @@ export function CharacterCreation() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>New Life</Text>
-        <Text style={styles.headerSubtitle}>Who will you be? Born in {year}.</Text>
+        <View style={styles.headerAvatar}>
+          <Avatar seed={`${first} ${last}`.trim()} gender={gender} age={18} size={64} />
+        </View>
+        <View style={styles.headerText}>
+          <Text style={styles.headerTitle}>New Life</Text>
+          <Text style={styles.headerSubtitle}>Who will you be? Born in {year}.</Text>
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -178,10 +184,24 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
     backgroundColor: colors.cyan600,
     borderRadius: 16,
     paddingHorizontal: 20,
     paddingVertical: 16,
+  },
+  headerAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: colors.cyan400,
+  },
+  headerText: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 20,

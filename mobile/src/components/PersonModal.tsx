@@ -14,6 +14,7 @@ import {
 } from '../store/gameStore'
 import { colors } from '../theme'
 import type { PartnerStatus, Person } from '../types'
+import { PersonAvatar } from './Avatar'
 import { Row } from './Row'
 
 export function personEmoji(person: Person): string {
@@ -112,7 +113,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
         <View style={styles.card}>
           <View style={styles.header}>
             <View style={styles.badge}>
-              <Text style={styles.badgeEmoji}>{person.alive ? personEmoji(person) : '🪦'}</Text>
+              <PersonAvatar person={person} size={52} />
             </View>
             <View style={styles.headerInfo}>
               <Text style={styles.name}>{person.name}</Text>
@@ -372,6 +373,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
+    overflow: 'hidden',
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',

@@ -9,7 +9,8 @@ import {
   useGameStore,
 } from '../store/gameStore'
 import { colors } from '../theme'
-import { PersonModal, personEmoji } from './PersonModal'
+import { PersonAvatar } from './Avatar'
+import { PersonModal } from './PersonModal'
 import { Row } from './Row'
 
 interface WorkplaceModalProps {
@@ -86,7 +87,8 @@ export function WorkplaceModal({ onClose }: WorkplaceModalProps) {
               <>
                 <Text style={styles.sectionHeading}>👔 BOSS</Text>
                 <Row
-                  emoji={personEmoji(boss)}
+                  emoji="🙂"
+                  avatar={<PersonAvatar person={boss} />}
                   title={boss.name}
                   subtitle={`Bond ${boss.relationship}`}
                   onPress={() => {
@@ -103,7 +105,8 @@ export function WorkplaceModal({ onClose }: WorkplaceModalProps) {
             {coworkers.map((p) => (
               <Row
                 key={p.id}
-                emoji={personEmoji(p)}
+                emoji="🙂"
+                avatar={<PersonAvatar person={p} />}
                 title={p.name}
                 subtitle={`Bond ${p.relationship}`}
                 onPress={() => {

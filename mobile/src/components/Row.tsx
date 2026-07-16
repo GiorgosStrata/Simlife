@@ -11,15 +11,19 @@ interface RowProps {
   disabled?: boolean
   /** Show a chevron on the right (ignored when `right` is given). */
   chevron?: boolean
+  /** Custom left node (e.g. an Avatar) shown instead of the emoji badge. */
+  avatar?: ReactNode
 }
 
 /** BitLife-style list row: emoji badge, title/subtitle, right accessory. */
-export function Row({ emoji, title, subtitle, right, onPress, disabled, chevron }: RowProps) {
+export function Row({ emoji, title, subtitle, right, onPress, disabled, chevron, avatar }: RowProps) {
   const body = (
     <>
-      <View style={styles.badge}>
-        <Text style={styles.badgeEmoji}>{emoji}</Text>
-      </View>
+      {avatar ?? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeEmoji}>{emoji}</Text>
+        </View>
+      )}
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={1}>
           {title}

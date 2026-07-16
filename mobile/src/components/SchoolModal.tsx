@@ -4,7 +4,8 @@ import { playSfx } from '../audio/sfx'
 import { getMajor } from '../data/majors'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
-import { PersonModal, personEmoji } from './PersonModal'
+import { PersonAvatar } from './Avatar'
+import { PersonModal } from './PersonModal'
 import { Row } from './Row'
 
 interface SchoolModalProps {
@@ -63,7 +64,8 @@ export function SchoolModal({ onClose }: SchoolModalProps) {
             {classmates.map((p) => (
               <Row
                 key={p.id}
-                emoji={personEmoji(p)}
+                emoji="🙂"
+                avatar={<PersonAvatar person={p} />}
                 title={p.name}
                 subtitle={`Bond ${p.relationship}`}
                 onPress={() => {
@@ -79,7 +81,8 @@ export function SchoolModal({ onClose }: SchoolModalProps) {
             {teachers.map((p) => (
               <Row
                 key={p.id}
-                emoji={personEmoji(p)}
+                emoji="🙂"
+                avatar={<PersonAvatar person={p} />}
                 title={p.name}
                 subtitle={`Bond ${p.relationship}`}
                 onPress={() => {

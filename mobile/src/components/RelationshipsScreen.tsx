@@ -5,7 +5,8 @@ import { getAsset } from '../data/assets'
 import { MAX_FRIENDS, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Person } from '../types'
-import { PersonModal, personEmoji, roleLabel } from './PersonModal'
+import { PersonAvatar } from './Avatar'
+import { PersonModal, roleLabel } from './PersonModal'
 import { PhoneModal } from './PhoneModal'
 import { Row } from './Row'
 
@@ -66,7 +67,8 @@ export function RelationshipsScreen() {
       {people.map((person) => (
         <Row
           key={person.id}
-          emoji={person.alive ? personEmoji(person) : '🪦'}
+          emoji="🙂"
+          avatar={<PersonAvatar person={person} />}
           title={person.name}
           subtitle={
             person.alive

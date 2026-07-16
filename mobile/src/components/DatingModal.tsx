@@ -5,6 +5,7 @@ import { randomFirstName, randomLastName } from '../data/names'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Gender } from '../types'
+import { Avatar } from './Avatar'
 
 interface DatingModalProps {
   onClose: () => void
@@ -15,7 +16,7 @@ interface Profile {
   gender: Gender
   age: number
   looks: number
-  emoji: string
+  seed: string
   bio: string
 }
 
@@ -31,13 +32,6 @@ const BIOS = [
   'Plant parent looking for a co-parent.',
   'Fluent in sarcasm and three other languages.',
 ]
-
-function maleFace(): string {
-  return ['🧑', '👨', '🧔', '👨‍🦱', '👨‍🦰'][Math.floor(Math.random() * 5)]
-}
-function femaleFace(): string {
-  return ['👩', '👩‍🦰', '👩‍🦱', '👱‍♀️', '🧑‍🦳'][Math.floor(Math.random() * 5)]
-}
 
 /** Tinder-style swiping. Like someone and, if it's mutual, you're dating. */
 export function DatingModal({ onClose }: DatingModalProps) {
@@ -55,12 +49,14 @@ export function DatingModal({ onClose }: DatingModalProps) {
     () => (): Profile => {
       const age = Math.max(18, playerAge + Math.floor(Math.random() * 11) - 5)
       const looks = 25 + Math.floor(Math.random() * 71)
+      const name = `${randomFirstName(countryCode, targetGender)} ${randomLastName(countryCode)}`
       return {
-        name: `${randomFirstName(countryCode, targetGender)} ${randomLastName(countryCode)}`,
+        name,
         gender: targetGender,
         age,
         looks,
-        emoji: targetGender === 'male' ? maleFace() : femaleFace(),
+        // Seed on the name so the face carries over if you match and date them.
+        seed: name,
         bio: BIOS[Math.floor(Math.random() * BIOS.length)],
       }
     },
@@ -113,10 +109,10 @@ export function DatingModal({ onClose }: DatingModalProps) {
             </View>
           ) : matched ? (
             <View style={styles.matchBox}>
-              <Text style={styles.matchEmoji}>💞</Text>
+              <Avatar seed={matched.seed} gender={matched.gender} age={matched.age} size={96} />
               <Text style={styles.matchTitle}>It's a match!</Text>
               <Text style={styles.matchName}>
-                {matched.emoji} {matched.name}, {matched.age}
+                {matched.name}, {matched.age}
               </Text>
               <Pressable accessibilityRole="button" onPress={startDating} style={styles.startBtn}>
                 <Text style={styles.startBtnText}>Start dating 💕</Text>
@@ -126,7 +122,7 @@ export function DatingModal({ onClose }: DatingModalProps) {
             <>
               <View style={styles.profileCard}>
                 <View style={styles.photo}>
-                  <Text style={styles.photoEmoji}>{profile.emoji}</Text>
+                  <Avatar seed={profile.seed} gender={profile.gender} age={profile.age} size={120} />
                 </View>
                 <Text style={styles.profileName}>
                   {profile.name}, {profile.age}

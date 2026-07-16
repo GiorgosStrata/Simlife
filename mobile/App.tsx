@@ -5,6 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { playSfx } from './src/audio/sfx'
 import { ActivitiesScreen } from './src/components/ActivitiesScreen'
 import { AssetsScreen } from './src/components/AssetsScreen'
+import { Avatar } from './src/components/Avatar'
 import { CareerScreen } from './src/components/CareerScreen'
 import { CharacterCreation } from './src/components/CharacterCreation'
 import { EventModal } from './src/components/EventModal'
@@ -19,16 +20,6 @@ import { TabBar, type TabKey } from './src/components/TabBar'
 import { getMajor } from './src/data/majors'
 import { getJob, isInSchool, jobTitle, useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
-
-/** BitLife-style avatar: the character's emoji ages with them. */
-function avatarEmoji(age: number, alive: boolean, gender: 'male' | 'female'): string {
-  if (!alive) return '🪦'
-  const male = gender === 'male'
-  if (age < 2) return '👶'
-  if (age < 13) return male ? '👦' : '👧'
-  if (age < 60) return male ? '👨' : '👩'
-  return male ? '👴' : '👵'
-}
 
 function Game() {
   const [tab, setTab] = useState<TabKey>('life')
@@ -85,7 +76,7 @@ function Game() {
         {/* Header: avatar, name, occupation, age/year, settings */}
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarEmoji}>{avatarEmoji(age, alive, gender)}</Text>
+            <Avatar seed={name} gender={gender} age={age} alive={alive} size={46} />
           </View>
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>
@@ -190,12 +181,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: colors.cyan500,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarEmoji: {
-    fontSize: 26,
+    overflow: 'hidden',
   },
   headerInfo: {
     flex: 1,
