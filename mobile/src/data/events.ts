@@ -4,7 +4,8 @@ import type { GameEvent } from '../types'
  * Event content lives here, separate from game logic.
  * To add an event: append an object with a unique `id`, an age window,
  * and 2-3 choices. The engine picks eligible events at random each year
- * and avoids repeating one until the pool for that age is exhausted.
+ * and never repeats one within the same life — once the fresh pool for an
+ * age is used up, some years simply pass without a random event.
  */
 export const EVENTS: GameEvent[] = [
   {
@@ -1017,6 +1018,338 @@ export const EVENTS: GameEvent[] = [
         outcome: 'You waited too long. It burst. A grim week in intensive care followed.',
         effects: { health: -30, money: -6000, happiness: -10 },
       },
+    ],
+  },
+
+  // ---------------- Childhood ----------------
+  {
+    id: 'lost-tooth',
+    emoji: '🦷',
+    title: 'A Wobbly Tooth',
+    description: 'Your front tooth is hanging on by a thread. The tooth fairy is rumored to pay well.',
+    minAge: 5,
+    maxAge: 9,
+    choices: [
+      { label: 'Yank it out', outcome: 'One brave tug and it was out! You left it under your pillow.', effects: { happiness: 5, money: 5 } },
+      { label: 'Leave it be', outcome: 'You left it alone and wiggled it for weeks. It eventually fell out mid-lunch.', effects: { happiness: 2 } },
+    ],
+  },
+  {
+    id: 'lemonade-stand',
+    emoji: '🍋',
+    title: 'Lemonade Stand',
+    description: 'You set up a lemonade stand on the corner. Business is... slow.',
+    minAge: 6,
+    maxAge: 11,
+    choices: [
+      { label: 'Undercut the competition', outcome: 'You dropped your prices and cleaned up. Tiny tycoon energy.', effects: { happiness: 5, smarts: 2, money: 30 }, sfx: 'cash' },
+      { label: 'Give it away for free', outcome: 'You gave lemonade to everyone. Broke, but beloved on the block.', effects: { happiness: 8, money: -5 } },
+    ],
+  },
+  {
+    id: 'spelling-bee',
+    emoji: '🐝',
+    title: 'The Spelling Bee',
+    description: 'You made it to the final round of the school spelling bee. The word is "conscientious".',
+    minAge: 7,
+    maxAge: 12,
+    choices: [
+      { label: 'Sound it out carefully', outcome: 'C-O-N-S-C-I-E-N-T-I-O-U-S. You nailed it and took the trophy!', effects: { smarts: 6, happiness: 8 }, sfx: 'success' },
+      { label: 'Panic and guess', outcome: 'You blanked and threw in an extra "shus". So close.', effects: { happiness: -4, smarts: 1 } },
+    ],
+  },
+  {
+    id: 'imaginary-friend',
+    emoji: '👻',
+    title: 'An Imaginary Friend',
+    description: 'You have invented an imaginary friend named Mr. Wobbles who lives in the closet.',
+    minAge: 4,
+    maxAge: 8,
+    choices: [
+      { label: 'Play together all day', outcome: 'You and Mr. Wobbles had grand adventures. Your imagination soared.', effects: { happiness: 6, smarts: 2 } },
+      { label: 'Tell everyone about him', outcome: 'You told the whole class. They found it a bit odd.', effects: { happiness: -2 } },
+    ],
+  },
+  {
+    id: 'class-pet',
+    emoji: '🐹',
+    title: 'Class Pet Duty',
+    description: 'The teacher picks you to take the class hamster home for the weekend.',
+    minAge: 6,
+    maxAge: 11,
+    choices: [
+      { label: 'Take great care of it', outcome: 'You returned the hamster happy and healthy. The teacher was impressed.', effects: { happiness: 5, smarts: 1 } },
+      { label: 'Forget to feed it', outcome: 'You forgot about it until Sunday night. It survived, barely, and so did your reputation.', effects: { happiness: -3 } },
+    ],
+  },
+
+  // ---------------- Teen ----------------
+  {
+    id: 'first-crush',
+    emoji: '💌',
+    title: 'A First Crush',
+    description: 'There is someone in your class you cannot stop thinking about.',
+    minAge: 12,
+    maxAge: 17,
+    choices: [
+      { label: 'Tell them how you feel', outcome: 'You confessed your feelings. Terrifying — but they smiled back.', effects: { happiness: 8, looks: 1 } },
+      { label: 'Say nothing', outcome: 'You said nothing and admired from afar. The longing was exquisite and awful.', effects: { happiness: -3 } },
+    ],
+  },
+  {
+    id: 'learn-to-drive',
+    emoji: '🚗',
+    title: 'Learning to Drive',
+    description: 'Time to get behind the wheel for your first proper driving lesson.',
+    minAge: 16,
+    maxAge: 18,
+    choices: [
+      { label: 'Take it slow and steady', outcome: 'You drove carefully and passed your test first try. Freedom!', effects: { happiness: 8, smarts: 2 }, sfx: 'success' },
+      { label: 'Floor it', outcome: 'You mistook the gas for the brake and flattened a mailbox. Lesson over.', effects: { happiness: -4, money: -200 }, sfx: 'hurt' },
+    ],
+  },
+  {
+    id: 'sneak-out',
+    emoji: '🪟',
+    title: 'Sneaking Out',
+    description: 'Your friends are all going out tonight, but you are grounded. The window is right there.',
+    minAge: 14,
+    maxAge: 17,
+    choices: [
+      { label: 'Sneak out the window', outcome: 'You had a legendary night — and got caught climbing back in at 3am.', effects: { happiness: 5, health: -2 } },
+      { label: 'Stay home', outcome: 'You stayed in and scrolled your phone. FOMO gnawed at you.', effects: { happiness: -3, smarts: 1 } },
+    ],
+  },
+  {
+    id: 'science-fair',
+    emoji: '🧪',
+    title: 'The Science Fair',
+    description: 'The annual science fair is here. You could build something great — or wing it.',
+    minAge: 11,
+    maxAge: 18,
+    choices: [
+      { label: 'Build a real project', outcome: 'Your volcano actually erupted on cue. Blue ribbon, baby!', effects: { smarts: 6, happiness: 6 }, sfx: 'success' },
+      { label: 'Throw it together last minute', outcome: 'Your "project" was three rocks on cardboard. The judges moved on quickly.', effects: { smarts: 1, happiness: -2 } },
+    ],
+  },
+  {
+    id: 'social-challenge',
+    emoji: '📱',
+    title: 'A Viral Challenge',
+    description: 'Everyone online is doing a risky new challenge. Your friends dare you to try it.',
+    minAge: 13,
+    maxAge: 20,
+    choices: [
+      { label: 'Do it for the clout', outcome: 'It went viral! Fifteen minutes of fame — and a mild concussion.', effects: { happiness: 6, health: -6, looks: 1 } },
+      { label: 'Refuse', outcome: 'You sat this one out. Sensible, if a little boring.', effects: { smarts: 2 } },
+    ],
+  },
+  {
+    id: 'part-time-job',
+    emoji: '🍔',
+    title: 'A Part-Time Job',
+    description: 'The local burger joint is hiring weekend staff. Extra pocket money is tempting.',
+    minAge: 15,
+    maxAge: 19,
+    choices: [
+      { label: 'Take the job', outcome: 'You flipped burgers all summer. Tiring, but the paychecks felt great.', effects: { happiness: 2, money: 800, health: -2 }, sfx: 'cash' },
+      { label: 'Enjoy your freedom', outcome: 'You chose lazy summer days over a paycheck. No regrets. Mostly.', effects: { happiness: 4 } },
+    ],
+  },
+
+  // ---------------- Adult ----------------
+  {
+    id: 'lottery-ticket',
+    emoji: '🎰',
+    title: 'A Lottery Ticket',
+    description: 'On a whim, you buy a scratch-off lottery ticket at the gas station.',
+    minAge: 18,
+    maxAge: 90,
+    choices: [
+      { label: 'Scratch it now', outcome: 'Three matching symbols — a small win! Not retirement money, but a nice surprise.', effects: { happiness: 6, money: 500 }, sfx: 'cash' },
+      { label: 'Save it for later', outcome: 'You tucked it in a drawer and forgot about it. It was a loser anyway.', effects: {} },
+    ],
+  },
+  {
+    id: 'tax-audit',
+    emoji: '🧾',
+    title: 'A Tax Audit',
+    description: 'A stern letter arrives: the tax office wants to "review" your last few years.',
+    minAge: 22,
+    maxAge: 75,
+    choices: [
+      { label: 'Cooperate fully', outcome: 'You handed over every receipt. Clean as a whistle — they even apologized.', effects: { happiness: -2, smarts: 1 } },
+      { label: 'Try to hide some income', outcome: 'They found the hidden income. The fine stung badly.', effects: { money: -4000, happiness: -6 }, sfx: 'police' },
+    ],
+  },
+  {
+    id: 'blind-date',
+    emoji: '🍷',
+    title: 'A Blind Date',
+    description: 'A friend sets you up on a blind date. You have no idea what to expect.',
+    minAge: 19,
+    maxAge: 60,
+    choices: [
+      { label: 'Be your charming self', outcome: 'Sparks flew over dinner. You exchanged numbers, grinning like fools.', effects: { happiness: 7, looks: 1 } },
+      { label: 'Overthink everything', outcome: 'You rambled about tax law for an hour. They "had an early morning".', effects: { happiness: -4 } },
+    ],
+  },
+  {
+    id: 'neighbor-dispute',
+    emoji: '🌳',
+    title: 'The Neighbor’s Tree',
+    description: 'Your neighbor’s giant tree keeps dropping branches into your yard.',
+    minAge: 22,
+    maxAge: 90,
+    choices: [
+      { label: 'Talk it out calmly', outcome: 'You had a friendly chat and split the cost of trimming it. Good fences, good friends.', effects: { happiness: 3, money: -150 } },
+      { label: 'Start a feud', outcome: 'You escalated to passive-aggressive notes and a fence war. Nobody won.', effects: { happiness: -5 } },
+    ],
+  },
+  {
+    id: 'car-breakdown',
+    emoji: '🚙',
+    title: 'Broken Down',
+    description: 'Your car sputters and dies on the side of the highway in the rain.',
+    minAge: 18,
+    maxAge: 85,
+    choices: [
+      { label: 'Call a mechanic', outcome: 'A tow and a new alternator later, you were back on the road. Ouch, the bill.', effects: { money: -700, happiness: -3 } },
+      { label: 'Try to fix it yourself', outcome: 'You watched a video and actually fixed it. Grease everywhere, but you felt unstoppable.', effects: { smarts: 3, happiness: 4, health: -1 } },
+    ],
+  },
+  {
+    id: 'startup-pitch',
+    emoji: '💡',
+    title: 'A Business Idea',
+    description: 'You have a genuinely good idea for an app. Do you chase it?',
+    minAge: 20,
+    maxAge: 55,
+    choices: [
+      { label: 'Invest your savings', outcome: 'You poured savings into the idea. It’s a gamble, but your eyes are alive again.', effects: { money: -3000, happiness: 6, smarts: 2 } },
+      { label: 'Keep it as a daydream', outcome: 'You kept the idea safe in a notebook. Someone else launched it two years later.', effects: { happiness: -3, smarts: 1 } },
+    ],
+  },
+  {
+    id: 'gym-injury',
+    emoji: '🏋️',
+    title: 'Ego Lifting',
+    description: 'At the gym, you load way more weight on the bar than you should to impress a stranger.',
+    minAge: 16,
+    maxAge: 60,
+    choices: [
+      { label: 'Go for the big lift', outcome: 'Something in your back went "pop". You waddled home in shame.', effects: { health: -10, happiness: -4, looks: -1 }, sfx: 'hurt' },
+      { label: 'Swallow your pride', outcome: 'You dropped the weight and did it properly. Boring, but injury-free.', effects: { health: 3, smarts: 1 } },
+    ],
+  },
+  {
+    id: 'jury-summons',
+    emoji: '⚖️',
+    title: 'Jury Summons',
+    description: 'A jury duty summons lands in your mailbox for a lengthy trial.',
+    minAge: 18,
+    maxAge: 70,
+    choices: [
+      { label: 'Serve dutifully', outcome: 'You served on the jury and took it seriously. Civic pride, mild boredom.', effects: { smarts: 3, happiness: -1 } },
+      { label: 'Fake an excuse', outcome: 'You wriggled out of it with a flimsy excuse. The guilt lingered a while.', effects: { happiness: -2 } },
+    ],
+  },
+  {
+    id: 'charity-marathon',
+    emoji: '🏃',
+    title: 'Charity Marathon',
+    description: 'A colleague ropes you into running a charity marathon in six weeks.',
+    minAge: 18,
+    maxAge: 65,
+    choices: [
+      { label: 'Train hard and run it', outcome: 'You crossed the finish line, sweaty and triumphant, and raised a nice sum.', effects: { health: 6, happiness: 8, money: -100 }, sfx: 'success' },
+      { label: 'Just donate instead', outcome: 'You skipped the running and just donated. Your knees thanked you.', effects: { happiness: 2, money: -100 } },
+    ],
+  },
+  {
+    id: 'scam-call',
+    emoji: '☎️',
+    title: 'A Suspicious Call',
+    description: 'Someone calls claiming to be your bank, urgently asking you to "verify" your details.',
+    minAge: 20,
+    maxAge: 100,
+    choices: [
+      { label: 'Hang up and report it', outcome: 'You recognized the scam instantly and reported it. Nice try, crooks.', effects: { smarts: 3, happiness: 2 } },
+      { label: 'Give them the details', outcome: 'You fell for it and they drained an account before you noticed.', effects: { money: -2500, happiness: -8 }, sfx: 'fail' },
+    ],
+  },
+  {
+    id: 'found-wallet',
+    emoji: '👛',
+    title: 'A Lost Wallet',
+    description: 'You find a fat wallet on the sidewalk, stuffed with cash and an ID.',
+    minAge: 10,
+    maxAge: 90,
+    choices: [
+      { label: 'Return it to the owner', outcome: 'You tracked down the owner and returned it. They gave you a heartfelt reward.', effects: { happiness: 8, smarts: 1, money: 100 } },
+      { label: 'Keep the cash', outcome: 'You pocketed the cash and ditched the wallet. The guilt followed you home.', effects: { money: 300, happiness: -5 } },
+    ],
+  },
+
+  // ---------------- Later life ----------------
+  {
+    id: 'midlife-crisis',
+    emoji: '🏍️',
+    title: 'A Midlife Crisis',
+    description: 'You wake up one day gripped by the urge to do something wild and expensive.',
+    minAge: 40,
+    maxAge: 58,
+    choices: [
+      { label: 'Buy a motorcycle', outcome: 'You bought a shiny motorcycle and felt 25 again — for about a week.', effects: { happiness: 7, money: -8000, health: -1 } },
+      { label: 'Take up a new hobby instead', outcome: 'You took up painting instead. Cheaper, and oddly fulfilling.', effects: { happiness: 5, smarts: 2 } },
+    ],
+  },
+  {
+    id: 'class-reunion',
+    emoji: '🎟️',
+    title: 'Class Reunion',
+    description: 'An invitation arrives for your school reunion. Everyone will be there.',
+    minAge: 28,
+    maxAge: 65,
+    choices: [
+      { label: 'Go and reconnect', outcome: 'You reconnected with old friends and laughed until your face hurt.', effects: { happiness: 7 } },
+      { label: 'Skip it', outcome: 'You stayed home. Later you wondered who showed up.', effects: { happiness: -2 } },
+    ],
+  },
+  {
+    id: 'retirement-garden',
+    emoji: '🌻',
+    title: 'A Quiet Garden',
+    description: 'With more time on your hands, you consider taking up gardening.',
+    minAge: 55,
+    maxAge: 95,
+    choices: [
+      { label: 'Grow a vegetable patch', outcome: 'Your tomatoes became the envy of the neighborhood. Peaceful days.', effects: { happiness: 6, health: 3 } },
+      { label: 'Prefer the couch', outcome: 'You decided the couch was garden enough. The remote is a fine tool.', effects: { happiness: 1, health: -2 } },
+    ],
+  },
+  {
+    id: 'distant-inheritance',
+    emoji: '📜',
+    title: 'A Surprise Inheritance',
+    description: 'A distant relative you barely knew has passed and, oddly, left you something in their will.',
+    minAge: 25,
+    maxAge: 90,
+    choices: [
+      { label: 'Accept graciously', outcome: 'You inherited a tidy sum from Great-Aunt Mildred. You raised a glass to her memory.', effects: { money: 5000, happiness: 4 }, sfx: 'cash' },
+      { label: 'Donate it all', outcome: 'You gave the whole inheritance to charity. Great-Aunt Mildred would have approved.', effects: { happiness: 8 } },
+    ],
+  },
+  {
+    id: 'wisdom-tooth',
+    emoji: '😬',
+    title: 'Wisdom Teeth',
+    description: 'The dentist says your wisdom teeth have to come out. All four of them.',
+    minAge: 16,
+    maxAge: 30,
+    choices: [
+      { label: 'Get the surgery', outcome: 'Chipmunk cheeks and a week of milkshakes, but soon good as new.', effects: { health: -3, money: -1200, happiness: -2 } },
+      { label: 'Put it off', outcome: 'You ignored it until one got infected. That was a mistake.', effects: { health: -8, money: -1800, happiness: -5 }, sfx: 'hurt' },
     ],
   },
 ]

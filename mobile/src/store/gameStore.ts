@@ -508,12 +508,16 @@ function newLifeState() {
   }
 }
 
-/** Pick a random eligible event, avoiding repeats until the pool runs dry. */
+/**
+ * Pick a random eligible event that hasn't fired yet this life. A generic
+ * event never repeats within a single life — once the fresh pool for this
+ * age is used up, there's simply no random event that year.
+ */
 function drawEvent(age: number, usedIds: string[]): GameEvent | null {
-  const eligible = EVENTS.filter((e) => age >= e.minAge && age <= e.maxAge)
-  if (eligible.length === 0) return null
-  const fresh = eligible.filter((e) => !usedIds.includes(e.id))
-  return pick(fresh.length > 0 ? fresh : eligible)
+  const fresh = EVENTS.filter(
+    (e) => age >= e.minAge && age <= e.maxAge && !usedIds.includes(e.id),
+  )
+  return fresh.length > 0 ? pick(fresh) : null
 }
 
 /** Chance of dying of old age this year; kicks in past 70. */
