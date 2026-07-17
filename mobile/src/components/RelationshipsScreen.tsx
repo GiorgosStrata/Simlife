@@ -8,6 +8,7 @@ import type { Person } from '../types'
 import { PersonAvatar } from './Avatar'
 import { FamilyTreeModal } from './FamilyTreeModal'
 import { PersonModal, roleLabel } from './PersonModal'
+import { PetsModal } from './PetsModal'
 import { PhoneModal } from './PhoneModal'
 import { Row } from './Row'
 
@@ -31,8 +32,10 @@ export function RelationshipsScreen() {
   const [personId, setPersonId] = useState<string | null>(null)
   const [phoneOpen, setPhoneOpen] = useState(false)
   const [treeOpen, setTreeOpen] = useState(false)
+  const [petsOpen, setPetsOpen] = useState(false)
   const generation = useGameStore((s) => s.generation)
   const ancestors = useGameStore((s) => s.ancestors)
+  const petCount = useGameStore((s) => s.pets.length)
 
   const hasPhone = ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')
 
@@ -62,6 +65,16 @@ export function RelationshipsScreen() {
         }
         disabled={!hasPhone}
         chevron={hasPhone}
+      />
+      <Row
+        emoji="🐾"
+        title="Pets"
+        subtitle={petCount > 0 ? `${petCount} pet${petCount === 1 ? '' : 's'} · adopt & care` : 'Adopt a furry (or scaly) friend'}
+        onPress={() => {
+          playSfx('click')
+          setPetsOpen(true)
+        }}
+        chevron
       />
       <Row
         emoji="🌳"
@@ -134,6 +147,7 @@ export function RelationshipsScreen() {
       {personId && <PersonModal personId={personId} onClose={() => setPersonId(null)} />}
       {phoneOpen && <PhoneModal onClose={() => setPhoneOpen(false)} />}
       {treeOpen && <FamilyTreeModal onClose={() => setTreeOpen(false)} />}
+      {petsOpen && <PetsModal onClose={() => setPetsOpen(false)} />}
     </ScrollView>
   )
 }

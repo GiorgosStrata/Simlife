@@ -15,10 +15,12 @@ import type {
   PartnerStatus,
   Person,
   PersonRole,
+  Pet,
   SocialApp,
   SportState,
   Stats,
 } from '../types'
+import { PET_NAMES, getPetOption } from '../data/pets'
 import { LEAGUES, getTeam, jobSport, leagueForJob } from '../data/leagues'
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, resaleValue } from '../data/assets'
@@ -356,6 +358,10 @@ interface GameState {
   // Belongings
   ownedAssetIds: string[]
 
+  // Pets
+  pets: Pet[]
+  nextPetId: number
+
   // Phone: social media follower counts per app.
   followers: Record<SocialApp, number>
 
@@ -405,6 +411,15 @@ interface GameState {
   commitCrime: (crimeId: string) => void
   buyAsset: (assetId: string) => void
   sellAsset: (assetId: string) => void
+
+  // Pets
+  adoptPet: (optionId: string) => void
+  playWithPet: (petId: string) => void
+  feedPet: (petId: string) => void
+  walkPet: (petId: string) => void
+  vetPet: (petId: string) => void
+  teachTrick: (petId: string) => void
+  rehomePet: (petId: string) => void
 
   // Career
   applyForJob: (jobId: string) => void
@@ -480,6 +495,8 @@ function newLifeState() {
     ancestors: [] as Ancestor[],
     generation: 1,
     ownedAssetIds: [] as string[],
+    pets: [] as Pet[],
+    nextPetId: 1,
     followers: { rizzgram: 0, flicktok: 0 } as Record<SocialApp, number>,
     pursuits: { sport: null, mind: null, hobby: null } as Record<
       ActivityCategory,
@@ -622,6 +639,12 @@ export const useGameStore = create<GameState>()(
           relationships: get().relationships.map((p) =>
             p.id === personId ? { ...p, ...change } : p,
           ),
+        })
+      }
+
+      const updatePet = (petId: string, change: Partial<Pet>) => {
+        set({
+          pets: get().pets.map((p) => (p.id === petId ? { ...p, ...change } : p)),
         })
       }
 
@@ -880,6 +903,40 @@ export const useGameStore = create<GameState>()(
             }
           }
 
+          // ----- Pets: age, upkeep, drift, and old-age mortality -----
+          const pets: Pet[] = []
+          for (const pet of s.pets) {
+            if (!pet.alive) continue
+            const opt = getPetOption(pet.optionId)
+            const petAge = pet.age + 1
+            const maxAge = opt?.maxAge ?? 12
+            // Upkeep every year (country-scaled).
+            if (opt) {
+              const upkeep = scaleByCountry(opt.upkeep, s.countryCode)
+              money -= upkeep
+              expenses += upkeep
+            }
+            // Old-age mortality.
+            const risk = petAge >= maxAge ? 0.4 : petAge > maxAge * 0.75 ? 0.08 : 0.01
+            if (Math.random() < risk) {
+              entries.push({
+                id: logId++,
+                age,
+                year,
+                text: `${pet.name} the ${pet.breed} passed away at ${petAge}. 💔`,
+                kind: 'death',
+              })
+              stats.happiness = clampStat(stats.happiness - 8)
+              continue // drops from the list
+            }
+            pets.push({
+              ...pet,
+              age: petAge,
+              happiness: clampStat(pet.happiness - randomInt(0, 4)),
+              bond: clampRelationship(pet.bond - randomInt(0, 2)),
+            })
+          }
+
           // ----- Ongoing pursuits: apply their yearly effects + hidden cost -----
           const pursuits: Record<ActivityCategory, ActivePursuit | null> = { ...s.pursuits }
           let pursuitPopEvent: GameEvent | null = null
@@ -954,6 +1011,7 @@ export const useGameStore = create<GameState>()(
               schoolName,
               nextFriendId,
               pursuits,
+              pets,
               alive: false,
               currentEvent: null,
               usedActions: [],
@@ -993,6 +1051,7 @@ export const useGameStore = create<GameState>()(
             schoolName,
             nextFriendId,
             pursuits,
+            pets,
             currentEvent: event,
             usedEventIds:
               event && !event.id.startsWith('special-')
@@ -1198,6 +1257,121 @@ export const useGameStore = create<GameState>()(
           addLog([
             { text: `You sold your ${asset.name} for $${value.toLocaleString()}.`, kind: 'event' },
           ])
+        },
+
+        // ----- Pets -----
+
+        adoptPet: (optionId: string) => {
+          const s = get()
+          const opt = getPetOption(optionId)
+          if (!opt || !s.alive || s.money < opt.price) return
+          const pet: Pet = {
+            id: `pet-${s.nextPetId}`,
+            optionId: opt.id,
+            name: pick(PET_NAMES),
+            emoji: opt.emoji,
+            breed: opt.breed,
+            age: 0,
+            alive: true,
+            happiness: randomInt(75, 95),
+            bond: randomInt(50, 70),
+          }
+          set({
+            pets: [...s.pets, pet],
+            nextPetId: s.nextPetId + 1,
+            money: s.money - opt.price,
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + opt.joy) },
+          })
+          playSfx('success')
+          addLog([
+            { text: `You adopted ${pet.name} the ${opt.breed} ${opt.emoji}!`, kind: 'relationship' },
+          ])
+        },
+
+        playWithPet: (petId: string) => {
+          const s = get()
+          const pet = s.pets.find((p) => p.id === petId)
+          if (!pet?.alive || !s.alive) return
+          if (!useYearlyAction(`pet-play-${petId}`)) return
+          updatePet(petId, {
+            bond: clampStat(pet.bond + randomInt(4, 9)),
+            happiness: clampStat(pet.happiness + randomInt(5, 10)),
+          })
+          set({ stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 3) } })
+          addLog([{ text: `You played with ${pet.name}. Tails were wagged.`, kind: 'relationship' }])
+        },
+
+        feedPet: (petId: string) => {
+          const s = get()
+          const pet = s.pets.find((p) => p.id === petId)
+          if (!pet?.alive || !s.alive || s.money < 10) return
+          if (!useYearlyAction(`pet-feed-${petId}`)) return
+          updatePet(petId, {
+            bond: clampStat(pet.bond + randomInt(2, 5)),
+            happiness: clampStat(pet.happiness + randomInt(4, 8)),
+          })
+          set({ money: get().money - 10 })
+          addLog([{ text: `You gave ${pet.name} a tasty treat. 🦴`, kind: 'relationship' }])
+        },
+
+        walkPet: (petId: string) => {
+          const s = get()
+          const pet = s.pets.find((p) => p.id === petId)
+          const opt = pet && getPetOption(pet.optionId)
+          if (!pet?.alive || !s.alive || !opt?.walkable) return
+          if (!useYearlyAction(`pet-walk-${petId}`)) return
+          updatePet(petId, {
+            bond: clampStat(pet.bond + randomInt(3, 7)),
+            happiness: clampStat(pet.happiness + randomInt(4, 8)),
+          })
+          set({
+            stats: {
+              ...get().stats,
+              health: clampStat(get().stats.health + randomInt(1, 3)),
+              happiness: clampStat(get().stats.happiness + 2),
+            },
+          })
+          addLog([{ text: `You took ${pet.name} for a long walk. Good for you both. 🐾`, kind: 'relationship' }])
+        },
+
+        vetPet: (petId: string) => {
+          const s = get()
+          const pet = s.pets.find((p) => p.id === petId)
+          if (!pet?.alive || !s.alive) return
+          const cost = scaleByCountry(150, s.countryCode)
+          if (s.money < cost) return
+          if (!useYearlyAction(`pet-vet-${petId}`)) return
+          updatePet(petId, { happiness: clampStat(pet.happiness + randomInt(15, 30)) })
+          set({ money: get().money - cost })
+          addLog([
+            { text: `You took ${pet.name} to the vet ($${cost.toLocaleString()}). Clean bill of health.`, kind: 'relationship' },
+          ])
+        },
+
+        teachTrick: (petId: string) => {
+          const s = get()
+          const pet = s.pets.find((p) => p.id === petId)
+          if (!pet?.alive || !s.alive) return
+          if (!useYearlyAction(`pet-trick-${petId}`)) return
+          if (Math.random() < 0.6) {
+            updatePet(petId, { bond: clampStat(pet.bond + randomInt(5, 10)) })
+            playSfx('success')
+            addLog([{ text: `${pet.name} learned a new trick! Who's a good one? 🎉`, kind: 'relationship' }])
+          } else {
+            addLog([{ text: `${pet.name} just stared at you. Maybe next year.`, kind: 'relationship' }])
+          }
+        },
+
+        rehomePet: (petId: string) => {
+          const s = get()
+          const pet = s.pets.find((p) => p.id === petId)
+          if (!pet || !s.alive) return
+          set({
+            pets: s.pets.filter((p) => p.id !== petId),
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness - 4) },
+          })
+          playSfx('fail')
+          addLog([{ text: `You found ${pet.name} a new home. Bittersweet.`, kind: 'relationship' }])
         },
 
         insult: (personId: string) => {
@@ -2024,7 +2198,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 17,
+      version: 18,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -2159,6 +2333,11 @@ export const useGameStore = create<GameState>()(
         if (version < 17) {
           state.ancestors = []
           state.generation = 1
+        }
+        // v17 saves predate pets.
+        if (version < 18) {
+          state.pets = []
+          state.nextPetId = 1
         }
         return state as GameState
       },

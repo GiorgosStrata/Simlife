@@ -82,6 +82,22 @@ export interface Person {
 
 export type PartnerStatus = 'dating' | 'engaged' | 'married'
 
+/** A pet the character has adopted. */
+export interface Pet {
+  id: string
+  /** Catalogue id (see data/pets.ts). */
+  optionId: string
+  name: string
+  emoji: string
+  breed: string
+  age: number
+  alive: boolean
+  /** The pet's own 0-100 happiness (drops without care; vet restores). */
+  happiness: number
+  /** Bond with the owner, 0-100. */
+  bond: number
+}
+
 /** A past playable character in your bloodline (for the family tree). */
 export interface Ancestor {
   name: string
