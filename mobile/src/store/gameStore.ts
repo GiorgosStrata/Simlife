@@ -41,7 +41,7 @@ import { JOBS } from '../data/jobs'
 import { getMajor } from '../data/majors'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
 import { schoolNameFor, schoolStageFor, teacherName, type SchoolStage } from '../data/schools'
-import { DIVORCE_EVENT, GRADUATION_EVENT, languageCompleteEvent } from '../data/specialEvents'
+import { DIVORCE_EVENT, GRADUATION_EVENT, funeralEvent, languageCompleteEvent } from '../data/specialEvents'
 import {
   DATE_COST,
   GIFT_COST,
@@ -845,6 +845,9 @@ export const useGameStore = create<GameState>()(
           }
 
           // The people in your life age too — and drift if neglected.
+          // A death among close relations queues a funeral popup.
+          const CLOSE: Person['role'][] = ['mother', 'father', 'sibling', 'partner', 'child', 'friend']
+          let funeralFor: { name: string; isPet: boolean } | null = null
           let partnerStatus = s.partnerStatus
           const agedRelationships = s.relationships.map((p) => {
             if (!p.alive) return p
@@ -859,6 +862,7 @@ export const useGameStore = create<GameState>()(
               })
               stats.happiness = clampStat(stats.happiness - 15)
               if (p.role === 'partner') partnerStatus = null
+              if (!funeralFor && CLOSE.includes(p.role)) funeralFor = { name: p.name, isPet: false }
               return { ...p, age: pAge, alive: false }
             }
             return {
@@ -927,6 +931,7 @@ export const useGameStore = create<GameState>()(
                 kind: 'death',
               })
               stats.happiness = clampStat(stats.happiness - 8)
+              if (!funeralFor) funeralFor = { name: pet.name, isPet: true }
               continue // drops from the list
             }
             pets.push({
@@ -1030,11 +1035,13 @@ export const useGameStore = create<GameState>()(
           const event =
             age === 18 && !hasDegree && !inUniversity
               ? GRADUATION_EVENT
-              : pursuitPopEvent
-                ? pursuitPopEvent
-                : divorceRolls
-                  ? DIVORCE_EVENT
-                  : drawEvent(age, s.usedEventIds)
+              : funeralFor
+                ? funeralEvent(funeralFor.name, funeralFor.isPet, s.countryCode)
+                : pursuitPopEvent
+                  ? pursuitPopEvent
+                  : divorceRolls
+                    ? DIVORCE_EVENT
+                    : drawEvent(age, s.usedEventIds)
           set({
             age,
             year,

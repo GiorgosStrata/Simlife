@@ -1,10 +1,82 @@
 import type { GameEvent } from '../types'
+import { scaleByCountry } from './countries'
 import { UNIVERSITY_YEARS } from '../store/constants'
 
 /**
  * Scripted events fired by the engine at fixed moments,
  * not drawn from the random pool.
  */
+
+/**
+ * Pops when someone close (or a pet) dies — plan/attend the funeral,
+ * BitLife style. Costs are country-scaled; skipping stings a little.
+ */
+export function funeralEvent(name: string, isPet: boolean, countryCode: string): GameEvent {
+  if (isPet) {
+    const burial = scaleByCountry(500, countryCode)
+    return {
+      id: 'special-funeral',
+      emoji: '🐾',
+      title: `Goodbye, ${name}`,
+      description: `${name} has passed away. How would you like to say farewell to your beloved companion?`,
+      minAge: 0,
+      maxAge: 120,
+      choices: [
+        {
+          label: `Pet memorial & burial ($${burial.toLocaleString()})`,
+          outcome: `You gave ${name} a proper little send-off. Rest easy, friend.`,
+          effects: { money: -burial, happiness: 6 },
+          sfx: 'death',
+        },
+        {
+          label: 'Bury them in the backyard',
+          outcome: `You buried ${name} in the garden and marked the spot with a stone.`,
+          effects: { happiness: 2 },
+        },
+        {
+          label: 'Say a quiet goodbye',
+          outcome: `You said your goodbyes to ${name}. It hurt more than you expected.`,
+          effects: { happiness: -1 },
+        },
+      ],
+    }
+  }
+
+  const lavish = scaleByCountry(6000, countryCode)
+  const modest = scaleByCountry(1800, countryCode)
+  return {
+    id: 'special-funeral',
+    emoji: '⚰️',
+    title: `Farewell to ${name}`,
+    description: `${name} has passed away. As next of kin, it falls to you to arrange the funeral.`,
+    minAge: 0,
+    maxAge: 120,
+    choices: [
+      {
+        label: `Lavish funeral ($${lavish.toLocaleString()})`,
+        outcome: `You gave ${name} a beautiful send-off. Everyone said it honoured them well.`,
+        effects: { money: -lavish, happiness: 9 },
+        sfx: 'death',
+      },
+      {
+        label: `Modest service ($${modest.toLocaleString()})`,
+        outcome: `You held a simple, heartfelt service for ${name}.`,
+        effects: { money: -modest, happiness: 5 },
+        sfx: 'death',
+      },
+      {
+        label: 'Just attend the funeral',
+        outcome: `You attended ${name}'s funeral and said your goodbyes.`,
+        effects: { happiness: 1 },
+      },
+      {
+        label: 'Skip it',
+        outcome: `You didn't go to ${name}'s funeral. The guilt lingered.`,
+        effects: { happiness: -6 },
+      },
+    ],
+  }
+}
 
 /** Pops when a language pursuit reaches fluency. */
 export function languageCompleteEvent(label: string): GameEvent {
