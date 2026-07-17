@@ -97,6 +97,96 @@ export function languageCompleteEvent(label: string): GameEvent {
   }
 }
 
+/** Shown when the character is convicted and sent to prison. */
+export function arrestEvent(crimeName: string, sentence: number): GameEvent {
+  return {
+    id: 'special-arrest',
+    emoji: '👮',
+    title: 'Busted!',
+    description: `You were caught, arrested, and hauled before a judge for ${crimeName.toLowerCase()}. The gavel comes down: ${sentence} year${sentence === 1 ? '' : 's'} in prison.`,
+    minAge: 0,
+    maxAge: 120,
+    choices: [
+      {
+        label: 'Accept your fate',
+        outcome: `You were sentenced to ${sentence} year${sentence === 1 ? '' : 's'} behind bars.`,
+        effects: { happiness: -15 },
+        sfx: 'police',
+      },
+    ],
+  }
+}
+
+/** Shown the year the character is released from prison. */
+export const RELEASE_EVENT: GameEvent = {
+  id: 'special-release',
+  emoji: '🕊️',
+  title: 'A Free Person',
+  description:
+    'The gates open and you walk out into the sunlight, a free person at last. The world has moved on without you — time to rebuild.',
+  minAge: 0,
+  maxAge: 120,
+  choices: [
+    {
+      label: 'Breathe the fresh air',
+      outcome: 'You were released from prison. A fresh start, with a record that follows you.',
+      effects: { happiness: 12 },
+    },
+  ],
+}
+
+/** Random events that only fire while incarcerated. */
+export const PRISON_EVENTS: GameEvent[] = [
+  {
+    id: 'special-prison-fight',
+    emoji: '🥊',
+    title: 'Yard Trouble',
+    description: 'A hulking inmate shoves you in the yard and the whole block goes quiet, waiting to see what you do.',
+    minAge: 0,
+    maxAge: 120,
+    choices: [
+      { label: 'Fight back', outcome: 'You fought back and earned some respect — and a black eye.', effects: { health: -8, happiness: 3 }, sfx: 'punch' },
+      { label: 'Back down', outcome: 'You backed down. Safer, but the whole block noticed.', effects: { happiness: -5 } },
+    ],
+  },
+  {
+    id: 'special-prison-gang',
+    emoji: '🩸',
+    title: 'A Gang Comes Calling',
+    description: 'One of the prison gangs offers you "protection" — for a price and your loyalty.',
+    minAge: 0,
+    maxAge: 120,
+    choices: [
+      { label: 'Join up', outcome: 'You joined the gang. Safety in numbers, but they own you now.', effects: { happiness: 2, health: 2 } },
+      { label: 'Go it alone', outcome: 'You turned them down and watched your back all year.', effects: { happiness: -4, smarts: 1 } },
+    ],
+  },
+  {
+    id: 'special-prison-contraband',
+    emoji: '📦',
+    title: 'Contraband',
+    description: 'A guard offers to smuggle in a phone so you can contact the outside world.',
+    minAge: 0,
+    maxAge: 120,
+    choices: [
+      { label: 'Take the risk', outcome: 'You got the phone and felt connected again — until the next cell search.', effects: { happiness: 5, money: -300 } },
+      { label: 'Not worth it', outcome: 'You passed. Keeping your nose clean felt like the smart play.', effects: { smarts: 1 } },
+    ],
+  },
+  {
+    id: 'special-prison-library',
+    emoji: '📚',
+    title: 'The Prison Library',
+    description: 'You have a lot of time on your hands. The prison library is quiet and mostly empty.',
+    minAge: 0,
+    maxAge: 120,
+    choices: [
+      { label: 'Read everything', outcome: 'You read every book you could find. Prison made you sharper.', effects: { smarts: 6, happiness: 2 } },
+      { label: 'Nap instead', outcome: 'You mostly napped. The days blurred together.', effects: { happiness: 1, health: 1 } },
+    ],
+  },
+]
+
 /** Fires once in childhood when the parents split up. */
 export const DIVORCE_EVENT: GameEvent = {
   id: 'special-divorce',

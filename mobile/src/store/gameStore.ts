@@ -16,6 +16,7 @@ import type {
   Person,
   PersonRole,
   Pet,
+  PrisonState,
   SocialApp,
   SportState,
   Stats,
@@ -41,7 +42,15 @@ import { JOBS } from '../data/jobs'
 import { getMajor } from '../data/majors'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
 import { schoolNameFor, schoolStageFor, teacherName, type SchoolStage } from '../data/schools'
-import { DIVORCE_EVENT, GRADUATION_EVENT, funeralEvent, languageCompleteEvent } from '../data/specialEvents'
+import {
+  DIVORCE_EVENT,
+  GRADUATION_EVENT,
+  PRISON_EVENTS,
+  RELEASE_EVENT,
+  arrestEvent,
+  funeralEvent,
+  languageCompleteEvent,
+} from '../data/specialEvents'
 import { REL_EVENT_ROLES, buildRelationshipEvent } from '../data/relationshipEvents'
 import {
   DATE_COST,
@@ -186,8 +195,10 @@ export function jobTitle(job: Job, tier: number): string {
  */
 export function jobBlocker(
   job: Job,
-  who: { age: number; smarts: number; hasDegree: boolean; major: string | null },
+  who: { age: number; smarts: number; hasDegree: boolean; major: string | null; criminalRecord?: boolean },
 ): string | null {
+  // Licensed professions won't hire anyone with a criminal record.
+  if (who.criminalRecord && job.requiredMajor) return 'clean record required'
   if (job.requiredMajor && who.major !== job.requiredMajor)
     return `${getMajor(job.requiredMajor)?.name ?? job.requiredMajor} degree required`
   if (job.requiresDegree && !who.hasDegree) return 'university degree required'
@@ -369,6 +380,10 @@ interface GameState {
   // Activities: one ongoing pursuit per category; crime is one-off.
   pursuits: Record<ActivityCategory, ActivePursuit | null>
   criminalRecord: boolean
+  /** Times the character has been arrested. */
+  timesArrested: number
+  /** Set while incarcerated; null when free. */
+  prison: PrisonState | null
 
   setSfxVolume: (volume: number) => void
   setTheme: (theme: ThemeName) => void
@@ -411,6 +426,12 @@ interface GameState {
   startPursuit: (activityId: string) => void
   stopPursuit: (category: ActivityCategory) => void
   commitCrime: (crimeId: string) => void
+
+  // Prison
+  attemptEscape: () => void
+  prisonBehave: () => void
+  prisonWorkout: () => void
+  bribeGuard: () => void
   buyAsset: (assetId: string) => void
   sellAsset: (assetId: string) => void
 
@@ -505,6 +526,8 @@ function newLifeState() {
       ActivePursuit | null
     >,
     criminalRecord: false,
+    timesArrested: 0,
+    prison: null as PrisonState | null,
   }
 }
 
@@ -756,6 +779,19 @@ export const useGameStore = create<GameState>()(
             stats.health = clampStat(stats.health - randomInt(0, 2))
           }
 
+          // Serve a year of any prison sentence. Released when it runs out.
+          const imprisoned = !!s.prison
+          let prison = s.prison
+          let releasedThisYear = false
+          if (prison) {
+            prison = { ...prison, yearsLeft: prison.yearsLeft - 1 }
+            if (prison.yearsLeft <= 0) {
+              prison = null
+              releasedThisYear = true
+              entries.push({ id: logId++, age, year, text: 'You were released from prison. 🕊️', kind: 'career' })
+            }
+          }
+
           // Salary lands every year you hold a job (country + tier + raises).
           const job = getJob(s.jobId)
           let jobTier = s.jobTier
@@ -886,8 +922,9 @@ export const useGameStore = create<GameState>()(
           ]
 
           // ----- Yearly cost of living (this is why you keep less than salary) -----
-          // Personal expenses kick in once you're on your own.
-          if (age >= EXPENSES_START_AGE) {
+          // Personal expenses kick in once you're on your own — but not while
+          // the state is housing (and feeding) you in prison.
+          if (age >= EXPENSES_START_AGE && !imprisoned) {
             const living = personalExpenses(s.countryCode)
             money -= living
             expenses += living
@@ -1023,6 +1060,7 @@ export const useGameStore = create<GameState>()(
               nextFriendId,
               pursuits,
               pets,
+              prison,
               alive: false,
               currentEvent: null,
               usedActions: [],
@@ -1047,18 +1085,25 @@ export const useGameStore = create<GameState>()(
             relCandidates.length > 0 && Math.random() < 0.4
               ? buildRelationshipEvent(pick(relCandidates), age)
               : null
-          const event =
-            age === 18 && !hasDegree && !inUniversity
-              ? GRADUATION_EVENT
-              : funeralFor
-                ? funeralEvent(funeralFor.name, funeralFor.isPet, s.countryCode)
-                : pursuitPopEvent
-                  ? pursuitPopEvent
-                  : divorceRolls
-                    ? DIVORCE_EVENT
-                    : relEvent
-                      ? relEvent
-                      : drawEvent(age, s.usedEventIds)
+          // Released this year → a release popup. Still inside → only prison
+          // events fire (normal life is on hold). Otherwise the usual chain.
+          const event = releasedThisYear
+            ? RELEASE_EVENT
+            : prison
+              ? Math.random() < 0.35
+                ? pick(PRISON_EVENTS)
+                : null
+              : age === 18 && !hasDegree && !inUniversity
+                ? GRADUATION_EVENT
+                : funeralFor
+                  ? funeralEvent(funeralFor.name, funeralFor.isPet, s.countryCode)
+                  : pursuitPopEvent
+                    ? pursuitPopEvent
+                    : divorceRolls
+                      ? DIVORCE_EVENT
+                      : relEvent
+                        ? relEvent
+                        : drawEvent(age, s.usedEventIds)
           set({
             age,
             year,
@@ -1076,6 +1121,7 @@ export const useGameStore = create<GameState>()(
             nextFriendId,
             pursuits,
             pets,
+            prison,
             currentEvent: event,
             usedEventIds:
               event && !event.id.startsWith('special-') && !event.id.startsWith('rel-')
@@ -1241,6 +1287,7 @@ export const useGameStore = create<GameState>()(
 
         commitCrime: (crimeId: string) => {
           const s = get()
+          if (s.prison) return
           const crime = getCrime(crimeId)
           if (!crime || !s.alive || s.age < crime.minAge) return
           if (!useYearlyAction(`crime-${crimeId}`)) return
@@ -1258,10 +1305,39 @@ export const useGameStore = create<GameState>()(
           const caught = Math.random() < crime.catchChance
           if (caught) {
             apply(crime.caught)
-            set({ money, stats, criminalRecord: true })
+            const timesArrested = s.timesArrested + 1
+            // Trial: a smart defendant (esp. for petty crimes) can beat the rap.
+            const petty = crime.maxSentence <= 2
+            const acquitChance = petty
+              ? Math.min(0.5, 0.25 + s.stats.smarts / 400)
+              : Math.min(0.2, s.stats.smarts / 700)
+            if (Math.random() < acquitChance) {
+              set({ money, stats, criminalRecord: true, timesArrested })
+              playSfx('police')
+              addLog([
+                { text: `You were caught trying to ${crime.name.toLowerCase()}, but a slick defense got you off with probation.`, kind: 'death' },
+              ])
+              return
+            }
+            // Convicted → prison. You lose your job and any sports career.
+            const sentence = randomInt(Math.max(1, Math.round(crime.maxSentence / 3)), crime.maxSentence)
+            set({
+              money,
+              stats,
+              criminalRecord: true,
+              timesArrested,
+              prison: { crime: crime.name, sentence, yearsLeft: sentence, behavior: 50 },
+              jobId: null,
+              jobTier: 0,
+              yearsInJob: 0,
+              raisePercent: 0,
+              sport: null,
+              relationships: withoutWorkPeople(s.relationships),
+              currentEvent: arrestEvent(crime.name, sentence),
+            })
             playSfx('police')
             addLog([
-              { text: `You tried to ${crime.name.toLowerCase()} — and got caught. The law was not kind.`, kind: 'death' },
+              { text: `You were convicted of ${crime.name.toLowerCase()} and sentenced to ${sentence} year${sentence === 1 ? '' : 's'} in prison. 🚔`, kind: 'death' },
             ])
           } else {
             const payout = crime.reward > 0 ? randomInt(Math.round(crime.reward * 0.5), Math.round(crime.reward * 1.5)) : 0
@@ -1277,6 +1353,103 @@ export const useGameStore = create<GameState>()(
                     : `You committed ${crime.name.toLowerCase()} and slipped away into the night.`,
                 kind: 'event',
               },
+            ])
+          }
+        },
+
+        // ----- Prison -----
+
+        attemptEscape: () => {
+          const s = get()
+          if (!s.alive || !s.prison) return
+          if (!useYearlyAction('escape')) return
+          const chance = 0.3 + s.stats.smarts / 600 + s.stats.health / 600
+          if (Math.random() < chance) {
+            set({
+              prison: null,
+              stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 8) },
+            })
+            playSfx('success')
+            addLog([
+              { text: 'You broke out of prison and vanished into the night! Freedom — for now. 🏃', kind: 'event' },
+            ])
+          } else {
+            const extra = randomInt(2, 5)
+            set({
+              prison: {
+                ...s.prison,
+                yearsLeft: s.prison.yearsLeft + extra,
+                sentence: s.prison.sentence + extra,
+                behavior: clampStat(s.prison.behavior - 30),
+              },
+              stats: { ...s.stats, health: clampStat(s.stats.health - randomInt(5, 15)) },
+            })
+            playSfx('hurt')
+            addLog([
+              { text: `Your escape attempt failed. The guards were waiting, and tacked ${extra} years onto your sentence. 🚨`, kind: 'death' },
+            ])
+          }
+        },
+
+        prisonBehave: () => {
+          const s = get()
+          if (!s.alive || !s.prison) return
+          if (!useYearlyAction('behave')) return
+          const behavior = clampStat(s.prison.behavior + randomInt(8, 15))
+          let yearsLeft = s.prison.yearsLeft
+          let paroled = false
+          if (behavior >= 75 && yearsLeft > 1 && Math.random() < 0.45) {
+            yearsLeft -= 1
+            paroled = true
+          }
+          set({
+            prison: { ...s.prison, behavior, yearsLeft },
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 2) },
+          })
+          if (paroled) playSfx('success')
+          addLog([
+            {
+              text: paroled
+                ? 'Good behaviour earned you a year off your sentence. 🙏'
+                : 'You kept your head down and stayed out of trouble this year.',
+              kind: 'career',
+            },
+          ])
+        },
+
+        prisonWorkout: () => {
+          const s = get()
+          if (!s.alive || !s.prison) return
+          if (!useYearlyAction('prison-workout')) return
+          set({
+            prison: { ...s.prison, behavior: clampStat(s.prison.behavior + 3) },
+            stats: { ...s.stats, health: clampStat(s.stats.health + randomInt(3, 7)) },
+          })
+          playSfx('gym')
+          addLog([{ text: 'You spent the year in the prison yard getting seriously swole. 💪', kind: 'career' }])
+        },
+
+        bribeGuard: () => {
+          const s = get()
+          if (!s.alive || !s.prison) return
+          const cost = scaleByCountry(5000, s.countryCode)
+          if (s.money < cost) return
+          if (!useYearlyAction('bribe')) return
+          if (Math.random() < 0.6) {
+            const off = randomInt(1, Math.min(3, s.prison.yearsLeft))
+            set({
+              money: s.money - cost,
+              prison: { ...s.prison, yearsLeft: Math.max(0, s.prison.yearsLeft - off) },
+            })
+            playSfx('cash')
+            addLog([
+              { text: `You slipped a guard $${cost.toLocaleString()} and shaved ${off} year${off === 1 ? '' : 's'} off your sentence. 🤫`, kind: 'career' },
+            ])
+          } else {
+            set({ money: s.money - cost })
+            playSfx('fail')
+            addLog([
+              { text: 'You tried to bribe a guard — they took the cash and wrote you up anyway.', kind: 'career' },
             ])
           }
         },
@@ -1624,7 +1797,15 @@ export const useGameStore = create<GameState>()(
           const job = getJob(jobId)
           if (!job || !s.alive || s.screen !== 'life' || s.jobId === jobId) return
           if (!s.jobOpenings.includes(jobId)) return
-          if (jobBlocker(job, { age: s.age, smarts: s.stats.smarts, hasDegree: s.hasDegree, major: s.major })) {
+          if (
+            jobBlocker(job, {
+              age: s.age,
+              smarts: s.stats.smarts,
+              hasDegree: s.hasDegree,
+              major: s.major,
+              criminalRecord: s.criminalRecord,
+            })
+          ) {
             return
           }
           const crew = rollWorkplacePeople(s.countryCode, s.age, s.nextFriendId)
@@ -2276,7 +2457,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 18,
+      version: 19,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -2416,6 +2597,11 @@ export const useGameStore = create<GameState>()(
         if (version < 18) {
           state.pets = []
           state.nextPetId = 1
+        }
+        // v18 saves predate the prison/justice system.
+        if (version < 19) {
+          state.prison = null
+          state.timesArrested = 0
         }
         return state as GameState
       },

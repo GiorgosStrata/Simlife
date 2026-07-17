@@ -14,6 +14,7 @@ import {
 } from '../store/gameStore'
 import { colors } from '../theme'
 import { JobListingsModal } from './JobListingsModal'
+import { PrisonModal } from './PrisonModal'
 import { Row } from './Row'
 import { SchoolModal } from './SchoolModal'
 import { SpecialJobsModal } from './SpecialJobsModal'
@@ -69,6 +70,8 @@ export function CareerScreen() {
   const [visitingWork, setVisitingWork] = useState(false)
   const [visitingTeam, setVisitingTeam] = useState(false)
   const [specialJobs, setSpecialJobs] = useState(false)
+  const [visitingPrison, setVisitingPrison] = useState(false)
+  const prison = useGameStore((s) => s.prison)
 
   const currentJob = getJob(jobId)
   const isSport = jobSport(jobId) !== null
@@ -79,6 +82,22 @@ export function CareerScreen() {
   const action = (run: () => void) => () => {
     playSfx('click')
     run()
+  }
+
+  if (prison) {
+    return (
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        <Text style={styles.sectionHeading}>🔒 INCARCERATED</Text>
+        <Row
+          emoji="🔒"
+          title="Prison"
+          subtitle={`${prison.yearsLeft} year${prison.yearsLeft === 1 ? '' : 's'} left · ${prison.crime} · tap to do your time`}
+          onPress={action(() => setVisitingPrison(true))}
+          chevron
+        />
+        {visitingPrison && <PrisonModal onClose={() => setVisitingPrison(false)} />}
+      </ScrollView>
+    )
   }
 
   return (

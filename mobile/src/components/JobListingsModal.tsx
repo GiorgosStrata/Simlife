@@ -24,6 +24,7 @@ export function JobListingsModal({ onClose }: JobListingsModalProps) {
   const jobId = useGameStore((s) => s.jobId)
   const hasDegree = useGameStore((s) => s.hasDegree)
   const major = useGameStore((s) => s.major)
+  const criminalRecord = useGameStore((s) => s.criminalRecord)
   const countryCode = useGameStore((s) => s.countryCode)
   const jobOpenings = useGameStore((s) => s.jobOpenings)
   const applyForJob = useGameStore((s) => s.applyForJob)
@@ -68,7 +69,7 @@ export function JobListingsModal({ onClose }: JobListingsModalProps) {
           </Text>
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {openings.map((job) => {
-              const blocker = jobBlocker(job, { age, smarts: stats.smarts, hasDegree, major })
+              const blocker = jobBlocker(job, { age, smarts: stats.smarts, hasDegree, major, criminalRecord })
               const isCurrent = job.id === jobId
               return (
                 <Row

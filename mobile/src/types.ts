@@ -167,8 +167,22 @@ export interface CrimeAction {
   reward: number
   /** Stat changes if you get away with it. */
   success: Effects
-  /** Stat/money changes if you get caught. */
+  /** Stat/money changes if you get caught (the arrest penalty). */
   caught: Effects
+  /** Maximum prison sentence (years) if convicted. */
+  maxSentence: number
+}
+
+/** Live state while the character is incarcerated. */
+export interface PrisonState {
+  /** The crime that put you here. */
+  crime: string
+  /** Total years sentenced. */
+  sentence: number
+  /** Years still to serve. */
+  yearsLeft: number
+  /** 0-100 good-behaviour meter; high behaviour helps you make parole. */
+  behavior: number
 }
 
 /** A pursuit the character is currently doing. */

@@ -41,6 +41,7 @@ function Game() {
   const major = useGameStore((s) => s.major)
   const applyingToUniversity = useGameStore((s) => s.applyingToUniversity)
   const ageUp = useGameStore((s) => s.ageUp)
+  const prison = useGameStore((s) => s.prison)
   const theme = useGameStore((s) => s.theme)
 
   // Apply the light/dark theme on web whenever it changes.
@@ -85,15 +86,17 @@ function Game() {
   }
 
   const job = getJob(jobId)
-  const occupation = job
-    ? `${job.emoji} ${jobTitle(job, jobTier)}`
-    : inUniversity
-      ? `🏛️ Studying ${getMajor(major)?.name ?? ''}`
-      : isInSchool(age)
-        ? '🎒 Student'
-        : age < 6
-          ? '🧸 Child'
-          : '🛋️ Unemployed'
+  const occupation = prison
+    ? `🔒 Inmate · ${prison.yearsLeft}y left`
+    : job
+      ? `${job.emoji} ${jobTitle(job, jobTier)}`
+      : inUniversity
+        ? `🏛️ Studying ${getMajor(major)?.name ?? ''}`
+        : isInSchool(age)
+          ? '🎒 Student'
+          : age < 6
+            ? '🧸 Child'
+            : '🛋️ Unemployed'
 
   const ageUpDisabled = !alive || currentEvent !== null
   const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] })
