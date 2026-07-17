@@ -427,6 +427,14 @@ interface GameState {
   stopPursuit: (category: ActivityCategory) => void
   commitCrime: (crimeId: string) => void
 
+  // Mind & Body (once per year each)
+  seeDoctor: () => void
+  goToGym: () => void
+  meditate: () => void
+  seeTherapist: () => void
+  plasticSurgery: () => void
+  spaDay: () => void
+
   // Prison
   attemptEscape: () => void
   prisonBehave: () => void
@@ -543,11 +551,49 @@ function drawEvent(age: number, usedIds: string[]): GameEvent | null {
   return fresh.length > 0 ? pick(fresh) : null
 }
 
-/** Chance of dying of old age this year; kicks in past 70. */
+/**
+ * Natural death of old age. Health decides *when* frailty sets in: a fit
+ * elder simply isn't in the danger zone yet, while a sickly one gets there
+ * decades early. A 75-year-old with 88 health has a frailty age near 83, so
+ * they will not quietly die — only a catastrophe (below) can take them.
+ * Once past the frailty age, risk climbs steeply year over year.
+ */
 function oldAgeDeathRoll(age: number, health: number): boolean {
-  if (age < 70) return false
-  const risk = (age - 70) * 0.015 + (health < 30 ? 0.05 : 0)
-  return Math.random() < risk
+  const frailtyAge = 58 + health * 0.28 // health 88 → ~83, health 20 → ~64
+  if (age < frailtyAge) return false
+  const over = age - frailtyAge
+  return Math.random() < 0.02 + over * over * 0.006
+}
+
+/**
+ * A rare, sudden catastrophe — heart attack, stroke, aneurysm — that can
+ * fell even the healthy. Very unlikely when young and fit; the odds ramp up
+ * with age and are multiplied by poor health. Returns the cause of death, or
+ * null. This is the *only* way a healthy elder dies before their frailty age.
+ */
+function catastropheRoll(age: number, health: number): string | null {
+  if (age < 35) return null
+  const ageFactor = (age - 35) * 0.0003 // ~2% a year by age 100
+  const healthFactor = 0.35 + ((100 - health) / 100) * 1.8 // 0.35–2.15
+  if (Math.random() >= ageFactor * healthFactor) return null
+  return pick([
+    'a sudden heart attack',
+    'a stroke',
+    'a brain aneurysm',
+    'a heart attack in their sleep',
+    'sudden cardiac arrest',
+  ])
+}
+
+/**
+ * Apply a stat gain with diminishing returns: the higher a stat already sits,
+ * the less each point of effort moves it, so maxing anything is a lifelong
+ * grind rather than a few good years. Losses always apply in full.
+ */
+function gainStat(current: number, delta: number): number {
+  if (delta <= 0) return clampStat(current + delta)
+  const factor = Math.pow(1 - current / 100, 1.6) // ~1 near 0, ~0 near 100
+  return clampStat(current + delta * factor)
 }
 
 /** Family members face their own mortality past 72. */
@@ -838,7 +884,7 @@ export const useGameStore = create<GameState>()(
             if (uniYearsLeft <= 0) {
               inUniversity = false
               hasDegree = true
-              stats.smarts = clampStat(stats.smarts + 10)
+              stats.smarts = gainStat(stats.smarts, 10)
               const majorName = getMajor(s.major)?.name ?? 'your field'
               entries.push({
                 id: logId++,
@@ -999,7 +1045,7 @@ export const useGameStore = create<GameState>()(
             // Yearly stat boost.
             const { money: _m, ...deltas } = activity.yearly
             for (const key of Object.keys(deltas) as (keyof Stats)[]) {
-              stats[key] = clampStat(stats[key] + (deltas[key] ?? 0))
+              stats[key] = gainStat(stats[key], deltas[key] ?? 0)
             }
             // Hidden yearly cost, country-scaled, from age 18.
             if (age >= EXPENSES_START_AGE && activity.cost > 0) {
@@ -1035,12 +1081,20 @@ export const useGameStore = create<GameState>()(
             })
           }
 
-          if (stats.health <= 0 || oldAgeDeathRoll(age, stats.health) || age >= MAX_AGE) {
+          const naturalDeath = oldAgeDeathRoll(age, stats.health)
+          const catastrophe = naturalDeath ? null : catastropheRoll(age, stats.health)
+          if (stats.health <= 0 || naturalDeath || catastrophe || age >= MAX_AGE) {
+            const deathText =
+              stats.health <= 0
+                ? `${s.name}'s health finally gave out at age ${age}.`
+                : catastrophe
+                  ? `${s.name} died of ${catastrophe} at age ${age}. Gone in an instant.`
+                  : `${s.name} passed away peacefully at age ${age}. What a life it was.`
             entries.push({
               id: logId++,
               age,
               year,
-              text: `${s.name} passed away peacefully at age ${age}. What a life it was.`,
+              text: deathText,
               kind: 'death',
             })
             set({
@@ -1144,7 +1198,7 @@ export const useGameStore = create<GameState>()(
           const { money: moneyDelta = 0, ...statDeltas } = choice.effects
           const stats = { ...s.stats }
           for (const key of Object.keys(statDeltas) as (keyof Stats)[]) {
-            stats[key] = clampStat(stats[key] + (statDeltas[key] ?? 0))
+            stats[key] = gainStat(stats[key], statDeltas[key] ?? 0)
           }
           // Events can push you into debt (money may go negative).
           const money = s.money + moneyDelta
@@ -1237,7 +1291,7 @@ export const useGameStore = create<GameState>()(
           set({
             stats: {
               ...s.stats,
-              smarts: clampStat(s.stats.smarts + randomInt(2, 5)),
+              smarts: gainStat(s.stats.smarts, randomInt(2, 5)),
               happiness: clampStat(s.stats.happiness - randomInt(0, 2)),
             },
           })
@@ -1285,6 +1339,123 @@ export const useGameStore = create<GameState>()(
           addLog([{ text: `You gave up ${activity?.name.toLowerCase() ?? 'an activity'}.`, kind: 'career' }])
         },
 
+        // ----- Mind & Body -----
+
+        seeDoctor: () => {
+          const s = get()
+          if (!s.alive) return
+          const cost = scaleByCountry(150, s.countryCode)
+          if (s.money < cost) return
+          if (!useYearlyAction('doctor')) return
+          const healthy = s.stats.health >= 85
+          set({
+            money: s.money - cost,
+            stats: { ...s.stats, health: gainStat(s.stats.health, randomInt(healthy ? 1 : 5, healthy ? 3 : 10)) },
+          })
+          playSfx('success')
+          addLog([
+            {
+              text: healthy
+                ? 'The doctor gave you a clean bill of health. Keep it up.'
+                : 'A checkup and some treatment left you feeling much better.',
+              kind: 'event',
+            },
+          ])
+        },
+
+        goToGym: () => {
+          const s = get()
+          if (!s.alive || s.age < 8) return
+          const cost = scaleByCountry(80, s.countryCode)
+          if (s.money < cost) return
+          if (!useYearlyAction('gym-visit')) return
+          set({
+            money: s.money - cost,
+            stats: {
+              ...s.stats,
+              health: gainStat(s.stats.health, randomInt(3, 6)),
+              looks: gainStat(s.stats.looks, randomInt(0, 2)),
+            },
+          })
+          playSfx('gym')
+          addLog([{ text: 'You put in the reps at the gym this year. 💪', kind: 'career' }])
+        },
+
+        meditate: () => {
+          const s = get()
+          if (!s.alive) return
+          if (!useYearlyAction('meditate')) return
+          set({
+            stats: {
+              ...s.stats,
+              happiness: clampStat(s.stats.happiness + randomInt(4, 8)),
+              health: gainStat(s.stats.health, randomInt(1, 2)),
+            },
+          })
+          playSfx('success')
+          addLog([{ text: 'You spent the year practising mindfulness. Inner calm, restored. 🧘', kind: 'event' }])
+        },
+
+        seeTherapist: () => {
+          const s = get()
+          if (!s.alive) return
+          const cost = scaleByCountry(250, s.countryCode)
+          if (s.money < cost) return
+          if (!useYearlyAction('therapist')) return
+          set({
+            money: s.money - cost,
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + randomInt(8, 15)) },
+          })
+          playSfx('success')
+          addLog([{ text: 'Therapy helped you work through things. You feel lighter.', kind: 'event' }])
+        },
+
+        plasticSurgery: () => {
+          const s = get()
+          if (!s.alive || s.age < 18) return
+          const cost = scaleByCountry(7000, s.countryCode)
+          if (s.money < cost) return
+          if (!useYearlyAction('surgery')) return
+          const botched = Math.random() < 0.15
+          if (botched) {
+            set({
+              money: s.money - cost,
+              stats: {
+                ...s.stats,
+                looks: clampStat(s.stats.looks - randomInt(5, 12)),
+                health: clampStat(s.stats.health - randomInt(3, 8)),
+              },
+            })
+            playSfx('hurt')
+            addLog([{ text: 'The surgery was botched. Not the look you paid for. 😬', kind: 'event' }])
+            return
+          }
+          set({
+            money: s.money - cost,
+            stats: { ...s.stats, looks: gainStat(s.stats.looks, randomInt(8, 16)) },
+          })
+          playSfx('cash')
+          addLog([{ text: 'You went under the knife and came out looking fabulous. ✨', kind: 'event' }])
+        },
+
+        spaDay: () => {
+          const s = get()
+          if (!s.alive) return
+          const cost = scaleByCountry(200, s.countryCode)
+          if (s.money < cost) return
+          if (!useYearlyAction('spa')) return
+          set({
+            money: s.money - cost,
+            stats: {
+              ...s.stats,
+              happiness: clampStat(s.stats.happiness + randomInt(3, 7)),
+              looks: gainStat(s.stats.looks, randomInt(1, 3)),
+            },
+          })
+          playSfx('cash')
+          addLog([{ text: 'A day at the spa left you glowing and refreshed. 💆', kind: 'event' }])
+        },
+
         commitCrime: (crimeId: string) => {
           const s = get()
           if (s.prison) return
@@ -1297,7 +1468,7 @@ export const useGameStore = create<GameState>()(
           const apply = (e: typeof crime.success) => {
             const { money: m = 0, ...statDeltas } = e
             for (const key of Object.keys(statDeltas) as (keyof Stats)[]) {
-              stats[key] = clampStat(stats[key] + (statDeltas[key] ?? 0))
+              stats[key] = gainStat(stats[key], statDeltas[key] ?? 0)
             }
             money += m
           }
@@ -1423,7 +1594,7 @@ export const useGameStore = create<GameState>()(
           if (!useYearlyAction('prison-workout')) return
           set({
             prison: { ...s.prison, behavior: clampStat(s.prison.behavior + 3) },
-            stats: { ...s.stats, health: clampStat(s.stats.health + randomInt(3, 7)) },
+            stats: { ...s.stats, health: gainStat(s.stats.health, randomInt(3, 7)) },
           })
           playSfx('gym')
           addLog([{ text: 'You spent the year in the prison yard getting seriously swole. 💪', kind: 'career' }])
@@ -1661,7 +1832,7 @@ export const useGameStore = create<GameState>()(
             relationship: clampRelationship(person.relationship + randomInt(3, 6)),
           })
           set({
-            stats: { ...get().stats, smarts: clampStat(get().stats.smarts + randomInt(1, 2)) },
+            stats: { ...get().stats, smarts: gainStat(get().stats.smarts, randomInt(1, 2)) },
           })
           addLog([
             { text: `${person.name} shared some hard-earned life advice. It actually helped.`, kind: 'relationship' },
@@ -1719,7 +1890,7 @@ export const useGameStore = create<GameState>()(
             relationship: clampRelationship(person.relationship + randomInt(4, 8)),
           })
           set({
-            stats: { ...get().stats, smarts: clampStat(get().stats.smarts + randomInt(1, 2)) },
+            stats: { ...get().stats, smarts: gainStat(get().stats.smarts, randomInt(1, 2)) },
           })
           addLog([
             { text: `You studied with ${person.name}. Half studying, half memes — still counts.`, kind: 'career' },
@@ -1770,7 +1941,7 @@ export const useGameStore = create<GameState>()(
             relationship: clampRelationship(person.relationship + randomInt(2, 5)),
           })
           set({
-            stats: { ...get().stats, smarts: clampStat(get().stats.smarts + randomInt(1, 3)) },
+            stats: { ...get().stats, smarts: gainStat(get().stats.smarts, randomInt(1, 3)) },
           })
           addLog([
             { text: `${person.name} stayed after class to help you. It actually made sense this time.`, kind: 'career' },

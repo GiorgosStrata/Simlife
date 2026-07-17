@@ -23,9 +23,9 @@ export function StatBar({ label, value, color, icon }: StatBarProps) {
         aria-valuemax={100}
         aria-valuenow={value}
       >
-        <View style={[styles.fill, { width: `${value}%`, backgroundColor: color }]} />
+        <View style={[styles.fill, { width: `${Math.max(0, Math.min(100, value))}%`, backgroundColor: color }]} />
       </View>
-      <Text style={styles.value}>{value}%</Text>
+      <Text style={styles.value}>{Math.round(value)}%</Text>
     </View>
   )
 }

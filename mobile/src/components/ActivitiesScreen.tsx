@@ -6,6 +6,7 @@ import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { ActivityCategory } from '../types'
 import { CrimeModal } from './CrimeModal'
+import { MindBodyModal } from './MindBodyModal'
 import { PursuitModal } from './PursuitModal'
 import { Row } from './Row'
 
@@ -14,6 +15,7 @@ export function ActivitiesScreen() {
   const pursuits = useGameStore((s) => s.pursuits)
   const [category, setCategory] = useState<ActivityCategory | null>(null)
   const [crime, setCrime] = useState(false)
+  const [mindBody, setMindBody] = useState(false)
 
   const activeLabel = (cat: ActivityCategory): string => {
     const active = pursuits[cat]
@@ -30,6 +32,18 @@ export function ActivitiesScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <Text style={styles.sectionHeading}>🧘 WELLNESS</Text>
+      <Row
+        emoji="🧘"
+        title="Mind & Body"
+        subtitle="Doctor, gym, therapy, spa — stay healthy, live longer"
+        onPress={() => {
+          playSfx('click')
+          setMindBody(true)
+        }}
+        chevron
+      />
+
       <Text style={styles.sectionHeading}>🎯 ACTIVITIES</Text>
       <Row emoji="🏅" title="Sport" subtitle={activeLabel('sport')} onPress={open('sport')} chevron />
       <Row emoji="🧠" title="Mind" subtitle={activeLabel('mind')} onPress={open('mind')} chevron />
@@ -47,6 +61,7 @@ export function ActivitiesScreen() {
 
       {category && <PursuitModal category={category} onClose={() => setCategory(null)} />}
       {crime && <CrimeModal onClose={() => setCrime(false)} />}
+      {mindBody && <MindBodyModal onClose={() => setMindBody(false)} />}
     </ScrollView>
   )
 }
