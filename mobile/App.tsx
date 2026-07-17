@@ -18,6 +18,7 @@ import { RelationshipsScreen } from './src/components/RelationshipsScreen'
 import { SettingsModal } from './src/components/SettingsModal'
 import { StatsPanel } from './src/components/StatsPanel'
 import { TabBar, type TabKey } from './src/components/TabBar'
+import { Toast } from './src/components/Toast'
 import { getMajor } from './src/data/majors'
 import { getJob, isInSchool, jobTitle, useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
@@ -174,6 +175,7 @@ function Game() {
         </Pressable>
       </Animated.View>
 
+      <Toast />
       <EventModal />
       <GameOverModal />
       {applyingToUniversity && <MajorPickerModal />}

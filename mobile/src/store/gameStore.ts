@@ -320,6 +320,8 @@ interface GameState {
   money: number
   log: LogEntry[]
   currentEvent: GameEvent | null
+  /** Transient confirmation bubble shown after a user action; not persisted. */
+  toast: { text: string } | null
   /** Events already shown this life, so the pool doesn't repeat early. */
   usedEventIds: string[]
   nextLogId: number
@@ -402,6 +404,10 @@ interface GameState {
   chooseOption: (choiceIndex: number) => void
   startNewLife: () => void
 
+  // Transient confirmation bubble
+  showToast: (text: string) => void
+  dismissToast: () => void
+
   // School (once per year each)
   studyHarder: () => void
 
@@ -427,10 +433,10 @@ interface GameState {
   stopPursuit: (category: ActivityCategory) => void
   commitCrime: (crimeId: string) => void
 
-  // Mind & Body (once per year each)
+  // Mind & Body (once per year each) — medical / self-care only, so it
+  // doesn't overlap the ongoing gym/meditation pursuits in Activities.
   seeDoctor: () => void
-  goToGym: () => void
-  meditate: () => void
+  seeDentist: () => void
   seeTherapist: () => void
   plasticSurgery: () => void
   spaDay: () => void
@@ -502,6 +508,7 @@ function newLifeState() {
     stats: rollStats(),
     money: 0,
     currentEvent: null,
+    toast: null as { text: string } | null,
     usedEventIds: [] as string[],
     nextLogId: 1,
     log: [] as LogEntry[],
@@ -1282,6 +1289,9 @@ export const useGameStore = create<GameState>()(
 
         startNewLife: () => set(newLifeState()),
 
+        showToast: (text: string) => set({ toast: { text } }),
+        dismissToast: () => set({ toast: null }),
+
         // ----- School -----
 
         studyHarder: () => {
@@ -1363,37 +1373,22 @@ export const useGameStore = create<GameState>()(
           ])
         },
 
-        goToGym: () => {
+        seeDentist: () => {
           const s = get()
-          if (!s.alive || s.age < 8) return
-          const cost = scaleByCountry(80, s.countryCode)
+          if (!s.alive) return
+          const cost = scaleByCountry(120, s.countryCode)
           if (s.money < cost) return
-          if (!useYearlyAction('gym-visit')) return
+          if (!useYearlyAction('dentist')) return
           set({
             money: s.money - cost,
             stats: {
               ...s.stats,
-              health: gainStat(s.stats.health, randomInt(3, 6)),
-              looks: gainStat(s.stats.looks, randomInt(0, 2)),
-            },
-          })
-          playSfx('gym')
-          addLog([{ text: 'You put in the reps at the gym this year. 💪', kind: 'career' }])
-        },
-
-        meditate: () => {
-          const s = get()
-          if (!s.alive) return
-          if (!useYearlyAction('meditate')) return
-          set({
-            stats: {
-              ...s.stats,
-              happiness: clampStat(s.stats.happiness + randomInt(4, 8)),
-              health: gainStat(s.stats.health, randomInt(1, 2)),
+              looks: gainStat(s.stats.looks, randomInt(1, 3)),
+              health: gainStat(s.stats.health, randomInt(0, 2)),
             },
           })
           playSfx('success')
-          addLog([{ text: 'You spent the year practising mindfulness. Inner calm, restored. 🧘', kind: 'event' }])
+          addLog([{ text: 'A trip to the dentist left you with a brighter smile. 🦷', kind: 'event' }])
         },
 
         seeTherapist: () => {
@@ -2630,7 +2625,7 @@ export const useGameStore = create<GameState>()(
       name: 'simlife-save',
       version: 19,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
+      partialize: ({ hasHydrated: _hasHydrated, toast: _toast, ...rest }) => rest,
       onRehydrateStorage: () => () => {
         useGameStore.setState({ hasHydrated: true })
       },

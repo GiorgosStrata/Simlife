@@ -4,6 +4,7 @@ import { playSfx } from '../audio/sfx'
 import { scaleByCountry } from '../data/countries'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import { confirmAction } from './actionRunner'
 import { Row } from './Row'
 
 interface PrisonModalProps {
@@ -29,6 +30,7 @@ export function PrisonModal({ onClose }: PrisonModalProps) {
 
   const used = (k: string) => usedActions.includes(k)
   const bribe = scaleByCountry(5000, countryCode)
+  const act = confirmAction(onClose)
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -55,7 +57,7 @@ export function PrisonModal({ onClose }: PrisonModalProps) {
               emoji="🙏"
               title="Good behaviour"
               subtitle={used('behave') ? 'Done this year' : 'Behave well — a shot at early parole'}
-              onPress={() => prisonBehave()}
+              onPress={act(prisonBehave, 'success')}
               disabled={used('behave')}
               chevron
             />
@@ -63,7 +65,7 @@ export function PrisonModal({ onClose }: PrisonModalProps) {
               emoji="💪"
               title="Work out in the yard"
               subtitle={used('prison-workout') ? 'Done this year' : '+ health'}
-              onPress={() => prisonWorkout()}
+              onPress={act(prisonWorkout, 'gym')}
               disabled={used('prison-workout')}
               chevron
             />
@@ -77,7 +79,7 @@ export function PrisonModal({ onClose }: PrisonModalProps) {
                     ? 'Not enough money'
                     : 'Pay to shave time off your sentence'
               }
-              onPress={() => bribeGuard()}
+              onPress={act(bribeGuard, 'cash')}
               disabled={used('bribe') || money < bribe}
               chevron
             />

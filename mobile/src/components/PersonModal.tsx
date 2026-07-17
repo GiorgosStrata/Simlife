@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { playSfx, type SfxName } from '../audio/sfx'
+import { playSfx } from '../audio/sfx'
 import {
   DATE_COST,
   GETAWAY_COST,
@@ -14,6 +14,7 @@ import {
 } from '../store/gameStore'
 import { colors } from '../theme'
 import type { PartnerStatus, Person } from '../types'
+import { confirmAction } from './actionRunner'
 import { PersonAvatar } from './Avatar'
 import { Row } from './Row'
 
@@ -98,10 +99,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   if (!person) return null
 
   const used = (key: string) => usedActions.includes(key)
-  const act = (run: () => void, sfx: SfxName = 'click') => () => {
-    playSfx(sfx)
-    run()
-  }
+  const act = confirmAction(onClose)
 
   const isParent = person.role === 'mother' || person.role === 'father'
   const isPartner = person.role === 'partner'

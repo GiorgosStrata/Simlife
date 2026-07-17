@@ -9,6 +9,7 @@ import {
   useGameStore,
 } from '../store/gameStore'
 import { colors } from '../theme'
+import { confirmAction } from './actionRunner'
 import { PersonAvatar } from './Avatar'
 import { PersonModal } from './PersonModal'
 import { Row } from './Row'
@@ -34,6 +35,8 @@ export function WorkplaceModal({ onClose }: WorkplaceModalProps) {
     playSfx('pop')
   }, [])
 
+  const act = confirmAction(onClose)
+
   const job = getJob(jobId)
   if (!job) return null
 
@@ -58,10 +61,7 @@ export function WorkplaceModal({ onClose }: WorkplaceModalProps) {
               emoji="💪"
               title="Work harder"
               subtitle={usedActions.includes('work-harder') ? 'Done this year' : 'Impress the boss'}
-              onPress={() => {
-                playSfx('click')
-                workHarder()
-              }}
+              onPress={act(workHarder)}
               disabled={usedActions.includes('work-harder')}
               chevron
             />
@@ -75,10 +75,7 @@ export function WorkplaceModal({ onClose }: WorkplaceModalProps) {
                     ? 'Done this year'
                     : 'Better odds with a happy boss'
               }
-              onPress={() => {
-                playSfx('click')
-                askForRaise()
-              }}
+              onPress={act(askForRaise, 'cash')}
               disabled={usedActions.includes('raise') || raisePercent >= MAX_RAISE_PERCENT}
               chevron
             />

@@ -4,6 +4,7 @@ import { playSfx } from '../audio/sfx'
 import { getMajor } from '../data/majors'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import { confirmAction } from './actionRunner'
 import { PersonAvatar } from './Avatar'
 import { PersonModal } from './PersonModal'
 import { Row } from './Row'
@@ -23,6 +24,7 @@ export function SchoolModal({ onClose }: SchoolModalProps) {
   const studyHarder = useGameStore((s) => s.studyHarder)
 
   const [personId, setPersonId] = useState<string | null>(null)
+  const act = confirmAction(onClose)
 
   useEffect(() => {
     playSfx('pop')
@@ -49,10 +51,7 @@ export function SchoolModal({ onClose }: SchoolModalProps) {
               emoji="📖"
               title="Study harder"
               subtitle={usedActions.includes('study') ? 'Done this year' : '+ smarts'}
-              onPress={() => {
-                playSfx('click')
-                studyHarder()
-              }}
+              onPress={act(studyHarder)}
               disabled={usedActions.includes('study')}
               chevron
             />

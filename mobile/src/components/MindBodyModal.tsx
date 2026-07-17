@@ -4,13 +4,18 @@ import { playSfx } from '../audio/sfx'
 import { scaleByCountry } from '../data/countries'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import { confirmAction } from './actionRunner'
 import { Row } from './Row'
 
 interface MindBodyModalProps {
   onClose: () => void
 }
 
-/** BitLife-style Mind & Body: wellness actions, one of each per year. */
+/**
+ * BitLife-style Mind & Body: one-off medical & self-care visits, one of each
+ * per year. Deliberately medical/cosmetic only — the gym and meditation live
+ * in Activities as ongoing pursuits, so nothing is duplicated here.
+ */
 export function MindBodyModal({ onClose }: MindBodyModalProps) {
   const stats = useGameStore((s) => s.stats)
   const age = useGameStore((s) => s.age)
@@ -18,8 +23,7 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
   const countryCode = useGameStore((s) => s.countryCode)
   const usedActions = useGameStore((s) => s.usedActions)
   const seeDoctor = useGameStore((s) => s.seeDoctor)
-  const goToGym = useGameStore((s) => s.goToGym)
-  const meditate = useGameStore((s) => s.meditate)
+  const seeDentist = useGameStore((s) => s.seeDentist)
   const seeTherapist = useGameStore((s) => s.seeTherapist)
   const plasticSurgery = useGameStore((s) => s.plasticSurgery)
   const spaDay = useGameStore((s) => s.spaDay)
@@ -28,17 +32,13 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
     playSfx('pop')
   }, [])
 
+  const act = confirmAction(onClose)
   const used = (k: string) => usedActions.includes(k)
   const price = (base: number) => scaleByCountry(base, countryCode)
   const money$ = (base: number) => `$${price(base).toLocaleString()}`
 
   // A cost/availability-aware subtitle so locked reasons are obvious.
-  const sub = (opts: {
-    key: string
-    cost?: number
-    minAge?: number
-    ready: string
-  }): string => {
+  const sub = (opts: { key: string; cost?: number; minAge?: number; ready: string }): string => {
     if (used(opts.key)) return 'Done this year'
     if (opts.minAge && age < opts.minAge) return `Available at ${opts.minAge}`
     if (opts.cost && money < price(opts.cost)) return 'Not enough money'
@@ -49,8 +49,6 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
     used(opts.key) ||
     (opts.minAge ? age < opts.minAge : false) ||
     (opts.cost ? money < price(opts.cost) : false)
-
-  const run = (fn: () => void) => () => fn()
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -81,31 +79,23 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
               emoji="🩺"
               title={`See a doctor (${money$(150)})`}
               subtitle={sub({ key: 'doctor', cost: 150, ready: 'A checkup and treatment to restore health' })}
-              onPress={run(seeDoctor)}
+              onPress={act(seeDoctor, 'success')}
               disabled={disabled({ key: 'doctor', cost: 150 })}
               chevron
             />
             <Row
-              emoji="🏋️"
-              title={`Hit the gym (${money$(80)})`}
-              subtitle={sub({ key: 'gym-visit', cost: 80, minAge: 8, ready: '+ health, a little looks' })}
-              onPress={run(goToGym)}
-              disabled={disabled({ key: 'gym-visit', cost: 80, minAge: 8 })}
-              chevron
-            />
-            <Row
-              emoji="🧘"
-              title="Meditate (free)"
-              subtitle={sub({ key: 'meditate', ready: '+ happiness, a little health' })}
-              onPress={run(meditate)}
-              disabled={disabled({ key: 'meditate' })}
+              emoji="🦷"
+              title={`See a dentist (${money$(120)})`}
+              subtitle={sub({ key: 'dentist', cost: 120, ready: 'Cleaner teeth — a brighter smile' })}
+              onPress={act(seeDentist, 'success')}
+              disabled={disabled({ key: 'dentist', cost: 120 })}
               chevron
             />
             <Row
               emoji="🛋️"
               title={`See a therapist (${money$(250)})`}
               subtitle={sub({ key: 'therapist', cost: 250, ready: 'Work through things — big happiness boost' })}
-              onPress={run(seeTherapist)}
+              onPress={act(seeTherapist, 'success')}
               disabled={disabled({ key: 'therapist', cost: 250 })}
               chevron
             />
@@ -113,7 +103,7 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
               emoji="💆"
               title={`Spa day (${money$(200)})`}
               subtitle={sub({ key: 'spa', cost: 200, ready: '+ happiness and looks' })}
-              onPress={run(spaDay)}
+              onPress={act(spaDay, 'cash')}
               disabled={disabled({ key: 'spa', cost: 200 })}
               chevron
             />
@@ -121,7 +111,7 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
               emoji="💉"
               title={`Plastic surgery (${money$(7000)})`}
               subtitle={sub({ key: 'surgery', cost: 7000, minAge: 18, ready: 'Big looks boost — small risk it goes wrong' })}
-              onPress={run(plasticSurgery)}
+              onPress={act(plasticSurgery, 'cash')}
               disabled={disabled({ key: 'surgery', cost: 7000, minAge: 18 })}
               chevron
             />

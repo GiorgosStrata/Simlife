@@ -132,7 +132,14 @@ def build_pop():
 
 
 def build_whoosh():
-    return noise(0.22, vol=0.5, a=0.06, d=0.16, lowpass=0.25)
+    # Soft airy swipe: a gently swelling, heavily-muffled puff of air plus a
+    # quiet downward tone. Slow attack + heavy lowpass so it reads as a
+    # "swish", never a percussive crack (which sounded like a gunshot).
+    return mix(
+        (0.00, noise(0.30, vol=0.42, a=0.09, d=0.22, lowpass=0.08)),
+        (0.00, tone(520, 0.26, 'sine', vol=0.14, a=0.05, d=0.14, s=0.4, r=0.12,
+                    glide_to=300)),
+    )
 
 
 def build_success():

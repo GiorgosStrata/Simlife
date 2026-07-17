@@ -5,6 +5,7 @@ import { getPetOption } from '../data/pets'
 import { scaleByCountry } from '../data/countries'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import { confirmAction } from './actionRunner'
 import { Row } from './Row'
 
 interface PetModalProps {
@@ -34,6 +35,7 @@ export function PetModal({ petId, onClose }: PetModalProps) {
   const opt = getPetOption(pet.optionId)
   const used = (k: string) => usedActions.includes(`${k}-${petId}`)
   const vetCost = scaleByCountry(150, countryCode)
+  const act = confirmAction(onClose)
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -71,7 +73,7 @@ export function PetModal({ petId, onClose }: PetModalProps) {
               emoji="🎾"
               title="Play together"
               subtitle={used('pet-play') ? 'Done this year' : '+ bond, + mood, + happiness'}
-              onPress={() => playWithPet(petId)}
+              onPress={act(() => playWithPet(petId), 'success')}
               disabled={used('pet-play')}
               chevron
             />
@@ -79,7 +81,7 @@ export function PetModal({ petId, onClose }: PetModalProps) {
               emoji="🦴"
               title="Give a treat ($10)"
               subtitle={used('pet-feed') ? 'Done this year' : money < 10 ? 'Not enough money' : '+ mood, + bond'}
-              onPress={() => feedPet(petId)}
+              onPress={act(() => feedPet(petId))}
               disabled={used('pet-feed') || money < 10}
               chevron
             />
@@ -88,7 +90,7 @@ export function PetModal({ petId, onClose }: PetModalProps) {
                 emoji="🐾"
                 title="Go for a walk"
                 subtitle={used('pet-walk') ? 'Done this year' : '+ your health, + bond'}
-                onPress={() => walkPet(petId)}
+                onPress={act(() => walkPet(petId), 'gym')}
                 disabled={used('pet-walk')}
                 chevron
               />
@@ -97,7 +99,7 @@ export function PetModal({ petId, onClose }: PetModalProps) {
               emoji="🩺"
               title={`Vet visit ($${vetCost.toLocaleString()})`}
               subtitle={used('pet-vet') ? 'Done this year' : money < vetCost ? 'Not enough money' : 'Restores mood/health'}
-              onPress={() => vetPet(petId)}
+              onPress={act(() => vetPet(petId), 'cash')}
               disabled={used('pet-vet') || money < vetCost}
               chevron
             />
@@ -105,7 +107,7 @@ export function PetModal({ petId, onClose }: PetModalProps) {
               emoji="🎓"
               title="Teach a trick"
               subtitle={used('pet-trick') ? 'Done this year' : '60% it sticks · + bond'}
-              onPress={() => teachTrick(petId)}
+              onPress={act(() => teachTrick(petId), 'success')}
               disabled={used('pet-trick')}
               chevron
             />
