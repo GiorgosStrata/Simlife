@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -102,6 +103,12 @@ export function CharacterCreation() {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       <View style={styles.header}>
         <View style={styles.headerAvatar}>
           <Avatar config={avatar} size={64} />
@@ -270,8 +277,6 @@ export function CharacterCreation() {
         <StatBar label="Looks" value={stats.looks} color={colors.violet500} icon="✨" />
       </View>
 
-      <View style={styles.spacer} />
-
       <Pressable
         accessibilityRole="button"
         onPress={() => startLife(first, last, countryCode, gender, avatar)}
@@ -279,6 +284,7 @@ export function CharacterCreation() {
       >
         <Text style={styles.startButtonText}>Start Life 🍼</Text>
       </Pressable>
+      </ScrollView>
 
       {pickingCountry && (
         <CountryPickerModal
@@ -297,7 +303,13 @@ export function CharacterCreation() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
     gap: 12,
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
@@ -481,9 +493,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.slate800,
     backgroundColor: colors.white,
-  },
-  spacer: {
-    flex: 1,
   },
   countryRow: {
     flexDirection: 'row',
