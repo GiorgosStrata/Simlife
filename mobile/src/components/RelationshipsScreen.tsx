@@ -19,6 +19,7 @@ const SECTION_ORDER: Person['role'][] = [
   'father',
   'sibling',
   'friend',
+  'enemy',
 ]
 
 /** Clean BitLife-style list: tap a person to open their interaction sheet. */

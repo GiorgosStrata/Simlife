@@ -23,7 +23,9 @@ export interface EventChoice {
   outcome: string
   effects: Effects
   /** Optional game action triggered on top of the stat effects. */
-  action?: 'enrollUniversity' | 'parentsDivorce'
+  action?: 'enrollUniversity' | 'parentsDivorce' | 'makeEnemy' | 'reconcile'
+  /** Bond change applied to the person this event involves (see GameEvent.personId). */
+  bond?: number
   /** Optional sound to play on this outcome (overrides the auto sting). */
   sfx?: import('./audio/sfx').SfxName
 }
@@ -40,6 +42,8 @@ export interface GameEvent {
   minAge: number
   maxAge: number
   choices: EventChoice[]
+  /** For relationship events: the id of the person involved (bond target). */
+  personId?: string
 }
 
 export interface LogEntry {
@@ -64,6 +68,7 @@ export type PersonRole =
   | 'teacher'
   | 'coworker'
   | 'boss'
+  | 'enemy'
 
 export interface Person {
   /**

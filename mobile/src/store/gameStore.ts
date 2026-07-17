@@ -42,6 +42,7 @@ import { getMajor } from '../data/majors'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
 import { schoolNameFor, schoolStageFor, teacherName, type SchoolStage } from '../data/schools'
 import { DIVORCE_EVENT, GRADUATION_EVENT, funeralEvent, languageCompleteEvent } from '../data/specialEvents'
+import { REL_EVENT_ROLES, buildRelationshipEvent } from '../data/relationshipEvents'
 import {
   DATE_COST,
   GIFT_COST,
@@ -392,6 +393,7 @@ interface GameState {
   // Person interactions (once per person per year)
   compliment: (personId: string) => void
   insult: (personId: string) => void
+  makePeace: (personId: string) => void
   askForAdvice: (personId: string) => void
   prankSibling: (personId: string) => void
   watchMovie: (personId: string) => void
@@ -1032,6 +1034,15 @@ export const useGameStore = create<GameState>()(
             relationships.some((p) => p.role === 'father' && p.alive)
           const divorceRolls =
             age >= 5 && age <= 16 && !s.parentsDivorced && parentsAlive && Math.random() < 0.03
+          // A relationship event (involving a specific person) sometimes
+          // fires instead of a generic one.
+          const relCandidates = relationships.filter(
+            (p) => p.alive && REL_EVENT_ROLES.includes(p.role),
+          )
+          const relEvent =
+            relCandidates.length > 0 && Math.random() < 0.4
+              ? buildRelationshipEvent(pick(relCandidates), age)
+              : null
           const event =
             age === 18 && !hasDegree && !inUniversity
               ? GRADUATION_EVENT
@@ -1041,7 +1052,9 @@ export const useGameStore = create<GameState>()(
                   ? pursuitPopEvent
                   : divorceRolls
                     ? DIVORCE_EVENT
-                    : drawEvent(age, s.usedEventIds)
+                    : relEvent
+                      ? relEvent
+                      : drawEvent(age, s.usedEventIds)
           set({
             age,
             year,
@@ -1061,7 +1074,7 @@ export const useGameStore = create<GameState>()(
             pets,
             currentEvent: event,
             usedEventIds:
-              event && !event.id.startsWith('special-')
+              event && !event.id.startsWith('special-') && !event.id.startsWith('rel-')
                 ? [...s.usedEventIds, event.id]
                 : s.usedEventIds,
             usedActions: [],
@@ -1131,6 +1144,35 @@ export const useGameStore = create<GameState>()(
                   : p,
               ),
             })
+          }
+
+          // Relationship events touch a specific person: bond delta + turning
+          // them into an enemy or making peace.
+          if (!died && event.personId) {
+            const pid = event.personId
+            if (choice.bond) {
+              set({
+                relationships: get().relationships.map((p) =>
+                  p.id === pid
+                    ? { ...p, relationship: clampRelationship(p.relationship + (choice.bond ?? 0)) }
+                    : p,
+                ),
+              })
+            }
+            if (choice.action === 'makeEnemy') {
+              const person = get().relationships.find((p) => p.id === pid)
+              if (person) {
+                updatePerson(pid, { role: 'enemy', relationship: clampRelationship(person.relationship) })
+                addLog([{ text: `${person.name} is now your enemy. 😠`, kind: 'relationship' }])
+              }
+            }
+            if (choice.action === 'reconcile') {
+              const person = get().relationships.find((p) => p.id === pid)
+              if (person && person.role === 'enemy') {
+                updatePerson(pid, { role: 'friend', relationship: clampRelationship(person.relationship) })
+                addLog([{ text: `You and ${person.name} buried the hatchet. 🕊️`, kind: 'relationship' }])
+              }
+            }
           }
         },
 
@@ -1404,6 +1446,31 @@ export const useGameStore = create<GameState>()(
             addLog([
               { text: `You insulted ${person.name}. Petty? Yes. Satisfying? Also yes.`, kind: 'relationship' },
             ])
+          }
+          // Push someone far enough and they become an enemy.
+          const updated = get().relationships.find((p) => p.id === personId)
+          const canTurn: PersonRole[] = ['friend', 'sibling', 'classmate', 'coworker']
+          if (updated && updated.role !== 'enemy' && canTurn.includes(updated.role) && updated.relationship < 15) {
+            updatePerson(personId, { role: 'enemy' })
+            addLog([{ text: `${updated.name} now considers you an enemy. 😠`, kind: 'relationship' }])
+          }
+        },
+
+        makePeace: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive || person.role !== 'enemy') return
+          if (!useYearlyAction(`peace-${personId}`)) return
+          if (Math.random() < 0.55) {
+            updatePerson(personId, {
+              role: 'friend',
+              relationship: clampRelationship(person.relationship + randomInt(15, 30)),
+            })
+            playSfx('success')
+            addLog([{ text: `You made peace with ${person.name}. Enemies no more. 🕊️`, kind: 'relationship' }])
+          } else {
+            playSfx('fail')
+            addLog([{ text: `${person.name} rejected your peace offering. The feud continues.`, kind: 'relationship' }])
           }
         },
 

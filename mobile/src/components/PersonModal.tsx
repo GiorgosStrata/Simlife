@@ -40,6 +40,8 @@ export function personEmoji(person: Person): string {
       return male ? '👨‍💼' : '👩‍💼'
     case 'boss':
       return male ? '🤵' : '🤵‍♀️'
+    case 'enemy':
+      return '😠'
   }
 }
 
@@ -52,6 +54,7 @@ export function roleLabel(person: Person, partnerStatus: PartnerStatus | null): 
   }
   if (person.role === 'sibling') return male ? 'Brother' : 'Sister'
   if (person.role === 'child') return male ? 'Son' : 'Daughter'
+  if (person.role === 'enemy') return 'Enemy'
   return person.role.charAt(0).toUpperCase() + person.role.slice(1)
 }
 
@@ -86,6 +89,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const marry = useGameStore((s) => s.marry)
   const breakUp = useGameStore((s) => s.breakUp)
   const tryForBaby = useGameStore((s) => s.tryForBaby)
+  const makePeace = useGameStore((s) => s.makePeace)
 
   useEffect(() => {
     playSfx('pop')
@@ -106,6 +110,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const isClassmate = person.role === 'classmate'
   const isTeacher = person.role === 'teacher'
   const isWorkPerson = person.role === 'coworker' || person.role === 'boss'
+  const isEnemy = person.role === 'enemy'
   const livingFriends = relationships.filter((p) => p.role === 'friend' && p.alive).length
   const canPropose =
     isPartner && partnerStatus === 'dating' && person.relationship >= PROPOSAL_MIN_RELATIONSHIP
@@ -350,6 +355,16 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                     chevron
                   />
                 </>
+              )}
+              {isEnemy && (
+                <Row
+                  emoji="🕊️"
+                  title="Make peace"
+                  subtitle={used(`peace-${person.id}`) ? 'Done this year' : '55% chance to end the feud'}
+                  onPress={act(() => makePeace(person.id), 'success')}
+                  disabled={used(`peace-${person.id}`)}
+                  chevron
+                />
               )}
               <Row
                 emoji="🤬"
