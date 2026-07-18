@@ -22,6 +22,7 @@ import type {
   Stats,
 } from '../types'
 import { PET_NAMES, getPetOption } from '../data/pets'
+import { makeNpcLife, randomHobby } from '../data/npc'
 import { LEAGUES, getTeam, jobSport, leagueForJob } from '../data/leagues'
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, resaleValue } from '../data/assets'
@@ -37,7 +38,7 @@ import {
   tierMultiplier,
   tuitionPerYear,
 } from '../data/economy'
-import { EVENTS } from '../data/events'
+import { EVENTS, SCHOOL_ONLY_EVENTS } from '../data/events'
 import { JOBS } from '../data/jobs'
 import { getMajor } from '../data/majors'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
@@ -148,6 +149,7 @@ function makeFamily(countryCode: string, familyLastName: string): Person[] {
       age: randomInt(20, 38),
       alive: true,
       relationship: randomInt(70, 95),
+      ...makeNpcLife(),
     },
     {
       id: 'father',
@@ -157,6 +159,7 @@ function makeFamily(countryCode: string, familyLastName: string): Person[] {
       age: randomInt(22, 42),
       alive: true,
       relationship: randomInt(70, 95),
+      ...makeNpcLife(),
     },
   ]
   if (Math.random() < 0.6) {
@@ -169,6 +172,7 @@ function makeFamily(countryCode: string, familyLastName: string): Person[] {
       age: randomInt(1, 6),
       alive: true,
       relationship: randomInt(60, 90),
+      ...makeNpcLife(),
     })
   }
   return family
@@ -286,6 +290,7 @@ function rollSchoolPeople(
       age: Math.max(5, playerAge + (Math.random() < 0.5 ? 0 : Math.random() < 0.5 ? -1 : 1)),
       alive: true,
       relationship: 20 + Math.floor(Math.random() * 31),
+      ...makeNpcLife(),
     })
   }
   for (let i = 0; i < TEACHER_COUNT; i++) {
@@ -301,6 +306,8 @@ function rollSchoolPeople(
       age: 28 + Math.floor(Math.random() * 33),
       alive: true,
       relationship: 30 + Math.floor(Math.random() * 31),
+      career: stage === 'university' ? 'Professor' : 'Teacher',
+      hobby: randomHobby(),
     })
   }
   return people
@@ -320,6 +327,7 @@ function rollWorkplacePeople(countryCode: string, playerAge: number, idStart: nu
       age: Math.max(18, playerAge + randomInt(-8, 15)),
       alive: true,
       relationship: 25 + Math.floor(Math.random() * 31),
+      ...makeNpcLife(),
     })
   }
   const gender = randomGender()
@@ -331,6 +339,8 @@ function rollWorkplacePeople(countryCode: string, playerAge: number, idStart: nu
     age: randomInt(35, 62),
     alive: true,
     relationship: 25 + Math.floor(Math.random() * 26),
+    career: 'Manager',
+    hobby: randomHobby(),
   })
   return people
 }
@@ -603,9 +613,13 @@ function newLifeState() {
  * event never repeats within a single life — once the fresh pool for this
  * age is used up, there's simply no random event that year.
  */
-function drawEvent(age: number, usedIds: string[]): GameEvent | null {
+function drawEvent(age: number, usedIds: string[], inSchool: boolean): GameEvent | null {
   const fresh = EVENTS.filter(
-    (e) => age >= e.minAge && age <= e.maxAge && !usedIds.includes(e.id),
+    (e) =>
+      age >= e.minAge &&
+      age <= e.maxAge &&
+      !usedIds.includes(e.id) &&
+      (inSchool || !SCHOOL_ONLY_EVENTS.has(e.id)),
   )
   return fresh.length > 0 ? pick(fresh) : null
 }
@@ -803,6 +817,7 @@ export const useGameStore = create<GameState>()(
           age: Math.max(5, s.age + ageOffset),
           alive: true,
           relationship: randomInt(45, 75),
+          ...makeNpcLife(),
         }
       }
 
@@ -1237,7 +1252,7 @@ export const useGameStore = create<GameState>()(
                       ? DIVORCE_EVENT
                       : relEvent
                         ? relEvent
-                        : drawEvent(age, s.usedEventIds)
+                        : drawEvent(age, s.usedEventIds, isInSchool(age) || inUniversity)
           set({
             age,
             year,
@@ -2119,6 +2134,8 @@ export const useGameStore = create<GameState>()(
                   age: person.age,
                   alive: true,
                   relationship: clampRelationship(person.relationship),
+                  career: person.career,
+                  hobby: person.hobby,
                 },
               ],
               partnerStatus: 'dating',
@@ -2515,6 +2532,7 @@ export const useGameStore = create<GameState>()(
             age: Math.max(18, age),
             alive: true,
             relationship: randomInt(35, 55),
+            ...makeNpcLife(),
           }
           set({
             relationships: [...s.relationships, partner],
@@ -2668,6 +2686,8 @@ export const useGameStore = create<GameState>()(
               age: 0,
               alive: true,
               relationship: randomInt(80, 100),
+              // The career they'll grow into, revealed once they're an adult.
+              ...makeNpcLife(),
             }
             set({
               relationships: [...s.relationships, baby],
@@ -2779,7 +2799,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 20,
+      version: 21,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -2930,6 +2950,19 @@ export const useGameStore = create<GameState>()(
         if (version < 20) {
           state.athletics = randomInt(25, 55)
           state.schoolSport = null
+        }
+        // v20 saves predate NPCs having their own careers and hobbies.
+        if (version < 21) {
+          state.relationships = (state.relationships ?? []).map((p) =>
+            p.career
+              ? p
+              : {
+                  ...p,
+                  ...makeNpcLife(),
+                  ...(p.role === 'teacher' ? { career: 'Teacher' } : {}),
+                  ...(p.role === 'boss' ? { career: 'Manager' } : {}),
+                },
+          )
         }
         return state as GameState
       },

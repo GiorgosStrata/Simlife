@@ -12,6 +12,7 @@ import {
   WEDDING_COST,
   useGameStore,
 } from '../store/gameStore'
+import { describeOccupation } from '../data/npc'
 import { colors } from '../theme'
 import type { PartnerStatus, Person } from '../types'
 import { confirmAction } from './actionRunner'
@@ -138,6 +139,12 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                 {roleLabel(person, partnerStatus)} ·{' '}
                 {person.alive ? `age ${person.age}` : `passed away at ${person.age}`}
               </Text>
+              {person.alive && (
+                <Text style={styles.life} numberOfLines={1}>
+                  {describeOccupation(person)}
+                  {person.hobby && person.age >= 6 ? ` · 🎨 Loves ${person.hobby}` : ''}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -452,6 +459,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.slate500,
     marginTop: 1,
+  },
+  life: {
+    fontSize: 12,
+    color: colors.slate500,
+    marginTop: 2,
   },
   bondRow: {
     flexDirection: 'row',

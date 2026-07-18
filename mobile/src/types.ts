@@ -83,6 +83,10 @@ export interface Person {
   alive: boolean
   /** Bond strength 0-100; drifts down slowly each year. */
   relationship: number
+  /** The career this NPC holds in adulthood (shown as their occupation). */
+  career?: string
+  /** A hobby this NPC enjoys, for flavour. */
+  hobby?: string
 }
 
 export type PartnerStatus = 'dating' | 'engaged' | 'married'

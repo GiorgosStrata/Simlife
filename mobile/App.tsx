@@ -44,6 +44,17 @@ function Game() {
   const ageUp = useGameStore((s) => s.ageUp)
   const prison = useGameStore((s) => s.prison)
   const theme = useGameStore((s) => s.theme)
+  const modalNonce = useGameStore((s) => s.modalNonce)
+
+  // After any confirmed action (which closes all sheets), snap back to the
+  // middle "Life" tab — BitLife always returns you to the main screen.
+  const prevNonce = useRef(modalNonce)
+  useEffect(() => {
+    if (modalNonce !== prevNonce.current) {
+      prevNonce.current = modalNonce
+      setTab('life')
+    }
+  }, [modalNonce])
 
   // Apply the light/dark theme on web whenever it changes.
   useEffect(() => {

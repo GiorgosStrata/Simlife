@@ -1353,3 +1353,21 @@ export const EVENTS: GameEvent[] = [
     ],
   },
 ]
+
+/**
+ * Events that only make sense while you're a student — they're skipped
+ * unless you're in school or university, so no one studies for exams or
+ * frets about the schoolyard bully as a working adult.
+ */
+export const SCHOOL_ONLY_EVENTS = new Set<string>([
+  'exam-week',
+  'school-talent-show',
+  'school-bully',
+  'schoolyard-bully',
+  'schoolyard-rumor',
+  'group-project',
+  'prom-night',
+  'spelling-bee',
+  'class-pet',
+  'video-game-marathon',
+])
