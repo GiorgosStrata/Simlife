@@ -93,6 +93,41 @@ function clampRelationship(value: number): number {
   return Math.max(0, Math.min(100, value))
 }
 
+/** Short relationship word like "mother" or "girlfriend", for logs and events. */
+export function relationLabel(
+  role: PersonRole,
+  gender: Gender,
+  partnerStatus?: PartnerStatus | null,
+): string {
+  const male = gender === 'male'
+  switch (role) {
+    case 'mother':
+      return 'mother'
+    case 'father':
+      return 'father'
+    case 'sibling':
+      return male ? 'brother' : 'sister'
+    case 'child':
+      return male ? 'son' : 'daughter'
+    case 'partner':
+      if (partnerStatus === 'married') return male ? 'husband' : 'wife'
+      if (partnerStatus === 'engaged') return male ? 'fiancé' : 'fiancée'
+      return male ? 'boyfriend' : 'girlfriend'
+    case 'friend':
+      return 'friend'
+    case 'classmate':
+      return 'classmate'
+    case 'teacher':
+      return 'teacher'
+    case 'coworker':
+      return 'coworker'
+    case 'boss':
+      return 'boss'
+    case 'enemy':
+      return 'enemy'
+  }
+}
+
 function rollStats(): Stats {
   return {
     health: randomInt(60, 100),
@@ -322,6 +357,8 @@ interface GameState {
   currentEvent: GameEvent | null
   /** Transient confirmation bubble shown after a user action; not persisted. */
   toast: { text: string } | null
+  /** Bumped to ask every open action sheet to close (back to main). Not persisted. */
+  modalNonce: number
   /** Events already shown this life, so the pool doesn't repeat early. */
   usedEventIds: string[]
   nextLogId: number
@@ -411,6 +448,8 @@ interface GameState {
   // Transient confirmation bubble
   showToast: (text: string) => void
   dismissToast: () => void
+  /** Close all open action sheets, returning to the main screen. */
+  closeModals: () => void
 
   // School (once per year each)
   studyHarder: () => void
@@ -431,7 +470,10 @@ interface GameState {
   grabLunch: (personId: string) => void
   weekendGetaway: () => void
   askTeacherHelp: (personId: string) => void
-  befriendClassmate: (personId: string) => void
+  /** Turn an acquaintance (classmate, coworker, boss, teacher) into a friend. */
+  befriend: (personId: string) => void
+  /** Ask an acquaintance out; on success they become your dating partner. */
+  askOut: (personId: string) => void
 
   // Workplace
   workHarder: () => void
@@ -487,7 +529,6 @@ interface GameState {
   askForMoney: (personId: string) => void
   goOnDate: () => void
   makeFriend: () => void
-  findLove: () => void
   beginRelationship: (name: string, gender: Gender, age: number) => void
   tryForBaby: () => void
 
@@ -775,6 +816,7 @@ export const useGameStore = create<GameState>()(
         hasHydrated: false,
         sfxVolume: 1,
         theme: 'light' as ThemeName,
+        modalNonce: 0,
 
         setSfxVolume: (volume: number) => {
           set({ sfxVolume: Math.max(0, Math.min(1, volume)) })
@@ -955,22 +997,24 @@ export const useGameStore = create<GameState>()(
           // The people in your life age too — and drift if neglected.
           // A death among close relations queues a funeral popup.
           const CLOSE: Person['role'][] = ['mother', 'father', 'sibling', 'partner', 'child', 'friend']
-          let funeralFor: { name: string; isPet: boolean } | null = null
+          let funeralFor: { name: string; isPet: boolean; role?: string } | null = null
           let partnerStatus = s.partnerStatus
           const agedRelationships = s.relationships.map((p) => {
             if (!p.alive) return p
             const pAge = p.age + 1
             if (familyDeathRoll(pAge)) {
+              const label = relationLabel(p.role, p.gender, s.partnerStatus)
               entries.push({
                 id: logId++,
                 age,
                 year,
-                text: `${p.name} passed away at age ${pAge}. 💔`,
+                text: `${p.name} (${label}) passed away at age ${pAge}. 💔`,
                 kind: 'death',
               })
               stats.happiness = clampStat(stats.happiness - 15)
               if (p.role === 'partner') partnerStatus = null
-              if (!funeralFor && CLOSE.includes(p.role)) funeralFor = { name: p.name, isPet: false }
+              if (!funeralFor && CLOSE.includes(p.role))
+                funeralFor = { name: p.name, isPet: false, role: label }
               return { ...p, age: pAge, alive: false }
             }
             return {
@@ -1186,7 +1230,7 @@ export const useGameStore = create<GameState>()(
               : age === 18 && !hasDegree && !inUniversity
                 ? GRADUATION_EVENT
                 : funeralFor
-                  ? funeralEvent(funeralFor.name, funeralFor.isPet, s.countryCode)
+                  ? funeralEvent(funeralFor.name, funeralFor.isPet, s.countryCode, funeralFor.role)
                   : pursuitPopEvent
                     ? pursuitPopEvent
                     : divorceRolls
@@ -1322,6 +1366,7 @@ export const useGameStore = create<GameState>()(
 
         showToast: (text: string) => set({ toast: { text } }),
         dismissToast: () => set({ toast: null }),
+        closeModals: () => set((st) => ({ modalNonce: st.modalNonce + 1 })),
 
         // ----- School -----
 
@@ -2031,17 +2076,64 @@ export const useGameStore = create<GameState>()(
           ])
         },
 
-        befriendClassmate: (personId: string) => {
+        befriend: (personId: string) => {
           const s = get()
           const person = s.relationships.find((p) => p.id === personId)
-          if (!person?.alive || !s.alive || person.role !== 'classmate') return
-          if (person.relationship < 60) return
+          if (!person?.alive || !s.alive) return
+          // Only acquaintances can be befriended (not family, partner or enemies).
+          const eligible: PersonRole[] = ['classmate', 'coworker', 'boss', 'teacher']
+          if (!eligible.includes(person.role)) return
           const friends = s.relationships.filter((p) => p.role === 'friend' && p.alive)
           if (friends.length >= MAX_FRIENDS) return
+          // Authority figures (boss, teacher) take a much stronger bond to win over.
+          const needed = person.role === 'boss' || person.role === 'teacher' ? 75 : 55
+          if (person.relationship < needed) return
           updatePerson(personId, { role: 'friend' })
+          playSfx('success')
           addLog([
             { text: `You and ${person.name} are officially friends now. 🤝`, kind: 'relationship' },
           ])
+        },
+
+        askOut: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive || s.age < 16) return
+          if (s.relationships.some((p) => p.id === 'partner')) return
+          // You can only ask out acquaintances (not family or your enemies).
+          const eligible: PersonRole[] = ['friend', 'classmate', 'coworker']
+          if (!eligible.includes(person.role)) return
+          if (!useYearlyAction(`askout-${personId}`)) return
+          // Better odds with a strong bond and good looks.
+          const chance = Math.min(0.9, person.relationship / 130 + s.stats.looks / 300)
+          if (Math.random() < chance) {
+            // They become your partner: drop the old entry, add the partner slot.
+            set({
+              relationships: [
+                ...s.relationships.filter((p) => p.id !== personId),
+                {
+                  id: 'partner',
+                  role: 'partner',
+                  gender: person.gender,
+                  name: person.name,
+                  age: person.age,
+                  alive: true,
+                  relationship: clampRelationship(person.relationship),
+                },
+              ],
+              partnerStatus: 'dating',
+              stats: { ...s.stats, happiness: clampStat(s.stats.happiness + randomInt(4, 8)) },
+            })
+            playSfx('match')
+            addLog([{ text: `You asked ${person.name} out — and they said yes! You're dating now. 💕`, kind: 'relationship' }])
+          } else {
+            updatePerson(personId, {
+              relationship: clampRelationship(person.relationship - randomInt(3, 8)),
+            })
+            set({ stats: { ...get().stats, happiness: clampStat(get().stats.happiness - randomInt(2, 5)) } })
+            playSfx('fail')
+            addLog([{ text: `You asked ${person.name} out, but they just want to be friends. Ouch.`, kind: 'relationship' }])
+          }
         },
 
         // ----- Career -----
@@ -2412,33 +2504,6 @@ export const useGameStore = create<GameState>()(
           }
         },
 
-        findLove: () => {
-          const s = get()
-          if (!s.alive || s.age < 18 || s.relationships.some((p) => p.id === 'partner')) return
-          if (Math.random() < 0.75) {
-            // Heterosexual pairing for now; sexuality options come later.
-            const gender = s.gender === 'male' ? 'female' : 'male'
-            const partner: Person = {
-              id: 'partner',
-              role: 'partner',
-              gender,
-              name: `${randomFirstName(s.countryCode, gender)} ${randomLastName(s.countryCode)}`,
-              age: Math.max(18, s.age + randomInt(-4, 4)),
-              alive: true,
-              relationship: randomInt(40, 65),
-            }
-            set({ relationships: [...s.relationships, partner], partnerStatus: 'dating' })
-            playSfx('match')
-            addLog([{ text: `You started dating ${partner.name}. 💕`, kind: 'relationship' }])
-          } else {
-            set({ stats: { ...s.stats, happiness: clampStat(s.stats.happiness - 2) } })
-            playSfx('fail')
-            addLog([
-              { text: 'You put yourself out there, but love did not cooperate this year.', kind: 'relationship' },
-            ])
-          }
-        },
-
         beginRelationship: (name: string, gender: Gender, age: number) => {
           const s = get()
           if (!s.alive || s.age < 18 || s.relationships.some((p) => p.id === 'partner')) return
@@ -2716,7 +2781,8 @@ export const useGameStore = create<GameState>()(
       name: 'simlife-save',
       version: 20,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ hasHydrated: _hasHydrated, toast: _toast, ...rest }) => rest,
+      partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
+        rest,
       onRehydrateStorage: () => () => {
         useGameStore.setState({ hasHydrated: true })
       },

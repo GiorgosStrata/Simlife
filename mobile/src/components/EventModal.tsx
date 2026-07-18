@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
-import { useGameStore } from '../store/gameStore'
+import { relationLabel, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 
 /**
@@ -12,6 +12,13 @@ import { colors } from '../theme'
 export function EventModal() {
   const currentEvent = useGameStore((s) => s.currentEvent)
   const chooseOption = useGameStore((s) => s.chooseOption)
+  const relationships = useGameStore((s) => s.relationships)
+  const partnerStatus = useGameStore((s) => s.partnerStatus)
+
+  // For relationship events, name the person and how they're related to you.
+  const eventPerson = currentEvent?.personId
+    ? relationships.find((p) => p.id === currentEvent.personId)
+    : undefined
 
   // Pop the illustration in with a little spring + wiggle each new event.
   const pop = useRef(new Animated.Value(0)).current
@@ -45,6 +52,13 @@ export function EventModal() {
               <Text style={styles.illustrationEmoji}>{currentEvent.emoji}</Text>
             </Animated.View>
             <Text style={styles.title}>{currentEvent.title}</Text>
+            {eventPerson && (
+              <View style={styles.personChip}>
+                <Text style={styles.personChipText}>
+                  {eventPerson.name} ({relationLabel(eventPerson.role, eventPerson.gender, partnerStatus)})
+                </Text>
+              </View>
+            )}
             <Text style={styles.description}>{currentEvent.description}</Text>
             <View style={styles.choices}>
               {currentEvent.choices.map((choice, i) => (
@@ -99,6 +113,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.slate800,
     textAlign: 'center',
+  },
+  personChip: {
+    alignSelf: 'center',
+    marginTop: 8,
+    backgroundColor: colors.cyan50,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  personChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.cyan900,
   },
   description: {
     marginTop: 8,

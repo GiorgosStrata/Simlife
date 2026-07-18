@@ -7,6 +7,7 @@ import { annualSalary, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { confirmAction } from './actionRunner'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface SpecialJobsModalProps {
   onClose: () => void
@@ -34,6 +35,7 @@ export function SpecialJobsModal({ onClose }: SpecialJobsModalProps) {
     playSfx('pop')
   }, [])
 
+  useCloseOnAction(onClose)
   const act = confirmAction(onClose)
 
   return (

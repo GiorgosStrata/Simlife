@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 
@@ -20,24 +20,24 @@ export function Toast() {
     Animated.spring(anim, { toValue: 1, useNativeDriver: true, friction: 7, tension: 90 }).start()
   }, [toast, anim])
 
-  if (!toast) return null
-
   const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] })
 
   return (
-    <View style={styles.backdrop} pointerEvents="auto">
-      <Pressable style={styles.backdropPress} accessibilityLabel="Dismiss" onPress={dismissToast} />
-      <Animated.View style={[styles.card, { opacity: anim, transform: [{ scale }] }]}>
-        <Text style={styles.text}>{toast.text}</Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={dismissToast}
-          style={({ pressed }) => [styles.okButton, pressed && styles.okButtonPressed]}
-        >
-          <Text style={styles.okText}>OK</Text>
-        </Pressable>
-      </Animated.View>
-    </View>
+    <Modal visible={toast !== null} transparent animationType="fade" onRequestClose={dismissToast}>
+      <View style={styles.backdrop} pointerEvents="auto">
+        <Pressable style={styles.backdropPress} accessibilityLabel="Dismiss" onPress={dismissToast} />
+        <Animated.View style={[styles.card, { opacity: anim, transform: [{ scale }] }]}>
+          <Text style={styles.text}>{toast?.text}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={dismissToast}
+            style={({ pressed }) => [styles.okButton, pressed && styles.okButtonPressed]}
+          >
+            <Text style={styles.okText}>OK</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
+    </Modal>
   )
 }
 

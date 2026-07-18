@@ -6,6 +6,7 @@ import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { confirmAction } from './actionRunner'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface PrisonModalProps {
   onClose: () => void
@@ -25,6 +26,8 @@ export function PrisonModal({ onClose }: PrisonModalProps) {
   useEffect(() => {
     playSfx('pop')
   }, [])
+
+  useCloseOnAction(onClose)
 
   if (!prison) return null
 

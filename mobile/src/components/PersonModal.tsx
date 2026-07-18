@@ -17,6 +17,7 @@ import type { PartnerStatus, Person } from '../types'
 import { confirmAction } from './actionRunner'
 import { PersonAvatar } from './Avatar'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 export function personEmoji(person: Person): string {
   const male = person.gender === 'male'
@@ -84,7 +85,8 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const grabLunch = useGameStore((s) => s.grabLunch)
   const weekendGetaway = useGameStore((s) => s.weekendGetaway)
   const askTeacherHelp = useGameStore((s) => s.askTeacherHelp)
-  const befriendClassmate = useGameStore((s) => s.befriendClassmate)
+  const befriend = useGameStore((s) => s.befriend)
+  const askOut = useGameStore((s) => s.askOut)
   const goOnDate = useGameStore((s) => s.goOnDate)
   const propose = useGameStore((s) => s.propose)
   const marry = useGameStore((s) => s.marry)
@@ -95,6 +97,8 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   useEffect(() => {
     playSfx('pop')
   }, [])
+
+  useCloseOnAction(onClose)
 
   if (!person) return null
 
@@ -113,6 +117,12 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const canPropose =
     isPartner && partnerStatus === 'dating' && person.relationship >= PROPOSAL_MIN_RELATIONSHIP
   const canMarry = isPartner && partnerStatus === 'engaged' && money >= WEDDING_COST
+  const hasPartner = relationships.some((p) => p.id === 'partner')
+  // Acquaintances can be befriended (harder for authority figures) and, if
+  // you're single, asked out.
+  const befriendable = ['classmate', 'coworker', 'boss', 'teacher'].includes(person.role)
+  const befriendNeeded = person.role === 'boss' || person.role === 'teacher' ? 75 : 55
+  const askOutable = ['friend', 'classmate', 'coworker'].includes(person.role) && !hasPartner && age >= 16
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -261,19 +271,35 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                   chevron
                 />
               )}
-              {isClassmate && (
+              {askOutable && (
+                <Row
+                  emoji="💘"
+                  title="Ask them out"
+                  subtitle={
+                    used(`askout-${person.id}`)
+                      ? 'You asked this year'
+                      : person.relationship < 30
+                        ? 'Grow your bond first'
+                        : 'Shoot your shot — they might say yes'
+                  }
+                  onPress={act(() => askOut(person.id), null)}
+                  disabled={used(`askout-${person.id}`) || person.relationship < 30}
+                  chevron
+                />
+              )}
+              {befriendable && (
                 <Row
                   emoji="🤝"
                   title="Become friends"
                   subtitle={
-                    person.relationship < 60
-                      ? 'Needs 60+ bond — hang out first'
+                    person.relationship < befriendNeeded
+                      ? `Needs ${befriendNeeded}+ bond — spend time first`
                       : livingFriends >= MAX_FRIENDS
                         ? 'Your friend list is full'
                         : 'Make it official'
                   }
-                  onPress={act(() => befriendClassmate(person.id), 'success')}
-                  disabled={person.relationship < 60 || livingFriends >= MAX_FRIENDS}
+                  onPress={act(() => befriend(person.id), null)}
+                  disabled={person.relationship < befriendNeeded || livingFriends >= MAX_FRIENDS}
                   chevron
                 />
               )}

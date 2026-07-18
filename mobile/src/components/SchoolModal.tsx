@@ -8,6 +8,7 @@ import { confirmAction } from './actionRunner'
 import { PersonAvatar } from './Avatar'
 import { PersonModal } from './PersonModal'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface SchoolModalProps {
   onClose: () => void
@@ -37,6 +38,7 @@ export function SchoolModal({ onClose }: SchoolModalProps) {
   const quitSchoolTeam = useGameStore((s) => s.quitSchoolTeam)
 
   const [personId, setPersonId] = useState<string | null>(null)
+  useCloseOnAction(onClose)
   const act = confirmAction(onClose)
 
   useEffect(() => {

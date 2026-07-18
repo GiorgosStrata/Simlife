@@ -7,6 +7,7 @@ import { colors } from '../theme'
 import type { ActivityCategory } from '../types'
 import { confirmAction } from './actionRunner'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 const CATEGORY_LABEL: Record<ActivityCategory, string> = {
   sport: 'Sport',
@@ -30,6 +31,7 @@ export function PursuitModal({ category, onClose }: PursuitModalProps) {
     playSfx('pop')
   }, [])
 
+  useCloseOnAction(onClose)
   const act = confirmAction(onClose)
   const options = ONGOING_ACTIVITIES.filter((a) => a.category === category)
 

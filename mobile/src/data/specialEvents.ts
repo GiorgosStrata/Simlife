@@ -11,7 +11,14 @@ import { UNIVERSITY_YEARS } from '../store/constants'
  * Pops when someone close (or a pet) dies — plan/attend the funeral,
  * BitLife style. Costs are country-scaled; skipping stings a little.
  */
-export function funeralEvent(name: string, isPet: boolean, countryCode: string): GameEvent {
+export function funeralEvent(
+  name: string,
+  isPet: boolean,
+  countryCode: string,
+  role?: string,
+): GameEvent {
+  // Show the relationship after the name, e.g. "Mia Fernandes (mother)".
+  const who = role ? `${name} (${role})` : name
   if (isPet) {
     const burial = scaleByCountry(500, countryCode)
     return {
@@ -47,7 +54,7 @@ export function funeralEvent(name: string, isPet: boolean, countryCode: string):
   return {
     id: 'special-funeral',
     emoji: '⚰️',
-    title: `Farewell to ${name}`,
+    title: `Farewell to ${who}`,
     description: `${name} has passed away. As next of kin, it falls to you to arrange the funeral.`,
     minAge: 0,
     maxAge: 120,

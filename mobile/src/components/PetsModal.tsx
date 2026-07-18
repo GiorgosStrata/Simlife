@@ -6,6 +6,7 @@ import { colors } from '../theme'
 import { PetModal } from './PetModal'
 import { PetShopModal } from './PetShopModal'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface PetsModalProps {
   onClose: () => void
@@ -16,6 +17,7 @@ export function PetsModal({ onClose }: PetsModalProps) {
   const pets = useGameStore((s) => s.pets)
   const [shopping, setShopping] = useState(false)
   const [petId, setPetId] = useState<string | null>(null)
+  useCloseOnAction(onClose)
 
   useEffect(() => {
     playSfx('pop')

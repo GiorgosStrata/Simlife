@@ -6,6 +6,7 @@ import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Gender } from '../types'
 import { Avatar } from './Avatar'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface DatingModalProps {
   onClose: () => void
@@ -65,6 +66,7 @@ export function DatingModal({ onClose }: DatingModalProps) {
 
   const [profile, setProfile] = useState<Profile>(() => makeProfile())
   const [matched, setMatched] = useState<Profile | null>(null)
+  useCloseOnAction(onClose)
 
   useEffect(() => {
     playSfx('pop')
@@ -89,8 +91,11 @@ export function DatingModal({ onClose }: DatingModalProps) {
 
   const startDating = () => {
     if (!matched) return
+    const before = useGameStore.getState().log.length
     beginRelationship(matched.name, matched.gender, matched.age)
-    onClose()
+    const st = useGameStore.getState()
+    if (st.log.length > before) st.showToast(st.log[st.log.length - 1].text)
+    st.closeModals()
   }
 
   return (

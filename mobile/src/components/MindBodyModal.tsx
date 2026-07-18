@@ -6,6 +6,7 @@ import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { confirmAction } from './actionRunner'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface MindBodyModalProps {
   onClose: () => void
@@ -32,6 +33,7 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
     playSfx('pop')
   }, [])
 
+  useCloseOnAction(onClose)
   const act = confirmAction(onClose)
   const used = (k: string) => usedActions.includes(k)
   const price = (base: number) => scaleByCountry(base, countryCode)

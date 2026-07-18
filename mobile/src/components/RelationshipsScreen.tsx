@@ -27,7 +27,6 @@ export function RelationshipsScreen() {
   const age = useGameStore((s) => s.age)
   const relationships = useGameStore((s) => s.relationships)
   const partnerStatus = useGameStore((s) => s.partnerStatus)
-  const findLove = useGameStore((s) => s.findLove)
   const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
 
   const [personId, setPersonId] = useState<string | null>(null)
@@ -91,17 +90,17 @@ export function RelationshipsScreen() {
         }}
         chevron
       />
-      {age >= 18 && !hasPartner && (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            playSfx('click')
-            findLove()
-          }}
-          style={({ pressed }) => [styles.bigButton, pressed && styles.bigButtonPressed]}
-        >
-          <Text style={styles.bigButtonText}>💘 Find Love</Text>
-        </Pressable>
+      {!hasPartner && (
+        <Row
+          emoji="💘"
+          title="Dating"
+          subtitle={
+            age < 16
+              ? 'Ask out a friend or classmate once you’re older'
+              : 'Ask out a friend, classmate or coworker from their profile — or swipe on Cinder'
+          }
+          disabled
+        />
       )}
       {people.map((person) => (
         <Row

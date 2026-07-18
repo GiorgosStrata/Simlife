@@ -4,7 +4,9 @@ import { playSfx } from '../audio/sfx'
 import { ASSET_CATEGORIES, ASSETS, type AssetCategory } from '../data/assets'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import { confirmAction } from './actionRunner'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface StoreModalProps {
   onClose: () => void
@@ -17,6 +19,8 @@ export function StoreModal({ onClose }: StoreModalProps) {
   const buyAsset = useGameStore((s) => s.buyAsset)
 
   const [category, setCategory] = useState<AssetCategory>('car')
+  useCloseOnAction(onClose)
+  const act = confirmAction(onClose)
 
   useEffect(() => {
     playSfx('pop')
@@ -61,7 +65,7 @@ export function StoreModal({ onClose }: StoreModalProps) {
                   emoji={asset.emoji}
                   title={asset.name}
                   subtitle={`$${asset.price.toLocaleString()}`}
-                  onPress={() => buyAsset(asset.id)}
+                  onPress={act(() => buyAsset(asset.id), null)}
                   disabled={owned || tooPoor}
                   right={
                     <View style={[styles.pill, (owned || tooPoor) && styles.pillOff]}>

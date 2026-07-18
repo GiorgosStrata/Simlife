@@ -5,6 +5,7 @@ import { CRIMES } from '../data/activities'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface CrimeModalProps {
   onClose: () => void
@@ -15,10 +16,24 @@ export function CrimeModal({ onClose }: CrimeModalProps) {
   const age = useGameStore((s) => s.age)
   const usedActions = useGameStore((s) => s.usedActions)
   const commitCrime = useGameStore((s) => s.commitCrime)
+  useCloseOnAction(onClose)
 
   useEffect(() => {
     playSfx('pop')
   }, [])
+
+  // Pull the job, then return to the main screen. If it triggered an arrest
+  // (an event pops), let that speak; otherwise show the outcome bubble.
+  const doCrime = (id: string) => () => {
+    playSfx('crime')
+    const before = useGameStore.getState().log.length
+    commitCrime(id)
+    const st = useGameStore.getState()
+    if (!st.currentEvent && st.log.length > before) {
+      st.showToast(st.log[st.log.length - 1].text)
+    }
+    st.closeModals()
+  }
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -47,11 +62,7 @@ export function CrimeModal({ onClose }: CrimeModalProps) {
                         ? 'Already tried this year'
                         : `${risk} · ${crime.description}`
                   }
-                  onPress={() => {
-                    playSfx('crime')
-                    commitCrime(crime.id)
-                    onClose()
-                  }}
+                  onPress={doCrime(crime.id)}
                   disabled={tooYoung || doneThisYear}
                   right={
                     <View style={[styles.pill, (tooYoung || doneThisYear) && styles.pillOff]}>

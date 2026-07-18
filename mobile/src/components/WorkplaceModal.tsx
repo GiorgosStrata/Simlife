@@ -13,6 +13,7 @@ import { confirmAction } from './actionRunner'
 import { PersonAvatar } from './Avatar'
 import { PersonModal } from './PersonModal'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface WorkplaceModalProps {
   onClose: () => void
@@ -35,6 +36,7 @@ export function WorkplaceModal({ onClose }: WorkplaceModalProps) {
     playSfx('pop')
   }, [])
 
+  useCloseOnAction(onClose)
   const act = confirmAction(onClose)
 
   const job = getJob(jobId)

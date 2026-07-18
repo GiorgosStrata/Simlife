@@ -5,7 +5,9 @@ import { PET_CATALOG } from '../data/pets'
 import { scaleByCountry } from '../data/countries'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import { confirmAction } from './actionRunner'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface PetShopModalProps {
   onClose: () => void
@@ -16,6 +18,8 @@ export function PetShopModal({ onClose }: PetShopModalProps) {
   const money = useGameStore((s) => s.money)
   const countryCode = useGameStore((s) => s.countryCode)
   const adoptPet = useGameStore((s) => s.adoptPet)
+  useCloseOnAction(onClose)
+  const act = confirmAction(onClose)
 
   useEffect(() => {
     playSfx('pop')
@@ -37,10 +41,7 @@ export function PetShopModal({ onClose }: PetShopModalProps) {
                   emoji={opt.emoji}
                   title={`${opt.breed}`}
                   subtitle={`${opt.species} · $${opt.price.toLocaleString()} · upkeep $${upkeep.toLocaleString()}/yr`}
-                  onPress={() => {
-                    adoptPet(opt.id)
-                    onClose()
-                  }}
+                  onPress={act(() => adoptPet(opt.id), null)}
                   disabled={tooPoor}
                   right={
                     <View style={[styles.pill, tooPoor && styles.pillOff]}>

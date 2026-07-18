@@ -9,9 +9,10 @@ import { useGameStore } from '../store/gameStore'
  * main screen. No-ops (already done this year, not enough money) neither toast
  * nor close, so the menu stays put.
  */
-export function confirmAction(onClose: () => void) {
+export function confirmAction(_onClose?: () => void) {
   // Pass sfx: null for actions that already play their own sound, so it
-  // doesn't echo.
+  // doesn't echo. On success we pop the confirmation bubble and close every
+  // open sheet (via closeModals), landing back on the main screen.
   return (run: () => void, sfx: SfxName | null = 'click') =>
     () => {
       const store = useGameStore.getState()
@@ -21,7 +22,7 @@ export function confirmAction(onClose: () => void) {
       const after = useGameStore.getState()
       if (after.log.length > before) {
         after.showToast(after.log[after.log.length - 1].text)
-        onClose()
+        after.closeModals()
       }
     }
 }

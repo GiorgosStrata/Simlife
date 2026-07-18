@@ -7,6 +7,7 @@ import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { confirmAction } from './actionRunner'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface PetModalProps {
   petId: string
@@ -29,6 +30,8 @@ export function PetModal({ petId, onClose }: PetModalProps) {
   useEffect(() => {
     playSfx('pop')
   }, [])
+
+  useCloseOnAction(onClose)
 
   if (!pet) return null
 

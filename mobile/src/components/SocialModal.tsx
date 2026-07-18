@@ -4,7 +4,9 @@ import { playSfx } from '../audio/sfx'
 import { MONETIZE_MIN_FOLLOWERS, SOCIAL_APPS, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { SocialApp } from '../types'
+import { confirmAction } from './actionRunner'
 import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface SocialModalProps {
   app: SocialApp
@@ -22,6 +24,8 @@ export function SocialModal({ app, onClose }: SocialModalProps) {
   const posted = usedActions.includes(`post-${app}`)
   const monetized = usedActions.includes(`monetize-${app}`)
   const canMonetize = followers >= MONETIZE_MIN_FOLLOWERS
+  useCloseOnAction(onClose)
+  const act = confirmAction(onClose)
 
   useEffect(() => {
     playSfx('pop')
@@ -48,7 +52,7 @@ export function SocialModal({ app, onClose }: SocialModalProps) {
               subtitle={
                 posted ? 'Already posted this year' : 'Grow your following — you might go viral'
               }
-              onPress={() => socialPost(app)}
+              onPress={act(() => socialPost(app), null)}
               disabled={posted}
               chevron
             />
@@ -62,7 +66,7 @@ export function SocialModal({ app, onClose }: SocialModalProps) {
                     ? 'Land some brand deals'
                     : `Needs ${MONETIZE_MIN_FOLLOWERS.toLocaleString()}+ followers`
               }
-              onPress={() => monetizeSocial(app)}
+              onPress={act(() => monetizeSocial(app), null)}
               disabled={monetized || !canMonetize}
               chevron
             />

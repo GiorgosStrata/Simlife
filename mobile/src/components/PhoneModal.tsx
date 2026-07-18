@@ -7,6 +7,7 @@ import type { SocialApp } from '../types'
 import { DatingModal } from './DatingModal'
 import { InvestingModal } from './InvestingModal'
 import { SocialModal } from './SocialModal'
+import { useCloseOnAction } from './useCloseOnAction'
 
 interface PhoneModalProps {
   onClose: () => void
@@ -18,6 +19,7 @@ type OpenApp = SocialApp | 'cinder' | 'vestr' | null
 export function PhoneModal({ onClose }: PhoneModalProps) {
   const followers = useGameStore((s) => s.followers)
   const [open, setOpen] = useState<OpenApp>(null)
+  useCloseOnAction(onClose)
 
   useEffect(() => {
     playSfx('pop')
