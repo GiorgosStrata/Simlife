@@ -123,7 +123,7 @@ function Game() {
           </Pressable>
         </View>
 
-        {/* Meta row: age/year + balance on the left, Advance Year on the right */}
+        {/* Meta row: age/year + balance */}
         <View style={styles.metaBar}>
           <View style={styles.metaChip}>
             <Text style={styles.metaLabel}>AGE</Text>
@@ -133,24 +133,6 @@ function Game() {
           <View style={[styles.metaChip, styles.balanceChip]}>
             <Text style={[styles.metaValue, money < 0 && styles.balanceNeg]}>{balance}</Text>
           </View>
-          <View style={styles.grow} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Advance Year"
-            onPress={() => {
-              playSfx('click')
-              ageUp()
-            }}
-            disabled={advanceDisabled}
-            style={({ pressed }) => [
-              styles.advanceButton,
-              pressed && styles.advanceButtonPressed,
-              advanceDisabled && styles.advanceButtonDisabled,
-            ]}
-          >
-            <Text style={styles.advanceText}>Advance Year</Text>
-            <Text style={styles.advanceArrow}>→</Text>
-          </Pressable>
         </View>
 
         <StatsPanel />
@@ -162,6 +144,25 @@ function Game() {
 
         <TabBar active={tab} onChange={setTab} />
       </View>
+
+      {/* Floating Advance Year button, bottom-left for easy thumb reach. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Advance Year"
+        onPress={() => {
+          playSfx('click')
+          ageUp()
+        }}
+        disabled={advanceDisabled}
+        style={({ pressed }) => [
+          styles.advanceButton,
+          pressed && styles.advanceButtonPressed,
+          advanceDisabled && styles.advanceButtonDisabled,
+        ]}
+      >
+        <Text style={styles.advanceText}>Advance Year</Text>
+        <Text style={styles.advanceArrow}>→</Text>
+      </Pressable>
 
       <Toast />
       <EventModal />
@@ -284,17 +285,22 @@ const styles = StyleSheet.create({
   balanceNeg: {
     color: colors.rose500,
   },
-  grow: {
-    flex: 1,
-  },
   advanceButton: {
+    position: 'absolute',
+    left: 16,
+    bottom: 84,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 8,
     backgroundColor: colors.cyan500,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    shadowColor: colors.cyan500,
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
   },
   advanceButtonPressed: {
     backgroundColor: colors.cyan400,
@@ -303,13 +309,13 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   advanceText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.3,
     color: colors.onColor,
   },
   advanceArrow: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     color: colors.onColor,
   },

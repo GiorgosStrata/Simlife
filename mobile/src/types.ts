@@ -1,9 +1,16 @@
-/** The four core 0-100 attributes of a character. */
+/** The five core 0-100 attributes of a character. */
 export interface Stats {
   health: number
   happiness: number
   smarts: number
   looks: number
+  /**
+   * Public renown. Driven mostly by your career (athletes/entertainers reach
+   * ~90, respected professionals ~30, everyone else low), boosted by being a
+   * smart, good-looking kid and by a big social following. Drifts toward that
+   * target each year, so fame builds — and fades — over time.
+   */
+  fame: number
 }
 
 export type StatKey = keyof Stats

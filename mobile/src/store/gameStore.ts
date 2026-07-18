@@ -135,7 +135,44 @@ function rollStats(): Stats {
     happiness: randomInt(50, 100),
     smarts: randomInt(30, 100),
     looks: randomInt(30, 100),
+    fame: 0, // no one is born famous; it's earned
   }
+}
+
+/**
+ * The fame level a character is trending toward this year. Career is the main
+ * driver: athletes and entertainers become household names, respected
+ * professionals get modest recognition, and most jobs bring little. A smart,
+ * good-looking kid is "popular" (a bigger effect the younger they are), and a
+ * large social following adds real fame. Fame then drifts toward this target,
+ * so it builds up and fades gradually rather than snapping.
+ */
+function fameTarget(
+  job: Job | null,
+  jobTier: number,
+  sport: SportState | null,
+  followers: { rizzgram: number; flicktok: number },
+  age: number,
+  smarts: number,
+  looks: number,
+): number {
+  let jobBase = 0
+  if (job?.special) {
+    // Sports & entertainment: stardom, rising with rank and trophies.
+    const titles = (sport?.titles ?? 0) + (sport?.mvps ?? 0)
+    jobBase = 62 + jobTier * 11 + titles * 2
+  } else if (job) {
+    // Respected professions get ~30; ordinary jobs much less.
+    jobBase = job.salary >= 90000 ? 30 : job.salary >= 50000 ? 18 : 8
+  }
+  // Popular kid: smart + good-looking, strongest in the school years.
+  const pop = (smarts + looks) / 2
+  const youthFactor = age < 14 ? 0.5 : age < 20 ? 0.35 : age < 26 ? 0.15 : 0.04
+  const popBoost = Math.max(0, pop - 55) * youthFactor
+  // A big online following makes you famous in its own right.
+  const totalFollowers = followers.rizzgram + followers.flicktok
+  const followerBoost = Math.min(35, totalFollowers / 4000)
+  return clampStat(jobBase + popBoost + followerBoost)
 }
 
 /** Parents (and maybe an older sibling) with country-appropriate names. */
@@ -1157,6 +1194,10 @@ export const useGameStore = create<GameState>()(
             })
             schoolSport = null
           }
+
+          // Fame drifts toward what your career, youth and following warrant.
+          const famT = fameTarget(job, jobTier, sport, s.followers, age, stats.smarts, stats.looks)
+          stats.fame = clampStat(stats.fame + (famT - stats.fame) * 0.3)
 
           // Debt grows a little each year you stay in the red.
           if (money < 0) {
@@ -2799,7 +2840,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 22,
+      version: 23,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -2954,6 +2995,18 @@ export const useGameStore = create<GameState>()(
         // v21 saves predate the Midnight Indigo redesign (dark by default).
         if (version < 22) {
           state.theme = 'dark'
+        }
+        // v22 saves predate the Fame stat.
+        if (version < 23) {
+          const job = JOBS.find((j) => j.id === state.jobId)
+          const startFame = job?.special
+            ? 75
+            : job?.requiresDegree || job?.requiredMajor
+              ? 25
+              : job
+                ? 8
+                : 0
+          state.stats = { ...(state.stats as Stats), fame: startFame }
         }
         // v20 saves predate NPCs having their own careers and hobbies.
         if (version < 21) {
