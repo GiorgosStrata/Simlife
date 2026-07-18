@@ -15,6 +15,8 @@ export interface Asset {
   price: number
   /** Small one-time happiness boost when purchased. */
   joy: number
+  /** Homes only: how many people it comfortably houses. */
+  size?: number
 }
 
 export const ASSET_CATEGORIES: Array<{ key: AssetCategory; emoji: string; label: string }> = [
@@ -62,15 +64,15 @@ export const ASSETS: Asset[] = [
   { id: 'phone-pear-12', emoji: '📱', name: 'Pear Phone 12', category: 'phone', price: 950, joy: 6 },
   { id: 'phone-pear-max', emoji: '📱', name: 'Pear Phone 12 Ultra Max', category: 'phone', price: 1400, joy: 8 },
 
-  // ----- Homes -----
-  { id: 'home-studio', emoji: '🏚️', name: 'Studio Apartment', category: 'home', price: 40000, joy: 8 },
-  { id: 'home-cottage', emoji: '🏡', name: 'Country Cottage', category: 'home', price: 120000, joy: 12 },
-  { id: 'home-townhouse', emoji: '🏘️', name: 'Townhouse', category: 'home', price: 200000, joy: 14 },
-  { id: 'home-suburban', emoji: '🏠', name: 'Suburban House', category: 'home', price: 260000, joy: 16 },
-  { id: 'home-condo', emoji: '🏢', name: 'Downtown Condo', category: 'home', price: 340000, joy: 17 },
-  { id: 'home-mansion', emoji: '🏰', name: 'Countryside Mansion', category: 'home', price: 1200000, joy: 24 },
-  { id: 'home-villa', emoji: '🌴', name: 'Beachfront Villa', category: 'home', price: 2000000, joy: 27 },
-  { id: 'home-penthouse', emoji: '🏙️', name: 'Skyline Penthouse', category: 'home', price: 3500000, joy: 30 },
+  // ----- Homes (size = how many people it comfortably houses) -----
+  { id: 'home-studio', emoji: '🏚️', name: 'Studio Apartment', category: 'home', price: 40000, joy: 8, size: 1 },
+  { id: 'home-cottage', emoji: '🏡', name: 'Country Cottage', category: 'home', price: 120000, joy: 12, size: 2 },
+  { id: 'home-townhouse', emoji: '🏘️', name: 'Townhouse', category: 'home', price: 200000, joy: 14, size: 3 },
+  { id: 'home-suburban', emoji: '🏠', name: 'Suburban House', category: 'home', price: 260000, joy: 16, size: 4 },
+  { id: 'home-condo', emoji: '🏢', name: 'Downtown Condo', category: 'home', price: 340000, joy: 17, size: 3 },
+  { id: 'home-mansion', emoji: '🏰', name: 'Countryside Mansion', category: 'home', price: 1200000, joy: 24, size: 6 },
+  { id: 'home-villa', emoji: '🌴', name: 'Beachfront Villa', category: 'home', price: 2000000, joy: 27, size: 7 },
+  { id: 'home-penthouse', emoji: '🏙️', name: 'Skyline Penthouse', category: 'home', price: 3500000, joy: 30, size: 5 },
 
   // ----- Luxury -----
   { id: 'lux-watch', emoji: '⌚', name: 'Gold Watch', category: 'luxury', price: 12000, joy: 8 },
@@ -91,4 +93,9 @@ export function getAsset(id: string): Asset | undefined {
 /** Resale value: half the purchase price, rounded. */
 export function resaleValue(asset: Asset): number {
   return Math.round(asset.price / 2)
+}
+
+/** Yearly gross rent a home earns when you rent it out (~6% of value). */
+export function homeRent(price: number): number {
+  return Math.round(price / 17)
 }
