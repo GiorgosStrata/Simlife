@@ -1,11 +1,10 @@
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useRef, useState } from 'react'
-import { Animated, ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { playSfx } from './src/audio/sfx'
 import { applyTheme } from './src/applyTheme'
 import { ActivitiesScreen } from './src/components/ActivitiesScreen'
-import { AssetsScreen } from './src/components/AssetsScreen'
 import { Avatar } from './src/components/Avatar'
 import { CareerScreen } from './src/components/CareerScreen'
 import { CharacterCreation } from './src/components/CharacterCreation'
@@ -33,6 +32,7 @@ function Game() {
   const avatarConfig = useGameStore((s) => s.avatarConfig)
   const age = useGameStore((s) => s.age)
   const year = useGameStore((s) => s.year)
+  const money = useGameStore((s) => s.money)
   const alive = useGameStore((s) => s.alive)
   const currentEvent = useGameStore((s) => s.currentEvent)
   const jobId = useGameStore((s) => s.jobId)
@@ -46,8 +46,13 @@ function Game() {
   const theme = useGameStore((s) => s.theme)
   const modalNonce = useGameStore((s) => s.modalNonce)
 
+  // Apply the light/dark theme on web whenever it changes.
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme])
+
   // After any confirmed action (which closes all sheets), snap back to the
-  // middle "Life" tab — BitLife always returns you to the main screen.
+  // "Dashboard" tab — you always land on the main screen.
   const prevNonce = useRef(modalNonce)
   useEffect(() => {
     if (modalNonce !== prevNonce.current) {
@@ -55,31 +60,6 @@ function Game() {
       setTab('life')
     }
   }, [modalNonce])
-
-  // Apply the light/dark theme on web whenever it changes.
-  useEffect(() => {
-    applyTheme(theme)
-  }, [theme])
-
-  // Gentle looping pulse on the Age button so it feels alive (BitLife style).
-  // Declared before any early return so hook order stays stable.
-  const pulse = useRef(new Animated.Value(0)).current
-  const pulseIdle = !alive || currentEvent !== null
-  useEffect(() => {
-    if (pulseIdle) {
-      pulse.stopAnimation()
-      pulse.setValue(0)
-      return
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 850, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 850, useNativeDriver: true }),
-      ]),
-    )
-    loop.start()
-    return () => loop.stop()
-  }, [pulseIdle, pulse])
 
   if (!hasHydrated) {
     return (
@@ -99,31 +79,32 @@ function Game() {
 
   const job = getJob(jobId)
   const occupation = prison
-    ? `🔒 Inmate · ${prison.yearsLeft}y left`
+    ? `Inmate · ${prison.yearsLeft}y left`
     : job
-      ? `${job.emoji} ${jobTitle(job, jobTier)}`
+      ? jobTitle(job, jobTier)
       : inUniversity
-        ? `🏛️ Studying ${getMajor(major)?.name ?? ''}`
+        ? `Studying ${getMajor(major)?.name ?? ''}`
         : isInSchool(age)
-          ? '🎒 Student'
+          ? 'Student'
           : age < 6
-            ? '🧸 Child'
-            : '🛋️ Unemployed'
+            ? 'Child'
+            : 'Unemployed'
 
-  const ageUpDisabled = !alive || currentEvent !== null
-  const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] })
+  const advanceDisabled = !alive || currentEvent !== null
+  const balance =
+    money < 0 ? `-$${Math.abs(money).toLocaleString()}` : `$${money.toLocaleString()}`
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.column}>
-        {/* Header: avatar, name, occupation, age/year, settings */}
-        <View style={styles.header}>
+        {/* Flat character summary bar */}
+        <View style={styles.topBar}>
           <View style={styles.avatar}>
-            <Avatar config={avatarConfig} alive={alive} size={46} />
+            <Avatar config={avatarConfig} alive={alive} size={44} />
           </View>
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>
-              <Flag code={countryCode} width={22} />
+              <Flag code={countryCode} width={20} />
               <Text style={styles.headerName} numberOfLines={1}>
                 {name}
               </Text>
@@ -132,20 +113,44 @@ function Game() {
               {occupation}
             </Text>
           </View>
-          <View style={styles.headerRight}>
-            <View>
-              <Text style={styles.headerAge}>Age {age}</Text>
-              <Text style={styles.headerYear}>{year}</Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Settings"
-              onPress={() => setSettingsOpen(true)}
-              style={({ pressed }) => [styles.settingsButton, pressed && styles.settingsButtonPressed]}
-            >
-              <Text style={styles.settingsIcon}>⚙️</Text>
-            </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+            onPress={() => setSettingsOpen(true)}
+            style={({ pressed }) => [styles.gear, pressed && styles.gearPressed]}
+          >
+            <Text style={styles.gearIcon}>⚙</Text>
+          </Pressable>
+        </View>
+
+        {/* Meta row: age/year + balance on the left, Advance Year on the right */}
+        <View style={styles.metaBar}>
+          <View style={styles.metaChip}>
+            <Text style={styles.metaLabel}>AGE</Text>
+            <Text style={styles.metaValue}>{age}</Text>
+            <Text style={styles.metaSub}>· {year}</Text>
           </View>
+          <View style={[styles.metaChip, styles.balanceChip]}>
+            <Text style={[styles.metaValue, money < 0 && styles.balanceNeg]}>{balance}</Text>
+          </View>
+          <View style={styles.grow} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Advance Year"
+            onPress={() => {
+              playSfx('click')
+              ageUp()
+            }}
+            disabled={advanceDisabled}
+            style={({ pressed }) => [
+              styles.advanceButton,
+              pressed && styles.advanceButtonPressed,
+              advanceDisabled && styles.advanceButtonDisabled,
+            ]}
+          >
+            <Text style={styles.advanceText}>Advance Year</Text>
+            <Text style={styles.advanceArrow}>→</Text>
+          </Pressable>
         </View>
 
         <StatsPanel />
@@ -154,37 +159,9 @@ function Game() {
         {tab === 'career' && <CareerScreen />}
         {tab === 'relationships' && <RelationshipsScreen />}
         {tab === 'activities' && <ActivitiesScreen />}
-        {tab === 'assets' && <AssetsScreen />}
 
         <TabBar active={tab} onChange={setTab} />
       </View>
-
-      {/* Big round Age button, BitLife style: fixed, never moves.
-          The pulse lives on a wrapper View so the Pressable keeps its
-          normal styling (animating the Pressable directly drops styles
-          on web). */}
-      <Animated.View
-        pointerEvents="box-none"
-        style={[styles.ageUpWrap, { transform: [{ scale: pulseScale }] }]}
-      >
-        <Pressable
-          onPress={() => {
-            playSfx('click')
-            ageUp()
-          }}
-          disabled={ageUpDisabled}
-          style={({ pressed }) => [
-            styles.ageUpButton,
-            pressed && styles.ageUpButtonPressed,
-            ageUpDisabled && styles.ageUpButtonDisabled,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Age Up"
-        >
-          <Text style={styles.ageUpPlus}>＋</Text>
-          <Text style={styles.ageUpText}>Age</Text>
-        </Pressable>
-      </Animated.View>
 
       <Toast />
       <EventModal />
@@ -220,20 +197,19 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 10,
   },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: colors.cyan600,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 2,
   },
   avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.slate200,
   },
   headerInfo: {
     flex: 1,
@@ -245,83 +221,96 @@ const styles = StyleSheet.create({
   },
   headerName: {
     flexShrink: 1,
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.onColor,
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    color: colors.slate800,
   },
   headerOccupation: {
     fontSize: 12,
-    color: colors.cyan100,
+    color: colors.slate500,
     marginTop: 1,
   },
-  headerRight: {
+  gear: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gearPressed: {
+    backgroundColor: colors.cyan50,
+  },
+  gearIcon: {
+    fontSize: 17,
+    color: colors.slate600,
+  },
+  metaBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  headerAge: {
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    borderRadius: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  balanceChip: {},
+  metaLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    color: colors.slate400,
+  },
+  metaValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.slate800,
+    fontVariant: ['tabular-nums'],
+  },
+  metaSub: {
+    fontSize: 12,
+    color: colors.slate500,
+    fontVariant: ['tabular-nums'],
+  },
+  balanceNeg: {
+    color: colors.rose500,
+  },
+  grow: {
+    flex: 1,
+  },
+  advanceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: colors.cyan500,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  advanceButtonPressed: {
+    backgroundColor: colors.cyan400,
+  },
+  advanceButtonDisabled: {
+    opacity: 0.4,
+  },
+  advanceText: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    color: colors.onColor,
+  },
+  advanceArrow: {
     fontSize: 16,
     fontWeight: '800',
     color: colors.onColor,
-    textAlign: 'right',
-    fontVariant: ['tabular-nums'],
-  },
-  headerYear: {
-    fontSize: 11,
-    color: colors.cyan100,
-    textAlign: 'right',
-    fontVariant: ['tabular-nums'],
-  },
-  settingsButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.cyan500,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsButtonPressed: {
-    backgroundColor: colors.cyan400,
-  },
-  settingsIcon: {
-    fontSize: 16,
-  },
-  ageUpWrap: {
-    position: 'absolute',
-    bottom: 96,
-    alignSelf: 'center',
-  },
-  ageUpButton: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    backgroundColor: colors.cyan500,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: colors.onColor,
-    shadowColor: colors.cyan500,
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
-  },
-  ageUpButtonPressed: {
-    backgroundColor: colors.cyan400,
-  },
-  ageUpButtonDisabled: {
-    opacity: 0.55,
-  },
-  ageUpPlus: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.onColor,
-    lineHeight: 24,
-  },
-  ageUpText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.onColor,
-    marginTop: -2,
   },
 })

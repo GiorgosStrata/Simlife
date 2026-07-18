@@ -1,97 +1,100 @@
 import { Platform } from 'react-native'
 
 /**
- * Theming. The palette keys are named after their light-mode Tailwind
- * colours but are used semantically (slate100 = app background, white =
- * card, slate800 = primary text, …). Dark mode remaps the neutral keys
- * and keeps the brand/stat colours.
+ * Theming. Palette keys are still named after Tailwind-ish colours but are
+ * used semantically (slate100 = app background, white = card/panel, slate800
+ * = primary text, cyan* = the brand accent, …). Changing a key's *value*
+ * re-skins the whole app, since every component reads these.
  *
- * On web, every colour is emitted as a CSS variable (`var(--c-key)`) so
- * flipping `data-theme` on the root re-themes the whole app instantly
- * without re-rendering. On native we fall back to the light hex values
- * (a live native toggle would need a bigger refactor).
+ * The design language is "Midnight Indigo": a sleek near-black indigo canvas
+ * with raised panels, an indigo→violet accent and a warm gold secondary.
+ * Dark is the default; a warm "Daylight" variant is the alternate.
+ *
+ * On web every colour is a CSS variable (`var(--c-key)`) so flipping
+ * `data-theme` re-themes instantly. Native falls back to the DARK hexes.
  */
 
-export const LIGHT = {
-  cyan900: '#164e63',
-  cyan600: '#0891b2',
-  cyan500: '#06b6d4',
-  cyan400: '#22d3ee',
-  cyan100: '#cffafe',
-  cyan50: '#ecfeff',
-  slate100: '#f1f5f9',
-  slate200: '#e2e8f0',
-  slate400: '#94a3b8',
-  slate500: '#64748b',
-  slate600: '#475569',
-  slate800: '#1e293b',
-  rose500: '#f43f5e',
-  rose700: '#be123c',
-  amber400: '#fbbf24',
-  sky500: '#0ea5e9',
-  violet500: '#8b5cf6',
-  emerald50: '#ecfdf5',
-  emerald700: '#047857',
-  indigo700: '#4338ca',
-  pink600: '#db2777',
-  sky600: '#0284c7',
-  white: '#ffffff',
-  /** Text/icons that sit on a coloured surface — stays light in both themes. */
-  onColor: '#ffffff',
-  backdrop: 'rgba(15, 23, 42, 0.65)',
+export const DARK = {
+  cyan900: '#e0e1ff', // text sitting on an accent tint (kept light)
+  cyan600: '#6366f1', // primary accent (indigo)
+  cyan500: '#7c6ff8', // buttons / active accent (violet-indigo)
+  cyan400: '#9a8cff', // pressed / hover
+  cyan100: '#c7c9ff', // faint text on accent
+  cyan50: '#20244a', // accent tint background
+  slate100: '#0b0d17', // app background (near-black indigo)
+  slate200: '#242a49', // borders, tracks, subtle fills
+  slate400: '#6a7099',
+  slate500: '#9299c2', // muted text
+  slate600: '#c4c9ec', // secondary text
+  slate800: '#f2f4fd', // primary text
+  rose500: '#fb7185',
+  rose700: '#fb7185',
+  amber400: '#f6b94e', // warm gold secondary accent
+  sky500: '#56b7f5',
+  violet500: '#a78bfa',
+  emerald50: '#12271e',
+  emerald700: '#5ee08a',
+  indigo700: '#a5b4fc',
+  pink600: '#f472b6',
+  sky600: '#56b7f5',
+  white: '#151933', // raised panel / card
+  onColor: '#ffffff', // text on a filled accent — stays light in both themes
+  backdrop: 'rgba(4, 5, 14, 0.78)',
 }
 
-export type ThemeColors = typeof LIGHT
+export type ThemeColors = typeof DARK
 export type ThemeName = 'light' | 'dark'
 
-/** Dark palette: neutrals inverted, brand/stat colours kept (brightened a touch). */
-export const DARK: ThemeColors = {
-  cyan900: '#a5f3fc', // was dark text-on-tint → now light text-on-tint
-  cyan600: '#0e7490',
-  cyan500: '#22d3ee',
-  cyan400: '#67e8f9',
-  cyan100: '#155e75',
-  cyan50: '#0e3a4a', // light tint backgrounds → dark cyan
-  slate100: '#0f172a', // app background
-  slate200: '#334155', // borders / tracks / subtle fills
-  slate400: '#64748b',
-  slate500: '#94a3b8', // muted text
-  slate600: '#cbd5e1', // secondary text
-  slate800: '#f1f5f9', // primary text
-  rose500: '#fb7185',
-  rose700: '#e11d48',
-  amber400: '#fbbf24',
-  sky500: '#38bdf8',
-  violet500: '#a78bfa',
-  emerald50: '#064e3b', // money badge background
-  emerald700: '#6ee7b7', // money badge text
-  indigo700: '#818cf8',
-  pink600: '#ec4899',
-  sky600: '#38bdf8',
-  white: '#1e293b', // card background
-  onColor: '#f8fafc', // text on coloured surfaces stays light
-  backdrop: 'rgba(0, 0, 0, 0.7)',
+/** Warm "Daylight" alternate: cream paper, indigo accent (never the old teal). */
+export const LIGHT: ThemeColors = {
+  cyan900: '#312a8f',
+  cyan600: '#5b53e0',
+  cyan500: '#6d5efc',
+  cyan400: '#8b8cff',
+  cyan100: '#e2e0fb',
+  cyan50: '#efeefe',
+  slate100: '#f4f2ec', // warm paper background
+  slate200: '#e5e1d6',
+  slate400: '#a49d8b',
+  slate500: '#6f6a5b',
+  slate600: '#494436',
+  slate800: '#211f17',
+  rose500: '#f43f5e',
+  rose700: '#be123c',
+  amber400: '#d99a2b',
+  sky500: '#3b82f6',
+  violet500: '#8b5cf6',
+  emerald50: '#eafaf0',
+  emerald700: '#0f9d58',
+  indigo700: '#4f46e5',
+  pink600: '#db2777',
+  sky600: '#2563eb',
+  white: '#fffdf8', // card
+  onColor: '#ffffff',
+  backdrop: 'rgba(20, 18, 12, 0.55)',
 }
 
 export const THEMES: Record<ThemeName, ThemeColors> = { light: LIGHT, dark: DARK }
-const KEYS = Object.keys(LIGHT) as (keyof ThemeColors)[]
+const KEYS = Object.keys(DARK) as (keyof ThemeColors)[]
 
 /**
  * The palette every component imports. On web these are CSS variables so
- * theme switching is instant; on native they're the light hex values.
+ * theme switching is instant; on native they're the DARK hex values.
  */
 export const colors: ThemeColors =
   Platform.OS === 'web'
     ? (Object.fromEntries(KEYS.map((k) => [k, `var(--c-${k})`])) as ThemeColors)
-    : LIGHT
+    : DARK
 
-/** CSS declaring both themes' variables; injected once into the web page. */
+/** CSS declaring both themes' variables + the app font; injected once on web. */
 export function themeCss(): string {
-  const decls = (theme: ThemeColors) =>
-    KEYS.map((k) => `--c-${k}:${theme[k]};`).join('')
+  const decls = (theme: ThemeColors) => KEYS.map((k) => `--c-${k}:${theme[k]};`).join('')
   return (
-    `:root{${decls(LIGHT)}}` +
-    `:root[data-theme="dark"]{${decls(DARK)}}` +
-    `html,body{background:var(--c-slate100);}`
+    `@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');` +
+    `:root{${decls(DARK)}}` +
+    `:root[data-theme="light"]{${decls(LIGHT)}}` +
+    `html,body{background:var(--c-slate100);font-family:'Space Grotesk',system-ui,-apple-system,Segoe UI,sans-serif;}` +
+    // react-native-web renders Text in spans/divs that inherit the body font.
+    `*{font-family:inherit;}`
   )
 }

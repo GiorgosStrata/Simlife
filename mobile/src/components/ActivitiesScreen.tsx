@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { ScrollView, StyleSheet, Text } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { getActivity } from '../data/activities'
+import { getAsset, resaleValue } from '../data/assets'
+import { assetUpkeep } from '../data/economy'
+import { STRINGS } from '../data/strings'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { ActivityCategory } from '../types'
@@ -9,13 +12,22 @@ import { CrimeModal } from './CrimeModal'
 import { MindBodyModal } from './MindBodyModal'
 import { PursuitModal } from './PursuitModal'
 import { Row } from './Row'
+import { StoreModal } from './StoreModal'
 
-/** BitLife-style activities menu: pick a category, then an activity. */
+/** The "Lifestyle" hub: wellness, pursuits, crime, and your belongings/shop. */
 export function ActivitiesScreen() {
   const pursuits = useGameStore((s) => s.pursuits)
+  const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
+  const sellAsset = useGameStore((s) => s.sellAsset)
   const [category, setCategory] = useState<ActivityCategory | null>(null)
   const [crime, setCrime] = useState(false)
-  const [mindBody, setMindBody] = useState(false)
+  const [wellness, setWellness] = useState(false)
+  const [shopping, setShopping] = useState(false)
+
+  const owned = ownedAssetIds
+    .map((id) => getAsset(id))
+    .filter((a): a is NonNullable<typeof a> => !!a)
+  const netWorth = owned.reduce((sum, a) => sum + resaleValue(a), 0)
 
   const activeLabel = (cat: ActivityCategory): string => {
     const active = pursuits[cat]
@@ -29,22 +41,23 @@ export function ActivitiesScreen() {
     playSfx('click')
     setCategory(cat)
   }
+  const tap = (fn: () => void) => () => {
+    playSfx('click')
+    fn()
+  }
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionHeading}>🧘 WELLNESS</Text>
+      <Text style={styles.sectionHeading}>WELLNESS</Text>
       <Row
         emoji="🧘"
-        title="Mind & Body"
-        subtitle="Doctor, gym, therapy, spa — stay healthy, live longer"
-        onPress={() => {
-          playSfx('click')
-          setMindBody(true)
-        }}
+        title={STRINGS.wellnessHub}
+        subtitle="Clinic, counseling, spa — stay healthy, live longer"
+        onPress={tap(() => setWellness(true))}
         chevron
       />
 
-      <Text style={styles.sectionHeading}>🎯 ACTIVITIES</Text>
+      <Text style={styles.sectionHeading}>PURSUITS</Text>
       <Row emoji="🏅" title="Sport" subtitle={activeLabel('sport')} onPress={open('sport')} chevron />
       <Row emoji="🧠" title="Mind" subtitle={activeLabel('mind')} onPress={open('mind')} chevron />
       <Row emoji="🎨" title="Hobbies" subtitle={activeLabel('hobby')} onPress={open('hobby')} chevron />
@@ -52,16 +65,41 @@ export function ActivitiesScreen() {
         emoji="🦹"
         title="Crime"
         subtitle="Risky one-off jobs — you might get caught"
-        onPress={() => {
-          playSfx('click')
-          setCrime(true)
-        }}
+        onPress={tap(() => setCrime(true))}
         chevron
       />
 
+      <Text style={styles.sectionHeading}>
+        BELONGINGS{owned.length > 0 ? ` · WORTH $${netWorth.toLocaleString()}` : ''}
+      </Text>
+      <Row
+        emoji="🛍️"
+        title="Go shopping"
+        subtitle="Cars, phones, homes, and luxury"
+        onPress={tap(() => setShopping(true))}
+        chevron
+      />
+      {owned.length === 0 && (
+        <Row emoji="📭" title="Nothing yet" subtitle="Buy something from the shop above" />
+      )}
+      {owned.map((asset) => {
+        const upkeep = assetUpkeep(asset.price, asset.category)
+        return (
+          <Row
+            key={asset.id}
+            emoji={asset.emoji}
+            title={asset.name}
+            subtitle={`Sell for $${resaleValue(asset).toLocaleString()}${upkeep > 0 ? ` · upkeep $${upkeep.toLocaleString()}/yr` : ''}`}
+            onPress={tap(() => sellAsset(asset.id))}
+            right={<Text style={styles.sell}>Sell</Text>}
+          />
+        )
+      })}
+
       {category && <PursuitModal category={category} onClose={() => setCategory(null)} />}
       {crime && <CrimeModal onClose={() => setCrime(false)} />}
-      {mindBody && <MindBodyModal onClose={() => setMindBody(false)} />}
+      {wellness && <MindBodyModal onClose={() => setWellness(false)} />}
+      {shopping && <StoreModal onClose={() => setShopping(false)} />}
     </ScrollView>
   )
 }
@@ -70,10 +108,16 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { gap: 8, paddingBottom: 110 },
   sectionHeading: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    color: colors.slate500,
+    marginTop: 10,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    color: colors.slate400,
+  },
+  sell: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.rose500,
+    marginRight: 4,
   },
 })

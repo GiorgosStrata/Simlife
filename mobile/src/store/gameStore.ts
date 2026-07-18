@@ -830,7 +830,7 @@ export const useGameStore = create<GameState>()(
         ...newLifeState(),
         hasHydrated: false,
         sfxVolume: 1,
-        theme: 'light' as ThemeName,
+        theme: 'dark' as ThemeName,
         modalNonce: 0,
 
         setSfxVolume: (volume: number) => {
@@ -2799,7 +2799,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 21,
+      version: 22,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -2950,6 +2950,10 @@ export const useGameStore = create<GameState>()(
         if (version < 20) {
           state.athletics = randomInt(25, 55)
           state.schoolSport = null
+        }
+        // v21 saves predate the Midnight Indigo redesign (dark by default).
+        if (version < 22) {
+          state.theme = 'dark'
         }
         // v20 saves predate NPCs having their own careers and hobbies.
         if (version < 21) {

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { scaleByCountry } from '../data/countries'
+import { STRINGS } from '../data/strings'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { confirmAction } from './actionRunner'
@@ -56,10 +57,8 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>🧘 Mind & Body</Text>
-          <Text style={styles.subtitle}>
-            Look after yourself. Staying healthy keeps you alive far longer.
-          </Text>
+          <Text style={styles.title}>{STRINGS.wellnessHub}</Text>
+          <Text style={styles.subtitle}>{STRINGS.wellnessTagline}</Text>
 
           <View style={styles.badges}>
             <View style={styles.badge}>
@@ -79,7 +78,7 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             <Row
               emoji="🩺"
-              title={`See a doctor (${money$(150)})`}
+              title={`${STRINGS.clinic} (${money$(150)})`}
               subtitle={sub({ key: 'doctor', cost: 150, ready: 'A checkup and treatment to restore health' })}
               onPress={act(seeDoctor, 'success')}
               disabled={disabled({ key: 'doctor', cost: 150 })}
@@ -87,7 +86,7 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
             />
             <Row
               emoji="🦷"
-              title={`See a dentist (${money$(120)})`}
+              title={`${STRINGS.dentist} (${money$(120)})`}
               subtitle={sub({ key: 'dentist', cost: 120, ready: 'Cleaner teeth — a brighter smile' })}
               onPress={act(seeDentist, 'success')}
               disabled={disabled({ key: 'dentist', cost: 120 })}
@@ -95,7 +94,7 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
             />
             <Row
               emoji="🛋️"
-              title={`See a therapist (${money$(250)})`}
+              title={`${STRINGS.counseling} (${money$(250)})`}
               subtitle={sub({ key: 'therapist', cost: 250, ready: 'Work through things — big happiness boost' })}
               onPress={act(seeTherapist, 'success')}
               disabled={disabled({ key: 'therapist', cost: 250 })}
@@ -103,7 +102,7 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
             />
             <Row
               emoji="💆"
-              title={`Spa day (${money$(200)})`}
+              title={`${STRINGS.spa} (${money$(200)})`}
               subtitle={sub({ key: 'spa', cost: 200, ready: '+ happiness and looks' })}
               onPress={act(spaDay, 'cash')}
               disabled={disabled({ key: 'spa', cost: 200 })}
@@ -111,7 +110,7 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
             />
             <Row
               emoji="💉"
-              title={`Plastic surgery (${money$(7000)})`}
+              title={`${STRINGS.cosmeticSurgery} (${money$(7000)})`}
               subtitle={sub({ key: 'surgery', cost: 7000, minAge: 18, ready: 'Big looks boost — small risk it goes wrong' })}
               onPress={act(plasticSurgery, 'cash')}
               disabled={disabled({ key: 'surgery', cost: 7000, minAge: 18 })}
