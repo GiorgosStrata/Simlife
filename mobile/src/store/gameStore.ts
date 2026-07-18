@@ -132,13 +132,19 @@ export function relationLabel(
 }
 
 function rollStats(): Stats {
-  return {
-    health: randomInt(60, 100),
-    happiness: randomInt(50, 100),
-    smarts: randomInt(30, 100),
-    looks: randomInt(30, 100),
-    fame: 0, // no one is born famous; it's earned
-  }
+  // Each starting stat is capped at 80, and the four together total 240-280,
+  // so nobody starts min-maxed but everyone is reasonably rounded.
+  let health = 0
+  let happiness = 0
+  let smarts = 0
+  let looks = 0
+  do {
+    health = randomInt(48, 80)
+    happiness = randomInt(48, 80)
+    smarts = randomInt(48, 80)
+    looks = randomInt(48, 80)
+  } while (health + happiness + smarts + looks < 240 || health + happiness + smarts + looks > 280)
+  return { health, happiness, smarts, looks, fame: 0 } // no one is born famous
 }
 
 /**
@@ -219,6 +225,17 @@ function makeFamily(countryCode: string, familyLastName: string): Person[] {
 
 export function getJob(jobId: string | null): Job | null {
   return jobId ? (JOBS.find((j) => j.id === jobId) ?? null) : null
+}
+
+/** Best-matching real job for an NPC's flavour career (e.g. "Doctor"). */
+function jobForCareer(career: string | undefined): Job | null {
+  if (!career) return null
+  const c = career.toLowerCase()
+  return (
+    JOBS.find((j) => !j.special && j.title.toLowerCase() === c) ??
+    JOBS.find((j) => !j.special && j.title.toLowerCase().includes(c)) ??
+    null
+  )
 }
 
 /** How many jobs are hiring in any given year. */
@@ -1043,6 +1060,27 @@ export const useGameStore = create<GameState>()(
             }
           }
 
+          // Mandatory retirement: regular workers are retired by 70.
+          if (job && !jobSport(job.id) && age >= 70 && jobIdNext !== null) {
+            const finalSalary = annualSalary(job, jobTier, s.raisePercent, s.countryCode)
+            const years = Math.max(1, yearsInJob)
+            pension = Math.round(finalSalary * Math.min(0.6, 0.15 + years * 0.012))
+            const fund = Math.round(finalSalary * years * 0.05)
+            money += fund
+            entries.push({
+              id: logId++,
+              age,
+              year,
+              text: `At ${age}, you reached retirement age and hung up your boots. Nest egg $${fund.toLocaleString()}, pension $${pension.toLocaleString()}/yr. 🌴`,
+              kind: 'career',
+            })
+            playSfx('graduate')
+            jobIdNext = null
+            jobTier = 0
+            raiseNext = 0
+            athleteRetired = true
+          }
+
           // University: country-scaled tuition drains yearly until graduation.
           let { hasDegree, inUniversity, uniYearsLeft } = s
           let expenses = 0
@@ -1123,6 +1161,18 @@ export const useGameStore = create<GameState>()(
               if (p.role === 'partner') partnerStatus = null
               if (!funeralFor && CLOSE.includes(p.role))
                 funeralFor = { name: p.name, isPet: false, role: label }
+              // Inherit a parent's (or spouse's) estate when they pass.
+              if (p.role === 'mother' || p.role === 'father' || p.role === 'partner') {
+                const inheritance = scaleByCountry(randomInt(10000, 180000), s.countryCode)
+                money += inheritance
+                entries.push({
+                  id: logId++,
+                  age,
+                  year,
+                  text: `You inherited $${inheritance.toLocaleString()} from ${p.name}. 💰`,
+                  kind: 'money',
+                })
+              }
               return { ...p, age: pAge, alive: false }
             }
             return {
@@ -1306,6 +1356,8 @@ export const useGameStore = create<GameState>()(
           const famT = fameTarget(job, jobTier, sport, s.followers, age, stats.smarts, stats.looks)
           stats.fame = clampStat(stats.fame + (famT - stats.fame) * 0.3)
 
+          // Children never owe money — their parents cover everything.
+          if (age < 18 && money < 0) money = 0
           // Debt grows a little each year you stay in the red.
           if (money < 0) {
             money = Math.round(money * (1 + DEBT_INTEREST))
@@ -3000,6 +3052,32 @@ export const useGameStore = create<GameState>()(
             rebuilt.push(...classroom)
           }
 
+          // A grown heir already has the life they built: their career (and the
+          // degree it needed), promotions to match their age, and a workplace.
+          let heirJobId: string | null = null
+          let heirTier = 0
+          let heirYears = 0
+          let heirDegree = false
+          let heirMajor: string | null = null
+          if (heir.age >= 22) {
+            const heirJob = jobForCareer(heir.career)
+            if (heirJob) {
+              heirJobId = heirJob.id
+              heirDegree = !!(heirJob.requiresDegree || heirJob.requiredMajor)
+              heirMajor = heirJob.requiredMajor ?? null
+              const maxTier = (heirJob.tiers?.length ?? 1) - 1
+              heirYears = Math.max(0, heir.age - 22)
+              heirTier = Math.min(maxTier, Math.floor(heirYears / YEARS_PER_PROMOTION))
+              const crew = rollWorkplacePeople(s.countryCode, heir.age, nextFriendId)
+              nextFriendId += crew.length
+              rebuilt.push(...crew)
+            } else if (heir.age >= 22) {
+              // Grown but no matching career → assume they finished school/uni.
+              heirDegree = Math.random() < 0.5
+            }
+          }
+          const heirJob = getJob(heirJobId)
+
           set({
             ...newLifeState(),
             screen: 'life',
@@ -3014,6 +3092,12 @@ export const useGameStore = create<GameState>()(
             relationships: rebuilt,
             nextFriendId,
             schoolName,
+            jobId: heirJobId,
+            jobTier: heirTier,
+            yearsInJob: heirYears,
+            hasDegree: heirDegree,
+            major: heirMajor,
+            jobOpenings: rollJobOpenings(heirMajor, heirDegree),
             ancestors: [...s.ancestors, ancestor],
             generation: s.generation + 1,
             alive: true,
@@ -3024,6 +3108,7 @@ export const useGameStore = create<GameState>()(
                 year: s.year,
                 text:
                   `You continue the family story as ${heir.name}, generation ${s.generation + 1}.` +
+                  (heirJob ? ` You're a ${jobTitle(heirJob, heirTier)} ${heirJob.emoji}.` : '') +
                   (inheritance > 0 ? ` You inherited $${inheritance.toLocaleString()}.` : ''),
                 kind: 'info',
               },

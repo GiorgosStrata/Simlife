@@ -20,8 +20,12 @@ interface RelTemplate {
   id: string
   roles: PersonRole[]
   emoji: string
+  /** Bounds on YOUR age. */
   minAge?: number
   maxAge?: number
+  /** Bounds on the other PERSON's age (e.g. kids stop asking for allowance at 18). */
+  personMinAge?: number
+  personMaxAge?: number
   title: (name: string) => string
   description: (name: string) => string
   choices: RelChoice[]
@@ -237,6 +241,7 @@ const TEMPLATES: RelTemplate[] = [
     id: 'child-report',
     roles: ['child'],
     emoji: '🎒',
+    personMaxAge: 17,
     title: (n) => `${n}'s Report Card`,
     description: (n) => `${n} comes home with a report card — and it's not great.`,
     choices: [
@@ -248,6 +253,7 @@ const TEMPLATES: RelTemplate[] = [
     id: 'child-allowance',
     roles: ['child'],
     emoji: '🪙',
+    personMaxAge: 17,
     title: (n) => `${n} Wants a Raise`,
     description: (n) => `${n} argues, quite persuasively, that they deserve a bigger allowance.`,
     choices: [
@@ -259,6 +265,7 @@ const TEMPLATES: RelTemplate[] = [
     id: 'child-award',
     roles: ['child'],
     emoji: '🏅',
+    personMaxAge: 17,
     title: (n) => `${n} Wins an Award`,
     description: (n) => `${n} won an award at school and can't wait to show you.`,
     choices: [
@@ -310,7 +317,9 @@ export function buildRelationshipEvent(person: Person, age: number): GameEvent |
     (t) =>
       t.roles.includes(person.role) &&
       (t.minAge === undefined || age >= t.minAge) &&
-      (t.maxAge === undefined || age <= t.maxAge),
+      (t.maxAge === undefined || age <= t.maxAge) &&
+      (t.personMinAge === undefined || person.age >= t.personMinAge) &&
+      (t.personMaxAge === undefined || person.age <= t.personMaxAge),
   )
   if (eligible.length === 0) return null
   const t = eligible[Math.floor(Math.random() * eligible.length)]
