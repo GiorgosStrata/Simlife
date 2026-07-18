@@ -2,8 +2,10 @@ import { useEffect } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { SPECIAL_JOBS } from '../data/jobs'
+import { leagueForJob } from '../data/leagues'
 import { annualSalary, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import { confirmAction } from './actionRunner'
 import { Row } from './Row'
 
 interface SpecialJobsModalProps {
@@ -22,6 +24,7 @@ function tryoutOdds(stat: number, min: number): string {
 export function SpecialJobsModal({ onClose }: SpecialJobsModalProps) {
   const age = useGameStore((s) => s.age)
   const stats = useGameStore((s) => s.stats)
+  const athletics = useGameStore((s) => s.athletics)
   const jobId = useGameStore((s) => s.jobId)
   const countryCode = useGameStore((s) => s.countryCode)
   const usedActions = useGameStore((s) => s.usedActions)
@@ -30,6 +33,8 @@ export function SpecialJobsModal({ onClose }: SpecialJobsModalProps) {
   useEffect(() => {
     playSfx('pop')
   }, [])
+
+  const act = confirmAction(onClose)
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -45,8 +50,9 @@ export function SpecialJobsModal({ onClose }: SpecialJobsModalProps) {
               const tooYoung = age < job.minAge
               const triedThisYear = usedActions.includes(`tryout-${job.id}`)
               const disabled = isCurrent || tooYoung || triedThisYear
-              const statName = job.auditionStat === 'health' ? 'fitness' : 'star quality'
-              const stat = job.auditionStat ? stats[job.auditionStat] : 50
+              const isSport = leagueForJob(job.id) !== null
+              const statName = isSport ? 'athletic talent' : 'star quality'
+              const stat = isSport ? athletics : job.auditionStat ? stats[job.auditionStat] : 50
               const odds = tryoutOdds(stat, job.auditionMin ?? 50)
               const subtitle = isCurrent
                 ? 'This is your current career'
@@ -61,10 +67,7 @@ export function SpecialJobsModal({ onClose }: SpecialJobsModalProps) {
                   emoji={job.emoji}
                   title={job.title}
                   subtitle={subtitle}
-                  onPress={() => {
-                    tryoutForSpecialJob(job.id)
-                    onClose()
-                  }}
+                  onPress={act(() => tryoutForSpecialJob(job.id), null)}
                   disabled={disabled}
                   right={
                     <View style={[styles.pill, disabled && styles.pillLocked]}>

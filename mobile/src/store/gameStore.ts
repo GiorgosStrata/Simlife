@@ -351,6 +351,10 @@ interface GameState {
   major: string | null
   /** Current school's name, e.g. "Palm Street High School". */
   schoolName: string | null
+  /** Hidden athletic talent (0-100): drives sports tryouts & pro-league odds. */
+  athletics: number
+  /** School sports team you're on while in school (sport name), or null. */
+  schoolSport: string | null
   /** Job ids hiring this year; rerolled every Age Up. */
   jobOpenings: string[]
   /** True while the major-picker is open (from the grad popup or Career tab). */
@@ -410,6 +414,11 @@ interface GameState {
 
   // School (once per year each)
   studyHarder: () => void
+
+  // School sports
+  tryoutSchoolTeam: (sport: string) => void
+  trainWithTeam: () => void
+  quitSchoolTeam: () => void
 
   // Person interactions (once per person per year)
   compliment: (personId: string) => void
@@ -523,6 +532,8 @@ function newLifeState() {
     uniYearsLeft: 0,
     major: null,
     schoolName: null,
+    athletics: randomInt(20, 55),
+    schoolSport: null as string | null,
     jobOpenings: rollJobOpenings(null, false),
     applyingToUniversity: false,
     // Family is generated in startLife, once country and name are final.
@@ -826,6 +837,8 @@ export const useGameStore = create<GameState>()(
           ]
           const stats = { ...s.stats }
           let money = s.money
+          let athletics = s.athletics
+          let schoolSport = s.schoolSport
 
           // Gentle wear and tear in later life.
           if (age > 50) {
@@ -1054,6 +1067,8 @@ export const useGameStore = create<GameState>()(
             for (const key of Object.keys(deltas) as (keyof Stats)[]) {
               stats[key] = gainStat(stats[key], deltas[key] ?? 0)
             }
+            // Sports pursuits quietly build athletic talent.
+            if (category === 'sport') athletics = gainStat(athletics, randomInt(1, 3))
             // Hidden yearly cost, country-scaled, from age 18.
             if (age >= EXPENSES_START_AGE && activity.cost > 0) {
               const cost = scaleByCountry(activity.cost, s.countryCode)
@@ -1070,6 +1085,18 @@ export const useGameStore = create<GameState>()(
             } else {
               pursuits[category] = { ...active, years }
             }
+          }
+
+          // Leaving school (or dropping into university) ends your school team.
+          if (schoolSport && !isInSchool(age)) {
+            entries.push({
+              id: logId++,
+              age,
+              year,
+              text: `Your days on the school ${schoolSport.toLowerCase()} team came to an end. 🏅`,
+              kind: 'career',
+            })
+            schoolSport = null
           }
 
           // Debt grows a little each year you stay in the red.
@@ -1118,6 +1145,8 @@ export const useGameStore = create<GameState>()(
               relationships,
               partnerStatus,
               schoolName,
+              athletics,
+              schoolSport,
               nextFriendId,
               pursuits,
               pets,
@@ -1179,6 +1208,8 @@ export const useGameStore = create<GameState>()(
             relationships,
             partnerStatus,
             schoolName,
+            athletics,
+            schoolSport,
             nextFriendId,
             pursuits,
             pets,
@@ -1306,6 +1337,63 @@ export const useGameStore = create<GameState>()(
             },
           })
           addLog([{ text: 'You hit the books and studied extra hard this year.', kind: 'career' }])
+        },
+
+        // ----- School sports -----
+
+        tryoutSchoolTeam: (sport: string) => {
+          const s = get()
+          if (!s.alive || !isInSchool(s.age) || s.schoolSport) return
+          if (!useYearlyAction('school-tryout')) return
+          // Natural talent decides it, with a floor and ceiling either way.
+          const chance = Math.max(0.15, Math.min(0.92, s.athletics / 100 + 0.2))
+          if (Math.random() < chance) {
+            set({
+              schoolSport: sport,
+              athletics: gainStat(s.athletics, randomInt(3, 6)),
+              stats: { ...s.stats, happiness: clampStat(s.stats.happiness + randomInt(3, 6)) },
+            })
+            playSfx('levelup')
+            addLog([{ text: `You made the school ${sport.toLowerCase()} team! 🏅`, kind: 'career' }])
+          } else {
+            set({ stats: { ...s.stats, happiness: clampStat(s.stats.happiness - randomInt(1, 3)) } })
+            playSfx('fail')
+            addLog([{ text: `You tried out for the school ${sport.toLowerCase()} team but didn't make the cut.`, kind: 'career' }])
+          }
+        },
+
+        trainWithTeam: () => {
+          const s = get()
+          if (!s.alive || !s.schoolSport) return
+          if (!useYearlyAction('team-train')) return
+          const gain = randomInt(2, 5)
+          // A standout season sometimes catches a scout's eye.
+          const standout = Math.random() < 0.2 + s.athletics / 300
+          set({
+            athletics: gainStat(s.athletics, standout ? gain + 3 : gain),
+            stats: {
+              ...s.stats,
+              health: gainStat(s.stats.health, randomInt(1, 3)),
+              happiness: clampStat(s.stats.happiness + randomInt(1, 3)),
+            },
+          })
+          playSfx('gym')
+          addLog([
+            {
+              text: standout
+                ? `A standout season on the ${s.schoolSport.toLowerCase()} team — scouts are starting to notice you. 🌟`
+                : `You trained hard with the ${s.schoolSport.toLowerCase()} team this year.`,
+              kind: 'career',
+            },
+          ])
+        },
+
+        quitSchoolTeam: () => {
+          const s = get()
+          if (!s.schoolSport) return
+          const sport = s.schoolSport
+          set({ schoolSport: null })
+          addLog([{ text: `You left the school ${sport.toLowerCase()} team.`, kind: 'career' }])
         },
 
         compliment: (personId: string) => {
@@ -2008,20 +2096,22 @@ export const useGameStore = create<GameState>()(
           // One attempt per fame career per year.
           if (!useYearlyAction(`tryout-${jobId}`)) return
 
-          const stat = job.auditionStat ? s.stats[job.auditionStat] : 50
+          // Sports careers are decided by hidden athletic talent; entertainment
+          // careers by the job's audition stat (looks etc).
+          const league = leagueForJob(jobId)
+          const stat = league ? s.athletics : job.auditionStat ? s.stats[job.auditionStat] : 50
           const min = job.auditionMin ?? 50
-          // Better stats → better odds; there's always a slim/​capped chance.
+          // Better talent → better odds; there's always a slim/​capped chance.
           const chance = Math.max(0.05, Math.min(0.9, (stat - min) / 50 + 0.3))
           if (Math.random() < chance) {
             const crew = rollWorkplacePeople(s.countryCode, s.age, s.nextFriendId)
             // Sports careers draft you onto a random team in their league.
-            const league = leagueForJob(jobId)
             let sport: SportState | null = null
             if (league) {
               const team = pick(league.teams)
               sport = {
                 teamId: team.id,
-                skill: clampStat(45 + Math.round((s.stats.health - 60) / 2) + randomInt(0, 10)),
+                skill: clampStat(40 + Math.round((s.athletics - 55) / 2) + randomInt(0, 10)),
                 titles: 0,
                 mvps: 0,
                 wins: 0,
@@ -2095,6 +2185,7 @@ export const useGameStore = create<GameState>()(
           const coach = s.relationships.find((p) => p.role === 'boss' && p.alive)
           set({
             sport: { ...s.sport, skill: clampStat(s.sport.skill + gain) },
+            athletics: gainStat(s.athletics, randomInt(1, 2)),
             stats: { ...s.stats, health: clampStat(s.stats.health + randomInt(1, 3)) },
           })
           if (coach)
@@ -2623,7 +2714,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 19,
+      version: 20,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, ...rest }) => rest,
       onRehydrateStorage: () => () => {
@@ -2768,6 +2859,11 @@ export const useGameStore = create<GameState>()(
         if (version < 19) {
           state.prison = null
           state.timesArrested = 0
+        }
+        // v19 saves predate the hidden athletics stat and school sports.
+        if (version < 20) {
+          state.athletics = randomInt(25, 55)
+          state.schoolSport = null
         }
         return state as GameState
       },

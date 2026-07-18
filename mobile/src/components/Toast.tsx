@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
-import { Animated, Pressable, StyleSheet, Text } from 'react-native'
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 
 /**
- * BitLife-style confirmation bubble. When an action reports an outcome via
- * showToast, this floats it up over the main screen, then fades away on its
- * own after a moment (or when tapped).
+ * BitLife-style result card. When an action reports an outcome via showToast,
+ * this pops a big, centered card over a dimmed screen. You tap OK (or the
+ * backdrop) to dismiss it and carry on — which, since the submenu already
+ * closed, lands you back on the main screen.
  */
 export function Toast() {
   const toast = useGameStore((s) => s.toast)
@@ -16,63 +17,85 @@ export function Toast() {
   useEffect(() => {
     if (!toast) return
     anim.setValue(0)
-    Animated.spring(anim, { toValue: 1, useNativeDriver: true, friction: 7, tension: 80 }).start()
-    const timer = setTimeout(() => {
-      Animated.timing(anim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-        // Only clear if this is still the same toast (guard against races).
-        if (useGameStore.getState().toast === toast) dismissToast()
-      })
-    }, 2100)
-    return () => clearTimeout(timer)
-  }, [toast, anim, dismissToast])
+    Animated.spring(anim, { toValue: 1, useNativeDriver: true, friction: 7, tension: 90 }).start()
+  }, [toast, anim])
 
   if (!toast) return null
 
-  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] })
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] })
 
   return (
-    <Animated.View
-      pointerEvents="box-none"
-      style={[styles.wrap, { opacity: anim, transform: [{ translateY }] }]}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Dismiss"
-        onPress={dismissToast}
-        style={styles.bubble}
-      >
+    <View style={styles.backdrop} pointerEvents="auto">
+      <Pressable style={styles.backdropPress} accessibilityLabel="Dismiss" onPress={dismissToast} />
+      <Animated.View style={[styles.card, { opacity: anim, transform: [{ scale }] }]}>
         <Text style={styles.text}>{toast.text}</Text>
-      </Pressable>
-    </Animated.View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={dismissToast}
+          style={({ pressed }) => [styles.okButton, pressed && styles.okButtonPressed]}
+        >
+          <Text style={styles.okText}>OK</Text>
+        </Pressable>
+      </Animated.View>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  backdrop: {
     position: 'absolute',
+    top: 0,
     left: 0,
     right: 0,
-    top: '32%',
+    bottom: 0,
+    backgroundColor: colors.backdrop,
     alignItems: 'center',
-    paddingHorizontal: 28,
+    justifyContent: 'center',
+    padding: 28,
   },
-  bubble: {
-    backgroundColor: colors.slate800,
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    maxWidth: 340,
+  backdropPress: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    paddingTop: 26,
+    paddingBottom: 18,
+    paddingHorizontal: 24,
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12,
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 16,
   },
   text: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
-    color: colors.white,
+    color: colors.slate800,
     textAlign: 'center',
-    lineHeight: 21,
+    lineHeight: 26,
+  },
+  okButton: {
+    marginTop: 22,
+    alignSelf: 'stretch',
+    backgroundColor: colors.cyan500,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  okButtonPressed: {
+    backgroundColor: colors.cyan400,
+  },
+  okText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.onColor,
   },
 })

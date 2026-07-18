@@ -136,6 +136,22 @@ const LAW_Q: JobQuestion[] = [
   q('Evidence should be...', ['Preserved and documented', 'Improvised', 'Discarded']),
 ]
 
+const SPORT_Q: JobQuestion[] = [
+  q('An athlete pulls a muscle mid-game. First step?', ['Stop and assess the injury', 'Push through it', 'Add more weight']),
+  q('A good training plan includes...', ['Rest and recovery days', 'No days off ever', 'Only cardio, forever']),
+  q('Before intense exercise you should...', ['Warm up properly', 'Eat a huge meal', 'Sprint immediately']),
+  q('What best rebuilds muscle after training?', ['Protein and sleep', 'Skipping meals', 'Sitting still for a week']),
+  q('Staying hydrated during sport is...', ['Essential', 'Optional', 'A myth']),
+]
+
+const SOCIAL_Q: JobQuestion[] = [
+  q('A journalist calls about bad press. You...', ['Prepare a clear, honest statement', 'Panic and hide', 'Insult them']),
+  q('Good communication is mostly about...', ['Knowing your audience', 'Using big words', 'Talking nonstop']),
+  q('A public apology should be...', ['Sincere and specific', 'Vague and defensive', 'Never given']),
+  q('The best way to handle a rumor is to...', ['Address it with facts', 'Spread a bigger one', 'Ignore it forever']),
+  q('A press release should be...', ['Clear and accurate', 'Full of jargon', 'A surprise']),
+]
+
 // [id, title, emoji, salary, minAge, minSmarts, questions, requiresDegree?, requiredMajor?, tiers?]
 type Row = [string, string, string, number, number, number, JobQuestion[], boolean?, string?, string[]?]
 
@@ -298,7 +314,8 @@ const ROWS: Row[] = [
   ['mechanical-engineer', 'Mechanical Engineer', '⚙️', 80000, 22, 72, TRADE_Q, true, 'engineering', ['Junior Engineer', 'Mechanical Engineer', 'Senior Engineer', 'Principal Engineer']],
   ['electrical-engineer', 'Electrical Engineer', '🔌', 82000, 22, 73, TRADE_Q, true, 'engineering', ['Junior Engineer', 'Electrical Engineer', 'Senior Engineer', 'Principal Engineer']],
   ['aerospace-engineer', 'Aerospace Engineer', '🚀', 98000, 22, 80, SCIENCE_Q, true, 'engineering', ['Junior Engineer', 'Aerospace Engineer', 'Senior Engineer', 'Chief Engineer']],
-  ['architect', 'Architect', '📐', 85000, 22, 75, CREATIVE_Q, true, 'engineering', ['Junior Architect', 'Architect', 'Senior Architect', 'Principal Architect']],
+  ['architect', 'Architect', '📐', 85000, 22, 75, CREATIVE_Q, true, 'architecture', ['Junior Architect', 'Architect', 'Senior Architect', 'Principal Architect']],
+  ['urban-planner', 'Urban Planner', '🏙️', 68000, 22, 68, OFFICE_Q, true, 'architecture', ['Junior Planner', 'Urban Planner', 'Senior Planner', 'Head of Planning']],
   ['lab-tech', 'Lab Technician', '🧪', 52000, 22, 60, SCIENCE_Q, true, 'science', ['Junior Technician', 'Lab Technician', 'Senior Technician', 'Lab Manager']],
   ['biologist', 'Biologist', '🧬', 68000, 22, 70, SCIENCE_Q, true, 'science', ['Research Assistant', 'Biologist', 'Senior Biologist', 'Lead Scientist']],
   ['chemist', 'Chemist', '⚗️', 72000, 22, 72, SCIENCE_Q, true, 'science', ['Research Assistant', 'Chemist', 'Senior Chemist', 'Lead Scientist']],
@@ -321,6 +338,24 @@ const ROWS: Row[] = [
     q('Antibiotics treat...', ['Bacterial infections', 'Broken hearts', 'Bad luck']),
   ], true, 'medicine', ['Resident Doctor', 'Doctor', 'Senior Doctor', 'Chief of Medicine']],
   ['surgeon', 'Surgeon', '🔪', 220000, 22, 92, CARE_Q, true, 'medicine', ['Surgical Resident', 'Surgeon', 'Senior Surgeon', 'Chief Surgeon']],
+
+  // ----- New major-locked careers -----
+  ['psychologist', 'Psychologist', '🧠', 82000, 22, 72, CARE_Q, true, 'psychology', ['Trainee Psychologist', 'Psychologist', 'Senior Psychologist', 'Clinical Director']],
+  ['counselor', 'Counselor', '🫂', 46000, 22, 55, CARE_Q, true, 'psychology', ['Junior Counselor', 'Counselor', 'Senior Counselor', 'Lead Counselor']],
+  ['economist', 'Economist', '💹', 90000, 22, 74, FINANCE_Q, true, 'economics', ['Junior Economist', 'Economist', 'Senior Economist', 'Chief Economist']],
+  ['actuary', 'Actuary', '📐', 100000, 22, 78, FINANCE_Q, true, 'mathematics', ['Trainee Actuary', 'Actuary', 'Senior Actuary', 'Chief Actuary']],
+  ['statistician', 'Statistician', '📊', 76000, 22, 74, SCIENCE_Q, true, 'mathematics', ['Junior Statistician', 'Statistician', 'Senior Statistician', 'Head of Statistics']],
+  ['physicist', 'Physicist', '🔭', 92000, 22, 82, SCIENCE_Q, true, 'physics', ['Research Assistant', 'Physicist', 'Senior Physicist', 'Lead Physicist']],
+  ['astronomer', 'Astronomer', '🌌', 86000, 22, 80, SCIENCE_Q, true, 'physics', ['Junior Astronomer', 'Astronomer', 'Senior Astronomer', 'Observatory Director']],
+  ['pr-manager', 'PR Manager', '📢', 62000, 22, 55, SOCIAL_Q, true, 'communications', ['PR Associate', 'PR Manager', 'Senior PR Manager', 'Head of Comms']],
+  ['news-anchor', 'News Anchor', '📺', 78000, 22, 60, SOCIAL_Q, true, 'communications', ['Field Reporter', 'News Anchor', 'Prime-Time Anchor', 'Network Star']],
+  ['diplomat', 'Diplomat', '🕊️', 90000, 22, 72, SOCIAL_Q, true, 'political-science', ['Attaché', 'Diplomat', 'Senior Diplomat', 'Ambassador']],
+  ['politician', 'Politician', '🏛️', 80000, 25, 66, SOCIAL_Q, true, 'political-science', ['City Councillor', 'Mayor', 'Governor', 'Head of State']],
+  ['physiotherapist', 'Physiotherapist', '🩹', 62000, 22, 62, SPORT_Q, true, 'sports-science', ['Junior Physio', 'Physiotherapist', 'Senior Physio', 'Head Physio']],
+  ['sports-coach', 'Sports Coach', '🏋️', 58000, 22, 50, SPORT_Q, true, 'sports-science', ['Assistant Coach', 'Head Coach', 'Elite Coach', 'Championship Coach']],
+  ['nutritionist', 'Nutritionist', '🥗', 52000, 22, 58, SPORT_Q, true, 'sports-science', ['Junior Nutritionist', 'Nutritionist', 'Senior Nutritionist', 'Lead Nutritionist']],
+  ['music-teacher', 'Music Teacher', '🎼', 45000, 22, 50, EDU_Q, true, 'music', ['Trainee Tutor', 'Music Teacher', 'Senior Music Teacher', 'Head of Music']],
+  ['composer', 'Composer', '🎹', 60000, 22, 62, CREATIVE_Q, true, 'music', ['Aspiring Composer', 'Composer', 'Renowned Composer', 'Maestro']],
 ]
 
 /**
