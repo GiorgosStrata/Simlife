@@ -10,11 +10,13 @@ import { useGameStore } from '../store/gameStore'
  * nor close, so the menu stays put.
  */
 export function confirmAction(onClose: () => void) {
-  return (run: () => void, sfx: SfxName = 'click') =>
+  // Pass sfx: null for actions that already play their own sound, so it
+  // doesn't echo.
+  return (run: () => void, sfx: SfxName | null = 'click') =>
     () => {
       const store = useGameStore.getState()
       const before = store.log.length
-      playSfx(sfx)
+      if (sfx) playSfx(sfx)
       run()
       const after = useGameStore.getState()
       if (after.log.length > before) {

@@ -5,6 +5,7 @@ import { ONGOING_ACTIVITIES } from '../data/activities'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { ActivityCategory } from '../types'
+import { confirmAction } from './actionRunner'
 import { Row } from './Row'
 
 const CATEGORY_LABEL: Record<ActivityCategory, string> = {
@@ -29,6 +30,7 @@ export function PursuitModal({ category, onClose }: PursuitModalProps) {
     playSfx('pop')
   }, [])
 
+  const act = confirmAction(onClose)
   const options = ONGOING_ACTIVITIES.filter((a) => a.category === category)
 
   return (
@@ -45,10 +47,7 @@ export function PursuitModal({ category, onClose }: PursuitModalProps) {
               emoji="🛑"
               title="Stop current activity"
               subtitle="Quit what you're doing now"
-              onPress={() => {
-                playSfx('click')
-                stopPursuit(category)
-              }}
+              onPress={act(() => stopPursuit(category))}
               chevron
             />
           )}
@@ -72,10 +71,7 @@ export function PursuitModal({ category, onClose }: PursuitModalProps) {
                         ? `Unlocks at age ${a.minAge}`
                         : a.description
                   }
-                  onPress={() => {
-                    playSfx('click')
-                    startPursuit(a.id)
-                  }}
+                  onPress={act(() => startPursuit(a.id), null)}
                   disabled={isActive || tooYoung}
                   right={
                     <View style={[styles.pill, (isActive || tooYoung) && styles.pillOff]}>

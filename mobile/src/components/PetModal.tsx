@@ -107,7 +107,7 @@ export function PetModal({ petId, onClose }: PetModalProps) {
               emoji="🎓"
               title="Teach a trick"
               subtitle={used('pet-trick') ? 'Done this year' : '60% it sticks · + bond'}
-              onPress={act(() => teachTrick(petId), 'success')}
+              onPress={act(() => teachTrick(petId), null)}
               disabled={used('pet-trick')}
               chevron
             />

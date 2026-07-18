@@ -14,9 +14,13 @@ const KIND_COLORS: Record<LogEntry['kind'], string> = {
   money: colors.emerald700,
 }
 
-const KIND_EMOJI: Partial<Record<LogEntry['kind'], string>> = {
+const KIND_EMOJI: Record<LogEntry['kind'], string> = {
+  birthday: '🎂',
+  event: '✨',
   info: '👶',
   death: '🪦',
+  career: '💼',
+  relationship: '❤️',
   money: '💰',
 }
 
@@ -42,10 +46,11 @@ export function LifeLog() {
               <View style={styles.ageHeaderLine} />
             </View>
           ) : (
-            <Text style={[styles.entry, { color: KIND_COLORS[item.kind] }]}>
-              {KIND_EMOJI[item.kind] ? `${KIND_EMOJI[item.kind]} ` : ''}
-              {item.text}
-            </Text>
+            <View style={styles.entryRow}>
+              <View style={[styles.accent, { backgroundColor: KIND_COLORS[item.kind] }]} />
+              <Text style={styles.entryEmoji}>{KIND_EMOJI[item.kind]}</Text>
+              <Text style={styles.entryText}>{item.text}</Text>
+            </View>
           )
         }
       />
@@ -82,9 +87,26 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.slate200,
   },
-  entry: {
+  entryRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 6,
+  },
+  accent: {
+    width: 3,
+    alignSelf: 'stretch',
+    borderRadius: 999,
+    marginTop: 2,
+  },
+  entryEmoji: {
     fontSize: 14,
     lineHeight: 21,
-    marginBottom: 5,
+  },
+  entryText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.slate600,
   },
 })

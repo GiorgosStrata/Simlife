@@ -65,7 +65,7 @@ export function PrisonModal({ onClose }: PrisonModalProps) {
               emoji="💪"
               title="Work out in the yard"
               subtitle={used('prison-workout') ? 'Done this year' : '+ health'}
-              onPress={act(prisonWorkout, 'gym')}
+              onPress={act(prisonWorkout, null)}
               disabled={used('prison-workout')}
               chevron
             />
