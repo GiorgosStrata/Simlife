@@ -36,7 +36,7 @@ export function RealEstateModal({ onClose }: RealEstateModalProps) {
         <View style={styles.card}>
           <Text style={styles.title}>🏘️ Real Estate</Text>
           <Text style={styles.subtitle}>
-            Buy to rent — each property pays for itself in ~15-20 years, then it's profit.
+            Buy properties to collect rent every year. Some are better deals than others.
           </Text>
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
@@ -62,14 +62,13 @@ export function RealEstateModal({ onClose }: RealEstateModalProps) {
 
             <Text style={styles.sectionHeading}>ON THE MARKET</Text>
             {listings.map((l) => {
-              const roi = Math.round(l.price / l.rentPerYear)
               const tooPoor = money < l.price
               return (
                 <Row
                   key={l.id}
                   emoji={l.emoji}
                   title={l.name}
-                  subtitle={`$${l.price.toLocaleString()} · rent $${l.rentPerYear.toLocaleString()}/yr · ${roi}yr ROI`}
+                  subtitle={`$${l.price.toLocaleString()} · rent $${l.rentPerYear.toLocaleString()}/yr`}
                   onPress={act(() => buyProperty(l.id), 'cash')}
                   disabled={tooPoor}
                   right={
