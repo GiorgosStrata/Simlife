@@ -24,7 +24,17 @@ import { colors } from './src/theme'
 
 function Game() {
   const [tab, setTab] = useState<TabKey>('life')
+  const [prevTab, setPrevTab] = useState<TabKey>('career')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const tabRef = useRef<TabKey>(tab)
+  tabRef.current = tab
+
+  // Switch tabs while remembering where we came from, so the Back button can
+  // return there (BitLife style).
+  const goTab = (t: TabKey) => {
+    if (t !== tabRef.current) setPrevTab(tabRef.current)
+    setTab(t)
+  }
 
   const hasHydrated = useGameStore((s) => s.hasHydrated)
   const screen = useGameStore((s) => s.screen)
@@ -57,7 +67,7 @@ function Game() {
   useEffect(() => {
     if (modalNonce !== prevNonce.current) {
       prevNonce.current = modalNonce
-      setTab('life')
+      goTab('life')
     }
   }, [modalNonce])
 
@@ -142,8 +152,19 @@ function Game() {
         {tab === 'relationships' && <RelationshipsScreen />}
         {tab === 'activities' && <ActivitiesScreen />}
 
-        <TabBar active={tab} onChange={setTab} />
+        <TabBar active={tab} onChange={goTab} />
       </View>
+
+      {/* Back button, bottom-left: returns to the tab you were last on. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Back"
+        onPress={() => goTab(prevTab)}
+        style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
+      >
+        <Text style={styles.backArrow}>←</Text>
+        <Text style={styles.backText}>Back</Text>
+      </Pressable>
 
       {/* Floating Advance Year button, bottom-left for easy thumb reach. */}
       <Pressable
@@ -284,6 +305,33 @@ const styles = StyleSheet.create({
   },
   balanceNeg: {
     color: colors.rose500,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    bottom: 84,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  backButtonPressed: {
+    backgroundColor: colors.cyan50,
+  },
+  backArrow: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.slate600,
+  },
+  backText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.slate600,
   },
   advanceButton: {
     position: 'absolute',

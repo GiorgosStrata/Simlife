@@ -65,8 +65,18 @@ export function livingCost(netIncome: number, code: string | null): number {
   // the full cost of living for everyone else.
   const base = Math.min(s(PERSONAL_EXPENSES_BASE), Math.max(s(6000), Math.round(netIncome * 0.85)))
   const disposable = Math.max(0, netIncome - base)
+  // You spend a share of what's left over — low enough that earning more
+  // genuinely means saving more, rising through the middle so a comfortable
+  // salary doesn't quietly make you a multi-millionaire, then easing for the
+  // rich (who can't spend it all).
   const rate =
-    disposable <= s(20000) ? 0.95 : disposable <= s(60000) ? 0.82 : disposable <= s(150000) ? 0.66 : 0.52
+    disposable <= s(25000)
+      ? 0.55
+      : disposable <= s(70000)
+        ? 0.66
+        : disposable <= s(160000)
+          ? 0.6
+          : 0.5
   return Math.round(base + disposable * rate)
 }
 

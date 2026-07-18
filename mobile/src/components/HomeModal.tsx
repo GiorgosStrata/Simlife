@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
-import { getAsset, homeRent, resaleValue } from '../data/assets'
+import { homeRent } from '../data/assets'
 import { assetUpkeep } from '../data/economy'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
@@ -10,15 +10,16 @@ import { Row } from './Row'
 import { useCloseOnAction } from './useCloseOnAction'
 
 interface HomeModalProps {
-  assetId: string
+  homeId: string
   onClose: () => void
 }
 
-/** Decide what to do with a home you own: live in it, or rent it out & sell. */
-export function HomeModal({ assetId, onClose }: HomeModalProps) {
+/** Decide what to do with a house you own: live in it, or rent it out & sell. */
+export function HomeModal({ homeId, onClose }: HomeModalProps) {
+  const home = useGameStore((s) => s.homes.find((h) => h.id === homeId))
   const residenceId = useGameStore((s) => s.residenceId)
   const setResidence = useGameStore((s) => s.setResidence)
-  const sellAsset = useGameStore((s) => s.sellAsset)
+  const sellHome = useGameStore((s) => s.sellHome)
 
   useEffect(() => {
     playSfx('pop')
@@ -27,9 +28,8 @@ export function HomeModal({ assetId, onClose }: HomeModalProps) {
   useCloseOnAction(onClose)
   const act = confirmAction(onClose)
 
-  const home = getAsset(assetId)
   if (!home) return null
-  const isResidence = residenceId === assetId
+  const isResidence = residenceId === home.id
   const upkeep = assetUpkeep(home.price, 'home')
 
   return (
@@ -50,15 +50,15 @@ export function HomeModal({ assetId, onClose }: HomeModalProps) {
                 emoji="🏠"
                 title="Live here"
                 subtitle="Move in — you'll rent out your old place instead"
-                onPress={act(() => setResidence(assetId))}
+                onPress={act(() => setResidence(home.id))}
                 chevron
               />
             )}
             <Row
               emoji="💵"
-              title={`Sell for $${resaleValue(home).toLocaleString()}`}
+              title={`Sell for $${Math.round(home.price / 2).toLocaleString()}`}
               subtitle={isResidence ? "You'll need somewhere else to live" : 'Cash it in'}
-              onPress={act(() => sellAsset(assetId), 'cash')}
+              onPress={act(() => sellHome(home.id), 'cash')}
               chevron
             />
           </View>

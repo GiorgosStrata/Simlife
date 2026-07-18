@@ -26,6 +26,7 @@ import { makeNpcLife, randomHobby } from '../data/npc'
 import { LEAGUES, getTeam, jobSport, leaguesForSport, teamName } from '../data/leagues'
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, homeRent, resaleValue } from '../data/assets'
+import { rollHomeListings, type HomeListing, type OwnedHome } from '../data/homes'
 import { COUNTRIES, countrySalary, getCountry, scaleByCountry } from '../data/countries'
 import {
   DEBT_INTEREST,
@@ -460,9 +461,13 @@ interface GameState {
   /** 1 for the founder, +1 each time you continue as your child. */
   generation: number
 
-  // Belongings
+  // Belongings (cars, phones, luxury — not houses)
   ownedAssetIds: string[]
-  /** The home you live in (owned). Others you own are rented out for income. */
+  /** Houses you own; one is your residence, the rest are rented out. */
+  homes: OwnedHome[]
+  /** This year's rotating market of randomly-named houses for sale. */
+  homeListings: HomeListing[]
+  /** The home (in `homes`) you live in. Others are rented out for income. */
   residenceId: string | null
 
   // Pets
@@ -551,8 +556,12 @@ interface GameState {
   bribeGuard: () => void
   buyAsset: (assetId: string) => void
   sellAsset: (assetId: string) => void
+
+  // Houses
+  buyHome: (listingId: string) => void
+  sellHome: (homeId: string) => void
   /** Choose which owned home to live in (the rest are rented out). */
-  setResidence: (assetId: string) => void
+  setResidence: (homeId: string) => void
 
   // Pets
   adoptPet: (optionId: string) => void
@@ -642,6 +651,8 @@ function newLifeState() {
     ancestors: [] as Ancestor[],
     generation: 1,
     ownedAssetIds: [] as string[],
+    homes: [] as OwnedHome[],
+    homeListings: rollHomeListings(countryCode),
     residenceId: null as string | null,
     pets: [] as Pet[],
     nextPetId: 1,
@@ -1131,11 +1142,11 @@ export const useGameStore = create<GameState>()(
             ? withoutWorkPeople(relationshipsBase)
             : relationshipsBase
 
-          // Every owned home that isn't your residence is rented out for income.
-          const rentIncome = s.ownedAssetIds.reduce((sum, id) => {
-            const a = getAsset(id)
-            return a && a.category === 'home' && id !== s.residenceId ? sum + homeRent(a.price) : sum
-          }, 0)
+          // Every house that isn't your residence is rented out for income.
+          const rentIncome = s.homes.reduce(
+            (sum, h) => (h.id !== s.residenceId ? sum + homeRent(h.price) : sum),
+            0,
+          )
           money += rentIncome
 
           // ----- Income tax: the main brake on getting rich quick -----
@@ -1156,8 +1167,8 @@ export const useGameStore = create<GameState>()(
             1 +
             relationships.filter((p) => p.id === 'partner' && p.alive).length +
             relationships.filter((p) => p.role === 'child' && p.alive).length
-          const residence = s.residenceId ? getAsset(s.residenceId) : null
-          const ownsResidence = !!residence && s.ownedAssetIds.includes(s.residenceId ?? '')
+          const residence = s.homes.find((h) => h.id === s.residenceId) ?? null
+          const ownsResidence = !!residence
 
           if (age >= EXPENSES_START_AGE && !imprisoned) {
             // Cost of living: essentials + lifestyle creep, scaled to income.
@@ -1184,7 +1195,7 @@ export const useGameStore = create<GameState>()(
               expenses += love
             }
           }
-          // Cars, homes, and luxuries need upkeep every year.
+          // Cars and luxuries need upkeep every year.
           for (const id of s.ownedAssetIds) {
             const asset = getAsset(id)
             if (asset) {
@@ -1192,6 +1203,12 @@ export const useGameStore = create<GameState>()(
               money -= upkeep
               expenses += upkeep
             }
+          }
+          // Houses too — bigger/pricier homes cost proportionally more.
+          for (const h of s.homes) {
+            const upkeep = assetUpkeep(h.price, 'home')
+            money -= upkeep
+            expenses += upkeep
           }
           // A home that comfortably fits — or is bigger than — the family lifts
           // everyone's mood; a cramped one grates. (Big homes already cost more
@@ -1417,6 +1434,7 @@ export const useGameStore = create<GameState>()(
                 : s.usedEventIds,
             usedActions: [],
             jobOpenings: rollJobOpenings(s.major, hasDegree),
+            homeListings: rollHomeListings(s.countryCode),
             log: [...s.log, ...entries],
             nextLogId: logId,
           })
@@ -1910,25 +1928,14 @@ export const useGameStore = create<GameState>()(
           const asset = getAsset(assetId)
           if (!asset || !s.alive || s.money < asset.price) return
           if (s.ownedAssetIds.includes(assetId)) return
-          // Your first home becomes the place you live; extra homes are rentals.
-          const becomesResidence = asset.category === 'home' && !s.residenceId
           set({
             money: s.money - asset.price,
             ownedAssetIds: [...s.ownedAssetIds, assetId],
-            residenceId: becomesResidence ? assetId : s.residenceId,
             stats: { ...s.stats, happiness: clampStat(s.stats.happiness + asset.joy) },
           })
           playSfx(asset.category === 'car' ? 'honk' : 'cash')
           addLog([
-            {
-              text:
-                asset.category === 'home'
-                  ? becomesResidence
-                    ? `You bought a ${asset.name} ${asset.emoji} for $${asset.price.toLocaleString()} — your new home! 🏠`
-                    : `You bought a ${asset.name} ${asset.emoji} for $${asset.price.toLocaleString()} to rent out. 💰`
-                  : `You bought a ${asset.name} ${asset.emoji} for $${asset.price.toLocaleString()}!`,
-              kind: 'event',
-            },
+            { text: `You bought a ${asset.name} ${asset.emoji} for $${asset.price.toLocaleString()}!`, kind: 'event' },
           ])
         },
 
@@ -1937,20 +1944,9 @@ export const useGameStore = create<GameState>()(
           const asset = getAsset(assetId)
           if (!asset || !s.alive || !s.ownedAssetIds.includes(assetId)) return
           const value = resaleValue(asset)
-          const remaining = s.ownedAssetIds.filter((id) => id !== assetId)
-          // If you sold the home you lived in, move into your next-priciest one.
-          let residenceId = s.residenceId
-          if (residenceId === assetId) {
-            const otherHomes = remaining
-              .map((id) => getAsset(id))
-              .filter((a): a is NonNullable<typeof a> => !!a && a.category === 'home')
-              .sort((a, b) => b.price - a.price)
-            residenceId = otherHomes[0]?.id ?? null
-          }
           set({
             money: s.money + value,
-            ownedAssetIds: remaining,
-            residenceId,
+            ownedAssetIds: s.ownedAssetIds.filter((id) => id !== assetId),
           })
           playSfx('cash')
           addLog([
@@ -1958,13 +1954,55 @@ export const useGameStore = create<GameState>()(
           ])
         },
 
-        setResidence: (assetId: string) => {
+        // ----- Houses -----
+
+        buyHome: (listingId: string) => {
           const s = get()
-          const asset = getAsset(assetId)
-          if (!asset || asset.category !== 'home' || !s.ownedAssetIds.includes(assetId)) return
-          if (s.residenceId === assetId) return
-          set({ residenceId: assetId })
-          addLog([{ text: `You moved into your ${asset.name}. 🏠`, kind: 'event' }])
+          const listing = s.homeListings.find((l) => l.id === listingId)
+          if (!listing || !s.alive || s.money < listing.price) return
+          // Your first home is where you live; extra homes get rented out.
+          const becomesResidence = !s.residenceId
+          const owned: OwnedHome = { ...listing, boughtYear: s.year }
+          set({
+            money: s.money - listing.price,
+            homes: [...s.homes, owned],
+            homeListings: s.homeListings.filter((l) => l.id !== listingId),
+            residenceId: becomesResidence ? listing.id : s.residenceId,
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 10) },
+          })
+          playSfx('cash')
+          addLog([
+            {
+              text: becomesResidence
+                ? `You bought ${listing.name} ${listing.emoji} for $${listing.price.toLocaleString()} — your new home! 🏠`
+                : `You bought ${listing.name} ${listing.emoji} for $${listing.price.toLocaleString()} to rent out. 💰`,
+              kind: 'money',
+            },
+          ])
+        },
+
+        sellHome: (homeId: string) => {
+          const s = get()
+          const home = s.homes.find((h) => h.id === homeId)
+          if (!home || !s.alive) return
+          const value = Math.round(home.price / 2)
+          const remaining = s.homes.filter((h) => h.id !== homeId)
+          // Sold the place you lived in? Move into your next-priciest house.
+          let residenceId = s.residenceId
+          if (residenceId === homeId) {
+            residenceId = [...remaining].sort((a, b) => b.price - a.price)[0]?.id ?? null
+          }
+          set({ money: s.money + value, homes: remaining, residenceId })
+          playSfx('cash')
+          addLog([{ text: `You sold ${home.name} for $${value.toLocaleString()}.`, kind: 'money' }])
+        },
+
+        setResidence: (homeId: string) => {
+          const s = get()
+          const home = s.homes.find((h) => h.id === homeId)
+          if (!home || s.residenceId === homeId) return
+          set({ residenceId: homeId })
+          addLog([{ text: `You moved into ${home.name}. 🏠`, kind: 'event' }])
         },
 
         // ----- Pets -----
@@ -2998,7 +3036,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 25,
+      version: 26,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -3158,18 +3196,32 @@ export const useGameStore = create<GameState>()(
         if (version < 24) {
           state.pension = 0
         }
-        // v24 saves predate the unified home/residence system (which replaced
-        // the separate rental-property tab). Your priciest owned home becomes
-        // where you live; the rest are rented out.
+        // v24 saves predate the residence flag.
         if (version < 25) {
-          const homes = (state.ownedAssetIds ?? [])
-            .map((id) => getAsset(id))
-            .filter((a): a is NonNullable<typeof a> => !!a && a.category === 'home')
-            .sort((a, b) => b.price - a.price)
-          state.residenceId = homes[0]?.id ?? null
-          // Drop the old rental subsystem's data if present.
           delete (state as Record<string, unknown>).properties
           delete (state as Record<string, unknown>).rentalListings
+        }
+        // v25 saves kept houses in ownedAssetIds; move them into their own
+        // `homes` list, generate a rotating market, and pick a residence.
+        if (version < 26) {
+          const homeAssets = (state.ownedAssetIds ?? [])
+            .map((id) => getAsset(id))
+            .filter((a): a is NonNullable<typeof a> => !!a && a.category === 'home')
+          state.homes = homeAssets.map((a) => ({
+            id: a.id,
+            name: a.name,
+            emoji: a.emoji,
+            price: a.price,
+            size: a.size ?? 3,
+            boughtYear: state.year ?? START_YEAR_BASE,
+          }))
+          state.ownedAssetIds = (state.ownedAssetIds ?? []).filter((id) => {
+            const a = getAsset(id)
+            return !a || a.category !== 'home'
+          })
+          const priciest = [...state.homes].sort((a, b) => b.price - a.price)[0]
+          state.residenceId = priciest?.id ?? null
+          state.homeListings = rollHomeListings(state.countryCode ?? 'US')
         }
         // v22 saves predate the Fame stat.
         if (version < 23) {

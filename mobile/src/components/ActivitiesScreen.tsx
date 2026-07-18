@@ -19,6 +19,7 @@ import { StoreModal } from './StoreModal'
 export function ActivitiesScreen() {
   const pursuits = useGameStore((s) => s.pursuits)
   const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
+  const homes = useGameStore((s) => s.homes)
   const residenceId = useGameStore((s) => s.residenceId)
   const sellAsset = useGameStore((s) => s.sellAsset)
   const [category, setCategory] = useState<ActivityCategory | null>(null)
@@ -30,9 +31,11 @@ export function ActivitiesScreen() {
   const owned = ownedAssetIds
     .map((id) => getAsset(id))
     .filter((a): a is NonNullable<typeof a> => !!a)
-  const netWorth = owned.reduce((sum, a) => sum + resaleValue(a), 0)
-  const rentTotal = owned.reduce(
-    (sum, a) => (a.category === 'home' && a.id !== residenceId ? sum + homeRent(a.price) : sum),
+  const netWorth =
+    owned.reduce((sum, a) => sum + resaleValue(a), 0) +
+    homes.reduce((sum, h) => sum + Math.round(h.price / 2), 0)
+  const rentTotal = homes.reduce(
+    (sum, h) => (h.id !== residenceId ? sum + homeRent(h.price) : sum),
     0,
   )
 
@@ -53,10 +56,7 @@ export function ActivitiesScreen() {
     fn()
   }
 
-  const homeSubtitle = (asset: (typeof owned)[number]): string => {
-    if (asset.id === residenceId) return '🏠 You live here · tap to manage'
-    return `💰 Rented · $${homeRent(asset.price).toLocaleString()}/yr · tap to manage`
-  }
+  const hasStuff = owned.length > 0 || homes.length > 0
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -82,35 +82,43 @@ export function ActivitiesScreen() {
       />
 
       <Text style={styles.sectionHeading}>
-        BELONGINGS{owned.length > 0 ? ` · WORTH $${netWorth.toLocaleString()}` : ''}
+        BELONGINGS{hasStuff ? ` · WORTH $${netWorth.toLocaleString()}` : ''}
         {rentTotal > 0 ? ` · $${rentTotal.toLocaleString()}/YR RENT` : ''}
       </Text>
       <Row
         emoji="🛍️"
         title="Go shopping"
-        subtitle="Cars, phones, homes, and luxury"
+        subtitle="Cars, phones, houses, and luxury"
         onPress={tap(() => setShopping(true))}
         chevron
       />
-      {owned.length === 0 && (
+      {!hasStuff && (
         <Row emoji="📭" title="Nothing yet" subtitle="Buy something from the shop above" />
       )}
+      {homes.map((home) => (
+        <Row
+          key={home.id}
+          emoji={home.emoji}
+          title={home.name}
+          subtitle={
+            home.id === residenceId
+              ? '🏠 You live here · tap to manage'
+              : `💰 Rented · $${homeRent(home.price).toLocaleString()}/yr · tap to manage`
+          }
+          onPress={tap(() => setHomeId(home.id))}
+          chevron
+        />
+      ))}
       {owned.map((asset) => {
-        const isHome = asset.category === 'home'
         const upkeep = assetUpkeep(asset.price, asset.category)
         return (
           <Row
             key={asset.id}
             emoji={asset.emoji}
             title={asset.name}
-            subtitle={
-              isHome
-                ? homeSubtitle(asset)
-                : `Sell for $${resaleValue(asset).toLocaleString()}${upkeep > 0 ? ` · upkeep $${upkeep.toLocaleString()}/yr` : ''}`
-            }
-            onPress={isHome ? tap(() => setHomeId(asset.id)) : tap(() => sellAsset(asset.id))}
-            chevron={isHome}
-            right={isHome ? undefined : <Text style={styles.sell}>Sell</Text>}
+            subtitle={`Sell for $${resaleValue(asset).toLocaleString()}${upkeep > 0 ? ` · upkeep $${upkeep.toLocaleString()}/yr` : ''}`}
+            onPress={tap(() => sellAsset(asset.id))}
+            right={<Text style={styles.sell}>Sell</Text>}
           />
         )
       })}
@@ -119,7 +127,7 @@ export function ActivitiesScreen() {
       {crime && <CrimeModal onClose={() => setCrime(false)} />}
       {wellness && <MindBodyModal onClose={() => setWellness(false)} />}
       {shopping && <StoreModal onClose={() => setShopping(false)} />}
-      {homeId && <HomeModal assetId={homeId} onClose={() => setHomeId(null)} />}
+      {homeId && <HomeModal homeId={homeId} onClose={() => setHomeId(null)} />}
     </ScrollView>
   )
 }

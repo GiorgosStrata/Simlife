@@ -18,7 +18,9 @@ export function StoreModal({ onClose }: StoreModalProps) {
   const money = useGameStore((s) => s.money)
   const year = useGameStore((s) => s.year)
   const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
+  const homeListings = useGameStore((s) => s.homeListings)
   const buyAsset = useGameStore((s) => s.buyAsset)
+  const buyHome = useGameStore((s) => s.buyHome)
 
   const [category, setCategory] = useState<AssetCategory>('car')
   useCloseOnAction(onClose)
@@ -28,8 +30,14 @@ export function StoreModal({ onClose }: StoreModalProps) {
     playSfx('pop')
   }, [])
 
+  // Homes are a rotating, randomly-named market; other categories are fixed
+  // (phones flagship-per-year).
   const items =
-    category === 'phone' ? phonesForYear(year) : ASSETS.filter((a) => a.category === category)
+    category === 'home'
+      ? homeListings
+      : category === 'phone'
+        ? phonesForYear(year)
+        : ASSETS.filter((a) => a.category === category)
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -60,15 +68,25 @@ export function StoreModal({ onClose }: StoreModalProps) {
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {items.map((asset) => {
-              const owned = ownedAssetIds.includes(asset.id)
+              const isHome = category === 'home'
+              const owned = !isHome && ownedAssetIds.includes(asset.id)
               const tooPoor = money < asset.price
+              const size = 'size' in asset ? asset.size : undefined
               return (
                 <Row
                   key={asset.id}
                   emoji={asset.emoji}
                   title={asset.name}
-                  subtitle={`$${asset.price.toLocaleString()}`}
-                  onPress={act(() => buyAsset(asset.id), null)}
+                  subtitle={
+                    isHome && size
+                      ? `$${asset.price.toLocaleString()} · houses ${size}`
+                      : `$${asset.price.toLocaleString()}`
+                  }
+                  onPress={
+                    isHome
+                      ? act(() => buyHome(asset.id), null)
+                      : act(() => buyAsset(asset.id), null)
+                  }
                   disabled={owned || tooPoor}
                   right={
                     <View style={[styles.pill, (owned || tooPoor) && styles.pillOff]}>
