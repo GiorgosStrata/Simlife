@@ -3,6 +3,8 @@
  * (e.g. "DMW" not BMW, "Bercedes" not Mercedes, "Pear Phone" not
  * iPhone). Prices are in fixed dollars; resale returns ~50%.
  */
+import { resolvePhone } from './phones'
+
 export type AssetCategory = 'car' | 'phone' | 'home' | 'luxury'
 
 export interface Asset {
@@ -79,7 +81,11 @@ export const ASSETS: Asset[] = [
 ]
 
 export function getAsset(id: string): Asset | undefined {
-  return ASSETS.find((a) => a.id === id)
+  const found = ASSETS.find((a) => a.id === id)
+  if (found) return found
+  // Dynamic (year-generated) phones aren't in the static list.
+  if (id.startsWith('phone-')) return resolvePhone(id)
+  return undefined
 }
 
 /** Resale value: half the purchase price, rounded. */

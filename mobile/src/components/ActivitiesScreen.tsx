@@ -11,6 +11,7 @@ import type { ActivityCategory } from '../types'
 import { CrimeModal } from './CrimeModal'
 import { MindBodyModal } from './MindBodyModal'
 import { PursuitModal } from './PursuitModal'
+import { RealEstateModal } from './RealEstateModal'
 import { Row } from './Row'
 import { StoreModal } from './StoreModal'
 
@@ -23,6 +24,9 @@ export function ActivitiesScreen() {
   const [crime, setCrime] = useState(false)
   const [wellness, setWellness] = useState(false)
   const [shopping, setShopping] = useState(false)
+  const [realEstate, setRealEstate] = useState(false)
+  const propertyCount = useGameStore((s) => s.properties.length)
+  const rentTotal = useGameStore((s) => s.properties.reduce((sum, p) => sum + p.rentPerYear, 0))
 
   const owned = ownedAssetIds
     .map((id) => getAsset(id))
@@ -79,6 +83,17 @@ export function ActivitiesScreen() {
         onPress={tap(() => setShopping(true))}
         chevron
       />
+      <Row
+        emoji="🏘️"
+        title="Real estate"
+        subtitle={
+          propertyCount > 0
+            ? `${propertyCount} rental${propertyCount === 1 ? '' : 's'} · $${rentTotal.toLocaleString()}/yr rent`
+            : 'Buy rental properties for passive income'
+        }
+        onPress={tap(() => setRealEstate(true))}
+        chevron
+      />
       {owned.length === 0 && (
         <Row emoji="📭" title="Nothing yet" subtitle="Buy something from the shop above" />
       )}
@@ -100,6 +115,7 @@ export function ActivitiesScreen() {
       {crime && <CrimeModal onClose={() => setCrime(false)} />}
       {wellness && <MindBodyModal onClose={() => setWellness(false)} />}
       {shopping && <StoreModal onClose={() => setShopping(false)} />}
+      {realEstate && <RealEstateModal onClose={() => setRealEstate(false)} />}
     </ScrollView>
   )
 }

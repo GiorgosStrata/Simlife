@@ -23,9 +23,15 @@ import type {
 } from '../types'
 import { PET_NAMES, getPetOption } from '../data/pets'
 import { makeNpcLife, randomHobby } from '../data/npc'
-import { LEAGUES, getTeam, jobSport, leagueForJob } from '../data/leagues'
+import { LEAGUES, getTeam, jobSport, leaguesForSport, teamName } from '../data/leagues'
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, resaleValue } from '../data/assets'
+import {
+  propertyResale,
+  rollRentalListings,
+  type OwnedRental,
+  type RentalListing,
+} from '../data/realestate'
 import { COUNTRIES, countrySalary, getCountry, scaleByCountry } from '../data/countries'
 import {
   DEBT_INTEREST,
@@ -33,8 +39,9 @@ import {
   YEARS_PER_PROMOTION,
   assetUpkeep,
   friendCost,
+  incomeTax,
+  livingCost,
   partnerCost,
-  personalExpenses,
   tierMultiplier,
   tuitionPerYear,
 } from '../data/economy'
@@ -426,6 +433,8 @@ interface GameState {
   yearsInJob: number
   /** Accumulated raises as a percentage of base salary (0-50). */
   raisePercent: number
+  /** Yearly pension paid out once you've retired (0 = not retired). */
+  pension: number
   /** Pro sports career state (set when you join a basketball/football team). */
   sport: SportState | null
   hasDegree: boolean
@@ -459,6 +468,10 @@ interface GameState {
 
   // Belongings
   ownedAssetIds: string[]
+  /** Rental properties you own (passive income each year). */
+  properties: OwnedRental[]
+  /** The current rotating market of rental properties. */
+  rentalListings: RentalListing[]
 
   // Pets
   pets: Pet[]
@@ -547,6 +560,10 @@ interface GameState {
   buyAsset: (assetId: string) => void
   sellAsset: (assetId: string) => void
 
+  // Real estate
+  buyProperty: (listingId: string) => void
+  sellProperty: (propertyId: string) => void
+
   // Pets
   adoptPet: (optionId: string) => void
   playWithPet: (petId: string) => void
@@ -561,6 +578,8 @@ interface GameState {
   failInterview: (jobId: string) => void
   tryoutForSpecialJob: (jobId: string) => void
   quitJob: () => void
+  /** Retire from work and start drawing a pension + a nest-egg lump sum. */
+  retire: () => void
 
   // Pro sports (leagues)
   trainAthlete: () => void
@@ -614,6 +633,7 @@ function newLifeState() {
     jobTier: 0,
     yearsInJob: 0,
     raisePercent: 0,
+    pension: 0,
     sport: null as SportState | null,
     hasDegree: false,
     inUniversity: false,
@@ -632,6 +652,8 @@ function newLifeState() {
     ancestors: [] as Ancestor[],
     generation: 1,
     ownedAssetIds: [] as string[],
+    properties: [] as OwnedRental[],
+    rentalListings: rollRentalListings(countryCode),
     pets: [] as Pet[],
     nextPetId: 1,
     followers: { rizzgram: 0, flicktok: 0 } as Record<SocialApp, number>,
@@ -956,6 +978,9 @@ export const useGameStore = create<GameState>()(
           const job = getJob(s.jobId)
           let jobTier = s.jobTier
           let yearsInJob = s.yearsInJob
+          let jobIdNext = s.jobId
+          let raiseNext = s.raisePercent
+          let athleteRetired = false
           let grossIncome = 0
           if (job) {
             yearsInJob += 1
@@ -976,6 +1001,14 @@ export const useGameStore = create<GameState>()(
             money += grossIncome
           }
 
+          // Retirement pension lands every year once you've stopped working.
+          let pension = s.pension
+          let pensionIncome = 0
+          if (!job && pension > 0) {
+            pensionIncome = pension
+            money += pensionIncome
+          }
+
           // Pro sports season: record, championships, MVPs, injuries, bonuses.
           let sport = s.sport
           if (job && sport && jobSport(job.id)) {
@@ -985,6 +1018,29 @@ export const useGameStore = create<GameState>()(
             money += res.moneyDelta
             for (const l of res.lines) entries.push({ id: logId++, age, year, ...l })
             if (res.sound) playSfx(res.sound)
+
+            // Athletes have short careers: age (or a collapse in form) forces
+            // retirement. Trophies boost the pension; a nest egg is paid out.
+            if (age >= 36 || sport.skill < 35) {
+              const finalSalary = annualSalary(job, jobTier, s.raisePercent, s.countryCode)
+              const trophies = sport.titles + sport.mvps
+              pension = Math.round(finalSalary * Math.min(0.55, 0.2 + trophies * 0.05))
+              const fund = Math.round(finalSalary * Math.max(1, yearsInJob) * 0.06)
+              money += fund
+              entries.push({
+                id: logId++,
+                age,
+                year,
+                text: `At ${age} your playing days are over — you retire from the ${teamName(sport.teamId)} with ${sport.titles} title${sport.titles === 1 ? '' : 's'}. Nest egg $${fund.toLocaleString()}, pension $${pension.toLocaleString()}/yr. 🏅`,
+                kind: 'career',
+              })
+              playSfx('graduate')
+              jobIdNext = null
+              jobTier = 0
+              raiseNext = 0
+              sport = null
+              athleteRetired = true
+            }
           }
 
           // University: country-scaled tuition drains yearly until graduation.
@@ -1076,18 +1132,36 @@ export const useGameStore = create<GameState>()(
             }
           })
           // Old classmates and teachers move on when the stage changes.
-          const relationships = [
+          const relationshipsBase = [
             ...(stageChanged
               ? agedRelationships.filter((p) => p.role !== 'classmate' && p.role !== 'teacher')
               : agedRelationships),
             ...newSchoolPeople,
           ]
+          const relationships = athleteRetired
+            ? withoutWorkPeople(relationshipsBase)
+            : relationshipsBase
+
+          // Passive rental income from properties you own.
+          const rentIncome = s.properties.reduce((sum, p) => sum + p.rentPerYear, 0)
+          money += rentIncome
+
+          // ----- Income tax: the main brake on getting rich quick -----
+          const tax = incomeTax(grossIncome, s.countryCode)
+          if (tax > 0) {
+            money -= tax
+            expenses += tax
+          }
+          const netIncome = grossIncome - tax + pensionIncome + rentIncome
+          // Pension & rent show up as income on the year's balance sheet.
+          grossIncome += pensionIncome + rentIncome
 
           // ----- Yearly cost of living (this is why you keep less than salary) -----
           // Personal expenses kick in once you're on your own — but not while
           // the state is housing (and feeding) you in prison.
           if (age >= EXPENSES_START_AGE && !imprisoned) {
-            const living = personalExpenses(s.countryCode)
+            // Cost of living: essentials + lifestyle creep, scaled to income.
+            const living = livingCost(netIncome, s.countryCode)
             money -= living
             expenses += living
             // Every friend costs a little to keep up with.
@@ -1236,8 +1310,11 @@ export const useGameStore = create<GameState>()(
               year,
               stats,
               money,
+              jobId: jobIdNext,
               jobTier,
               yearsInJob,
+              raisePercent: raiseNext,
+              pension,
               sport,
               hasDegree,
               inUniversity,
@@ -1299,8 +1376,11 @@ export const useGameStore = create<GameState>()(
             year,
             stats,
             money,
+            jobId: jobIdNext,
             jobTier,
             yearsInJob,
+            raisePercent: raiseNext,
+            pension,
             sport,
             hasDegree,
             inUniversity,
@@ -1321,6 +1401,7 @@ export const useGameStore = create<GameState>()(
                 : s.usedEventIds,
             usedActions: [],
             jobOpenings: rollJobOpenings(s.major, hasDegree),
+            rentalListings: rollRentalListings(s.countryCode),
             log: [...s.log, ...entries],
             nextLogId: logId,
           })
@@ -1840,6 +1921,42 @@ export const useGameStore = create<GameState>()(
           ])
         },
 
+        // ----- Real estate -----
+
+        buyProperty: (listingId: string) => {
+          const s = get()
+          const listing = s.rentalListings.find((l) => l.id === listingId)
+          if (!listing || !s.alive || s.money < listing.price) return
+          const owned: OwnedRental = { ...listing, boughtYear: s.year }
+          set({
+            money: s.money - listing.price,
+            properties: [...s.properties, owned],
+            rentalListings: s.rentalListings.filter((l) => l.id !== listingId),
+          })
+          playSfx('cash')
+          addLog([
+            {
+              text: `You bought a ${listing.name} for $${listing.price.toLocaleString()} — it should net $${listing.rentPerYear.toLocaleString()}/yr in rent. 🏠`,
+              kind: 'money',
+            },
+          ])
+        },
+
+        sellProperty: (propertyId: string) => {
+          const s = get()
+          const prop = s.properties.find((p) => p.id === propertyId)
+          if (!prop || !s.alive) return
+          const value = propertyResale(prop, s.year)
+          set({
+            money: s.money + value,
+            properties: s.properties.filter((p) => p.id !== propertyId),
+          })
+          playSfx('cash')
+          addLog([
+            { text: `You sold your ${prop.name} for $${value.toLocaleString()}.`, kind: 'money' },
+          ])
+        },
+
         // ----- Pets -----
 
         adoptPet: (optionId: string) => {
@@ -2248,16 +2365,17 @@ export const useGameStore = create<GameState>()(
 
           // Sports careers are decided by hidden athletic talent; entertainment
           // careers by the job's audition stat (looks etc).
-          const league = leagueForJob(jobId)
-          const stat = league ? s.athletics : job.auditionStat ? s.stats[job.auditionStat] : 50
+          const sportKind = jobSport(jobId)
+          const stat = sportKind ? s.athletics : job.auditionStat ? s.stats[job.auditionStat] : 50
           const min = job.auditionMin ?? 50
           // Better talent → better odds; there's always a slim/​capped chance.
           const chance = Math.max(0.05, Math.min(0.9, (stat - min) / 50 + 0.3))
           if (Math.random() < chance) {
             const crew = rollWorkplacePeople(s.countryCode, s.age, s.nextFriendId)
-            // Sports careers draft you onto a random team in their league.
+            // Sports careers draft you onto a random team in a random league.
             let sport: SportState | null = null
-            if (league) {
+            if (sportKind) {
+              const league = pick(leaguesForSport(sportKind))
               const team = pick(league.teams)
               sport = {
                 teamId: team.id,
@@ -2325,6 +2443,35 @@ export const useGameStore = create<GameState>()(
           }
         },
 
+        retire: () => {
+          const s = get()
+          const job = getJob(s.jobId)
+          if (!job || !s.alive) return
+          const finalSalary = annualSalary(job, s.jobTier, s.raisePercent, s.countryCode)
+          const years = Math.max(1, s.yearsInJob)
+          // Pension scales with your final pay and how long you worked; a
+          // lump-sum nest egg is paid out on the way out.
+          const pension = Math.round(finalSalary * Math.min(0.6, 0.15 + years * 0.012))
+          const fund = Math.round(finalSalary * years * 0.05)
+          set({
+            jobId: null,
+            jobTier: 0,
+            yearsInJob: 0,
+            raisePercent: 0,
+            sport: null,
+            pension,
+            money: s.money + fund,
+            relationships: withoutWorkPeople(s.relationships),
+          })
+          playSfx('graduate')
+          addLog([
+            {
+              text: `You retired after ${years} year${years === 1 ? '' : 's'} as a ${jobTitle(job, s.jobTier).toLowerCase()}. Nest egg $${fund.toLocaleString()}, pension $${pension.toLocaleString()}/yr. 🌴`,
+              kind: 'career',
+            },
+          ])
+        },
+
         // ----- Pro sports -----
 
         trainAthlete: () => {
@@ -2370,7 +2517,8 @@ export const useGameStore = create<GameState>()(
         requestTrade: () => {
           const s = get()
           if (!s.alive || !s.sport) return
-          const league = leagueForJob(s.jobId)
+          // Trades stay within your current league.
+          const league = getTeam(s.sport.teamId)?.league
           if (!league) return
           if (!useYearlyAction('request-trade')) return
           const others = league.teams.filter((t) => t.id !== s.sport!.teamId)
@@ -2840,7 +2988,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 23,
+      version: 24,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -2995,6 +3143,12 @@ export const useGameStore = create<GameState>()(
         // v21 saves predate the Midnight Indigo redesign (dark by default).
         if (version < 22) {
           state.theme = 'dark'
+        }
+        // v23 saves predate retirement pensions and rental real estate.
+        if (version < 24) {
+          state.pension = 0
+          state.properties = []
+          state.rentalListings = rollRentalListings(state.countryCode ?? 'US')
         }
         // v22 saves predate the Fame stat.
         if (version < 23) {

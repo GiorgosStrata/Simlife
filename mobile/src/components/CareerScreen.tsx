@@ -13,6 +13,7 @@ import {
   useGameStore,
 } from '../store/gameStore'
 import { colors } from '../theme'
+import { confirmAction } from './actionRunner'
 import { JobListingsModal } from './JobListingsModal'
 import { PrisonModal } from './PrisonModal'
 import { Row } from './Row'
@@ -62,7 +63,9 @@ export function CareerScreen() {
   const jobOpenings = useGameStore((s) => s.jobOpenings)
   const jobTier = useGameStore((s) => s.jobTier)
   const raisePercent = useGameStore((s) => s.raisePercent)
+  const pension = useGameStore((s) => s.pension)
   const quitJob = useGameStore((s) => s.quitJob)
+  const retire = useGameStore((s) => s.retire)
   const openUniversityApplication = useGameStore((s) => s.openUniversityApplication)
 
   const [browsingJobs, setBrowsingJobs] = useState(false)
@@ -83,6 +86,8 @@ export function CareerScreen() {
     playSfx('click')
     run()
   }
+  // Retiring pops the confirmation bubble and returns to the Dashboard.
+  const confirm = confirmAction()
 
   if (prison) {
     return (
@@ -134,7 +139,22 @@ export function CareerScreen() {
           {!isSport && (
             <Row emoji="🚪" title="Quit job" subtitle="Walk away" onPress={action(quitJob)} chevron />
           )}
+          {!isSport && age >= 55 && (
+            <Row
+              emoji="🌴"
+              title="Retire"
+              subtitle="Draw a pension and a nest egg — more if you retire later"
+              onPress={confirm(retire, null)}
+              chevron
+            />
+          )}
         </>
+      ) : pension > 0 ? (
+        <Row
+          emoji="🌴"
+          title="Retired"
+          subtitle={`Drawing a pension of $${pension.toLocaleString()}/year`}
+        />
       ) : (
         <Row
           emoji="🛋️"

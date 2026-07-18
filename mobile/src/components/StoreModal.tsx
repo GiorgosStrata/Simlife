@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { ASSET_CATEGORIES, ASSETS, type AssetCategory } from '../data/assets'
+import { phonesForYear } from '../data/phones'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { confirmAction } from './actionRunner'
@@ -15,6 +16,7 @@ interface StoreModalProps {
 /** BitLife-style shop: pick a category, browse, buy what you can afford. */
 export function StoreModal({ onClose }: StoreModalProps) {
   const money = useGameStore((s) => s.money)
+  const year = useGameStore((s) => s.year)
   const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
   const buyAsset = useGameStore((s) => s.buyAsset)
 
@@ -26,7 +28,8 @@ export function StoreModal({ onClose }: StoreModalProps) {
     playSfx('pop')
   }, [])
 
-  const items = ASSETS.filter((a) => a.category === category)
+  const items =
+    category === 'phone' ? phonesForYear(year) : ASSETS.filter((a) => a.category === category)
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
