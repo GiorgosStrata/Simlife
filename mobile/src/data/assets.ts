@@ -97,5 +97,6 @@ export function resaleValue(asset: Asset): number {
 
 /** Yearly gross rent a home earns when you rent it out (~6% of value). */
 export function homeRent(price: number): number {
-  return Math.round(price / 17)
+  // ~6.5% gross yield; after ~1% upkeep a rental pays back in roughly 18 years.
+  return Math.round(price / 15.5)
 }

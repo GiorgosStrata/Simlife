@@ -1252,18 +1252,17 @@ export const useGameStore = create<GameState>()(
                 funeralFor = { name: p.name, isPet: false, role: label }
               // Inherit a parent's or spouse's own nest egg — what they saved
               // over a lifetime of their career, so it varies with their job
-              // and how many kids they raised.
+              // and how many kids they raised. Even the poorest leave a little
+              // behind, so you always inherit something when they pass.
               if (inheritRole) {
-                const inheritance = Math.round(grownWealth ?? 0)
+                const floor = scaleByCountry(8000, s.countryCode)
+                const inheritance = Math.max(floor, Math.round(grownWealth ?? 0))
                 money += inheritance
                 entries.push({
                   id: logId++,
                   age,
                   year,
-                  text:
-                    inheritance > 0
-                      ? `You inherited $${inheritance.toLocaleString()} from ${p.name}. 💰`
-                      : `${p.name} passed on, but left behind little of value.`,
+                  text: `You inherited $${inheritance.toLocaleString()} from ${p.name}. 💰`,
                   kind: 'money',
                 })
               }
@@ -1323,8 +1322,11 @@ export const useGameStore = create<GameState>()(
           const ownsResidence = !!residence
 
           if (age >= EXPENSES_START_AGE && !imprisoned) {
-            // Cost of living: essentials + lifestyle creep, scaled to income.
-            let living = livingCost(netIncome, s.countryCode)
+            // Cost of living scales with your *earned* income (salary + pension)
+            // only — passive rental income is investment profit, not a reason to
+            // inflate your lifestyle, so it doesn't drive your spending up. This
+            // is why a rental keeps most of its rent as real profit.
+            let living = livingCost(netIncome - rentIncome, s.countryCode)
             // Renting is the default (baked in). Owning the home you live in
             // means no rent — just the home's upkeep (charged below), so it's
             // cheaper. Bigger families would pay more rent, so they save more.
