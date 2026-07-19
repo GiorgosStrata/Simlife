@@ -118,7 +118,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const canPropose =
     isPartner && partnerStatus === 'dating' && person.relationship >= PROPOSAL_MIN_RELATIONSHIP
   const canMarry = isPartner && partnerStatus === 'engaged' && money >= WEDDING_COST
-  const hasPartner = relationships.some((p) => p.id === 'partner')
+  const hasPartner = relationships.some((p) => p.id === 'partner' && p.alive)
   // Acquaintances can be befriended (harder for authority figures) and, if
   // you're single, asked out.
   const befriendable = ['classmate', 'coworker', 'boss', 'teacher'].includes(person.role)

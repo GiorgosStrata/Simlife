@@ -40,7 +40,9 @@ export function DatingModal({ onClose }: DatingModalProps) {
   const playerGender = useGameStore((s) => s.gender)
   const playerAge = useGameStore((s) => s.age)
   const playerLooks = useGameStore((s) => s.stats.looks)
-  const hasPartner = useGameStore((s) => s.relationships.some((p) => p.id === 'partner'))
+  const hasPartner = useGameStore((s) =>
+    s.relationships.some((p) => p.id === 'partner' && p.alive),
+  )
   const beginRelationship = useGameStore((s) => s.beginRelationship)
 
   // Heterosexual matching for now; sexuality options come later.

@@ -1267,7 +1267,14 @@ export const useGameStore = create<GameState>()(
                   kind: 'money',
                 })
               }
-              return { ...p, age: pAge, alive: false }
+              // Free up the "partner" slot when a spouse dies (re-id them so
+              // they stay in your history) — so you can love again.
+              return {
+                ...p,
+                id: p.role === 'partner' ? `late-partner-${year}` : p.id,
+                age: pAge,
+                alive: false,
+              }
             }
             return {
               ...p,
@@ -1684,7 +1691,9 @@ export const useGameStore = create<GameState>()(
           }
         },
 
-        startNewLife: () => set(newLifeState()),
+        // Use the raw setter: a brand-new character is age 0, and the child
+        // money-guard would otherwise refuse to reset an inherited balance to 0.
+        startNewLife: () => baseSet(newLifeState()),
 
         showToast: (text: string) => set({ toast: { text } }),
         dismissToast: () => set({ toast: null }),
@@ -2506,7 +2515,7 @@ export const useGameStore = create<GameState>()(
           const s = get()
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive || s.age < 16) return
-          if (s.relationships.some((p) => p.id === 'partner')) return
+          if (s.relationships.some((p) => p.id === 'partner' && p.alive)) return
           // You can only ask out acquaintances (not family or your enemies).
           const eligible: PersonRole[] = ['friend', 'classmate', 'coworker']
           if (!eligible.includes(person.role)) return
@@ -2514,10 +2523,11 @@ export const useGameStore = create<GameState>()(
           // Better odds with a strong bond and good looks.
           const chance = Math.min(0.9, person.relationship / 130 + s.stats.looks / 300)
           if (Math.random() < chance) {
-            // They become your partner: drop the old entry, add the partner slot.
+            // They become your partner: drop the old entry (and any lingering
+            // deceased partner), then add the partner slot.
             set({
               relationships: [
-                ...s.relationships.filter((p) => p.id !== personId),
+                ...s.relationships.filter((p) => p.id !== personId && p.id !== 'partner'),
                 {
                   id: 'partner',
                   role: 'partner',
@@ -2946,7 +2956,8 @@ export const useGameStore = create<GameState>()(
 
         beginRelationship: (name: string, gender: Gender, age: number) => {
           const s = get()
-          if (!s.alive || s.age < 18 || s.relationships.some((p) => p.id === 'partner')) return
+          if (!s.alive || s.age < 18 || s.relationships.some((p) => p.id === 'partner' && p.alive))
+            return
           const partner: Person = {
             id: 'partner',
             role: 'partner',
@@ -2958,7 +2969,8 @@ export const useGameStore = create<GameState>()(
             ...makeNpcLife(),
           }
           set({
-            relationships: [...s.relationships, partner],
+            // Drop any lingering deceased partner so the slot is unique.
+            relationships: [...s.relationships.filter((p) => p.id !== 'partner'), partner],
             partnerStatus: 'dating',
             stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 4) },
           })
@@ -3212,7 +3224,9 @@ export const useGameStore = create<GameState>()(
           }
           const heirJob = getJob(heirJobId)
 
-          set({
+          // Raw setter: a young heir's inherited balance is a fresh start, not
+          // spending, so the child money-guard must not clamp it.
+          baseSet({
             ...newLifeState(),
             screen: 'life',
             name: heir.name,
