@@ -4,13 +4,13 @@ import { playSfx } from '../audio/sfx'
 import { getActivity } from '../data/activities'
 import { getAsset, homeRent, resaleValue } from '../data/assets'
 import { assetUpkeep } from '../data/economy'
-import { STRINGS } from '../data/strings'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { ActivityCategory } from '../types'
 import { CrimeModal } from './CrimeModal'
 import { HomeModal } from './HomeModal'
 import { MindBodyModal } from './MindBodyModal'
+import { PhoneModal } from './PhoneModal'
 import { PursuitModal } from './PursuitModal'
 import { Row } from './Row'
 import { SectionHeading } from './SectionHeading'
@@ -27,7 +27,10 @@ export function ActivitiesScreen() {
   const [crime, setCrime] = useState(false)
   const [wellness, setWellness] = useState(false)
   const [shopping, setShopping] = useState(false)
+  const [phoneOpen, setPhoneOpen] = useState(false)
   const [homeId, setHomeId] = useState<string | null>(null)
+
+  const hasPhone = ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')
 
   const owned = ownedAssetIds
     .map((id) => getAsset(id))
@@ -61,25 +64,47 @@ export function ActivitiesScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <SectionHeading color={colors.emerald700}>WELLNESS</SectionHeading>
+      <SectionHeading color={colors.emerald700}>HEALTH</SectionHeading>
       <Row
-        emoji="🧘"
-        title={STRINGS.wellnessHub}
-        subtitle="Clinic, counseling, spa — stay healthy, live longer"
+        emoji="🩺"
+        title="Health & wellness"
+        subtitle="Doctor, dentist, therapy, botox — stay healthy, live longer"
         onPress={tap(() => setWellness(true))}
         chevron
       />
 
-      <SectionHeading color={colors.violet500}>PURSUITS</SectionHeading>
+      <SectionHeading color={colors.violet500}>ACTIVITIES</SectionHeading>
       <Row emoji="🏅" title="Sport" subtitle={activeLabel('sport')} onPress={open('sport')} chevron />
-      <Row emoji="🧠" title="Mind" subtitle={activeLabel('mind')} onPress={open('mind')} chevron />
       <Row emoji="🎨" title="Hobbies" subtitle={activeLabel('hobby')} onPress={open('hobby')} chevron />
       <Row
+        emoji="🧠"
+        title="Mind training"
+        subtitle={activeLabel('mind')}
+        onPress={open('mind')}
+        chevron
+      />
+
+      <SectionHeading color={colors.rose500}>CRIME</SectionHeading>
+      <Row
         emoji="🦹"
-        title="Crime"
+        title="Commit a crime"
         subtitle="Risky one-off jobs — you might get caught"
         onPress={tap(() => setCrime(true))}
         chevron
+      />
+
+      <SectionHeading color={colors.sky500}>PHONE</SectionHeading>
+      <Row
+        emoji="📱"
+        title="Phone"
+        subtitle={
+          hasPhone
+            ? 'Social media, dating & more apps'
+            : 'Buy a phone in the shop below to unlock apps'
+        }
+        onPress={hasPhone ? tap(() => setPhoneOpen(true)) : undefined}
+        disabled={!hasPhone}
+        chevron={hasPhone}
       />
 
       <SectionHeading color={colors.amber400}>
@@ -128,6 +153,7 @@ export function ActivitiesScreen() {
       {crime && <CrimeModal onClose={() => setCrime(false)} />}
       {wellness && <MindBodyModal onClose={() => setWellness(false)} />}
       {shopping && <StoreModal onClose={() => setShopping(false)} />}
+      {phoneOpen && <PhoneModal onClose={() => setPhoneOpen(false)} />}
       {homeId && <HomeModal homeId={homeId} onClose={() => setHomeId(null)} />}
     </ScrollView>
   )

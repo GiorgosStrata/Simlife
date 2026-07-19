@@ -159,7 +159,7 @@ function fameTarget(
   job: Job | null,
   jobTier: number,
   sport: SportState | null,
-  followers: { rizzgram: number; flicktok: number },
+  followers: Record<SocialApp, number>,
   age: number,
   smarts: number,
   looks: number,
@@ -178,7 +178,7 @@ function fameTarget(
   const youthFactor = age < 14 ? 0.5 : age < 20 ? 0.35 : age < 26 ? 0.15 : 0.04
   const popBoost = Math.max(0, pop - 55) * youthFactor
   // A big online following makes you famous in its own right.
-  const totalFollowers = followers.rizzgram + followers.flicktok
+  const totalFollowers = Object.values(followers).reduce((sum, n) => sum + n, 0)
   const followerBoost = Math.min(35, totalFollowers / 4000)
   return clampStat(jobBase + popBoost + followerBoost)
 }
@@ -322,6 +322,7 @@ export const GETAWAY_COST = 300
 export const SOCIAL_APPS: Record<SocialApp, { name: string; emoji: string; kind: string }> = {
   rizzgram: { name: 'Rizzgram', emoji: '📸', kind: 'photos' },
   flicktok: { name: 'FlickTok', emoji: '🎵', kind: 'short videos' },
+  youtube: { name: 'Streamly', emoji: '▶️', kind: 'videos' },
 }
 
 /** Followers needed before a platform will pay you. */
@@ -673,7 +674,7 @@ function newLifeState() {
     residenceId: null as string | null,
     pets: [] as Pet[],
     nextPetId: 1,
-    followers: { rizzgram: 0, flicktok: 0 } as Record<SocialApp, number>,
+    followers: { rizzgram: 0, flicktok: 0, youtube: 0 } as Record<SocialApp, number>,
     pursuits: { sport: null, mind: null, hobby: null } as Record<
       ActivityCategory,
       ActivePursuit | null
@@ -3121,7 +3122,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 26,
+      version: 27,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -3239,7 +3240,7 @@ export const useGameStore = create<GameState>()(
         }
         // v12 saves predate the phone / social media follower counts.
         if (version < 13) {
-          state.followers = { rizzgram: 0, flicktok: 0 }
+          state.followers = { rizzgram: 0, flicktok: 0, youtube: 0 }
         }
         // v13 saves predate customizable avatars.
         if (version < 14) {
@@ -3332,6 +3333,15 @@ export const useGameStore = create<GameState>()(
                   ...(p.role === 'boss' ? { career: 'Manager' } : {}),
                 },
           )
+        }
+        // v26 saves predate the Streamly (YouTube) app — backfill its count.
+        if (version < 27) {
+          state.followers = {
+            rizzgram: 0,
+            flicktok: 0,
+            youtube: 0,
+            ...(state.followers ?? {}),
+          } as Record<SocialApp, number>
         }
         return state as GameState
       },

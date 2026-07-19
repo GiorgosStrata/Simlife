@@ -141,7 +141,7 @@ export interface SportState {
 }
 
 /** Social media apps on the character's phone. */
-export type SocialApp = 'rizzgram' | 'flicktok'
+export type SocialApp = 'rizzgram' | 'flicktok' | 'youtube'
 
 export type ActivityCategory = 'sport' | 'mind' | 'hobby'
 

@@ -1,15 +1,13 @@
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
-import { getAsset } from '../data/assets'
-import { MAX_FRIENDS, useGameStore } from '../store/gameStore'
+import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Person } from '../types'
 import { PersonAvatar } from './Avatar'
 import { FamilyTreeModal } from './FamilyTreeModal'
 import { PersonModal, roleLabel } from './PersonModal'
 import { PetsModal } from './PetsModal'
-import { PhoneModal } from './PhoneModal'
 import { Row } from './Row'
 
 const SECTION_ORDER: Person['role'][] = [
@@ -24,48 +22,22 @@ const SECTION_ORDER: Person['role'][] = [
 
 /** Clean BitLife-style list: tap a person to open their interaction sheet. */
 export function RelationshipsScreen() {
-  const age = useGameStore((s) => s.age)
   const relationships = useGameStore((s) => s.relationships)
   const partnerStatus = useGameStore((s) => s.partnerStatus)
-  const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
 
   const [personId, setPersonId] = useState<string | null>(null)
-  const [phoneOpen, setPhoneOpen] = useState(false)
   const [treeOpen, setTreeOpen] = useState(false)
   const [petsOpen, setPetsOpen] = useState(false)
   const generation = useGameStore((s) => s.generation)
   const ancestors = useGameStore((s) => s.ancestors)
   const petCount = useGameStore((s) => s.pets.length)
 
-  const hasPhone = ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')
-
   const people = relationships
     .filter((p) => SECTION_ORDER.includes(p.role))
     .sort((a, b) => SECTION_ORDER.indexOf(a.role) - SECTION_ORDER.indexOf(b.role))
 
-  const hasPartner = relationships.some((p) => p.id === 'partner')
-
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <Row
-        emoji="📱"
-        title="Phone"
-        subtitle={
-          hasPhone
-            ? 'Open social media, dating & investing apps'
-            : 'Buy a phone in the Shop to unlock apps'
-        }
-        onPress={
-          hasPhone
-            ? () => {
-                playSfx('click')
-                setPhoneOpen(true)
-              }
-            : undefined
-        }
-        disabled={!hasPhone}
-        chevron={hasPhone}
-      />
       <Row
         emoji="🐾"
         title="Pets"
@@ -90,18 +62,6 @@ export function RelationshipsScreen() {
         }}
         chevron
       />
-      {!hasPartner && (
-        <Row
-          emoji="💘"
-          title="Dating"
-          subtitle={
-            age < 16
-              ? 'Ask out a friend or classmate once you’re older'
-              : 'Ask out a friend, classmate or coworker from their profile — or swipe on Cinder'
-          }
-          disabled
-        />
-      )}
       {people.map((person) => (
         <Row
           key={person.id}
@@ -145,7 +105,6 @@ export function RelationshipsScreen() {
       ))}
 
       {personId && <PersonModal personId={personId} onClose={() => setPersonId(null)} />}
-      {phoneOpen && <PhoneModal onClose={() => setPhoneOpen(false)} />}
       {treeOpen && <FamilyTreeModal onClose={() => setTreeOpen(false)} />}
       {petsOpen && <PetsModal onClose={() => setPetsOpen(false)} />}
     </ScrollView>

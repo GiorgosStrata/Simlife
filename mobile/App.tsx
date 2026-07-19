@@ -102,8 +102,13 @@ function Game() {
             : 'Unemployed'
 
   const advanceDisabled = !alive || currentEvent !== null
+  // Children are never shown in the red — their parents cover everything, even
+  // if a stray cost dips them negative mid-year (it's wiped at year-end anyway).
+  const shownMoney = age < 18 ? Math.max(0, money) : money
   const balance =
-    money < 0 ? `-$${Math.abs(money).toLocaleString()}` : `$${money.toLocaleString()}`
+    shownMoney < 0
+      ? `-$${Math.abs(shownMoney).toLocaleString()}`
+      : `$${shownMoney.toLocaleString()}`
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -142,12 +147,16 @@ function Game() {
             <Text style={styles.metaSub}>· {year}</Text>
           </View>
           <View
-            style={[styles.metaChip, styles.balanceChip, money < 0 && styles.balanceChipNeg]}
+            style={[styles.metaChip, styles.balanceChip, shownMoney < 0 && styles.balanceChipNeg]}
           >
-            <Text style={[styles.balanceDot, money < 0 ? styles.balanceNeg : styles.balancePos]}>
+            <Text
+              style={[styles.balanceDot, shownMoney < 0 ? styles.balanceNeg : styles.balancePos]}
+            >
               ●
             </Text>
-            <Text style={[styles.metaValue, money < 0 ? styles.balanceNeg : styles.balancePos]}>
+            <Text
+              style={[styles.metaValue, shownMoney < 0 ? styles.balanceNeg : styles.balancePos]}
+            >
               {balance}
             </Text>
           </View>
