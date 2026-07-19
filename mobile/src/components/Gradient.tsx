@@ -20,7 +20,13 @@ interface GradientFillProps {
 export function GradientFill({ from, to, horizontal }: GradientFillProps) {
   const id = useRef(`grad-${idCounter++}`).current
   return (
-    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+    <Svg
+      width="100%"
+      height="100%"
+      preserveAspectRatio="none"
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    >
       <Defs>
         <SvgGradient id={id} x1="0" y1="0" x2={horizontal ? '1' : '1'} y2={horizontal ? '0' : '1'}>
           <Stop offset="0" stopColor={from} />

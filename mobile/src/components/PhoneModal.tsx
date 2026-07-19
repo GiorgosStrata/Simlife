@@ -7,6 +7,7 @@ import type { SocialApp } from '../types'
 import { DatingModal } from './DatingModal'
 import { GRADIENTS, GradientFill } from './Gradient'
 import { InvestingModal } from './InvestingModal'
+import { OneNightModal } from './OneNightModal'
 import { SocialModal } from './SocialModal'
 import { useCloseOnAction } from './useCloseOnAction'
 
@@ -14,7 +15,7 @@ interface PhoneModalProps {
   onClose: () => void
 }
 
-type OpenApp = SocialApp | 'cinder' | 'vestr' | null
+type OpenApp = SocialApp | 'cinder' | 'vestr' | 'prowl' | null
 
 type Launch = { kind: 'app'; app: OpenApp } | { kind: 'soon'; name: string }
 
@@ -50,6 +51,7 @@ export function PhoneModal({ onClose }: PhoneModalProps) {
     social('rizzgram'),
     social('youtube'),
     { key: 'cinder', emoji: '🔥', name: 'Cinder', color: '#f97316', launch: { kind: 'app', app: 'cinder' } },
+    { key: 'prowl', emoji: '😈', name: 'Prowl', color: '#be123c', launch: { kind: 'app', app: 'prowl' } },
     { key: 'onlystans', emoji: '💎', name: 'OnlyStans', color: '#0ea5e9', launch: { kind: 'soon', name: 'OnlyStans' } },
     { key: 'vestr', emoji: '📈', name: 'Vestr', color: '#16a34a', launch: { kind: 'app', app: 'vestr' } },
     { key: 'messages', emoji: '💬', name: 'Messages', color: '#2563eb', launch: { kind: 'soon', name: 'Messages' } },
@@ -129,6 +131,7 @@ export function PhoneModal({ onClose }: PhoneModalProps) {
         <SocialModal app={open} onClose={() => setOpen(null)} />
       )}
       {open === 'cinder' && <DatingModal onClose={() => setOpen(null)} />}
+      {open === 'prowl' && <OneNightModal onClose={() => setOpen(null)} />}
       {open === 'vestr' && <InvestingModal onClose={() => setOpen(null)} />}
 
       {soon && (

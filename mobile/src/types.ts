@@ -94,6 +94,12 @@ export interface Person {
   career?: string
   /** A hobby this NPC enjoys, for flavour. */
   hobby?: string
+  /**
+   * A parent's or partner's own accumulated savings, grown each year from
+   * their career and trimmed by the children they support. Inherited by the
+   * player when they die. Seeded lazily the first time it's needed.
+   */
+  wealth?: number
 }
 
 export type PartnerStatus = 'dating' | 'engaged' | 'married'

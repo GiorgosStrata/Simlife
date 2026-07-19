@@ -61,7 +61,7 @@ export const ONGOING_ACTIVITIES: OngoingActivity[] = [
     name: 'Read books',
     description: 'Work through a stack of books each year. Smarts up.',
     minAge: 6,
-    yearly: { smarts: 4 },
+    yearly: { smarts: 5 },
     cost: 120,
   },
   {
@@ -92,7 +92,7 @@ export const ONGOING_ACTIVITIES: OngoingActivity[] = [
     name: 'Play chess',
     description: 'Sharpen your strategy at the club. Smarts up.',
     minAge: 8,
-    yearly: { smarts: 3, happiness: 2 },
+    yearly: { smarts: 4, happiness: 2 },
     cost: 60,
   },
 

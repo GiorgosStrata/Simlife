@@ -1359,6 +1359,13 @@ export const EVENTS: GameEvent[] = [
  * unless you're in school or university, so no one studies for exams or
  * frets about the schoolyard bully as a working adult.
  */
+/**
+ * Events that only make sense when you're single — never fire these while the
+ * player has a living partner (e.g. a friend won't set up a happily-married
+ * person on a blind date).
+ */
+export const SINGLE_ONLY_EVENTS = new Set<string>(['blind-date'])
+
 export const SCHOOL_ONLY_EVENTS = new Set<string>([
   'exam-week',
   'school-talent-show',

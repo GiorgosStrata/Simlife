@@ -40,7 +40,7 @@ import {
   tierMultiplier,
   tuitionPerYear,
 } from '../data/economy'
-import { EVENTS, SCHOOL_ONLY_EVENTS } from '../data/events'
+import { EVENTS, SCHOOL_ONLY_EVENTS, SINGLE_ONLY_EVENTS } from '../data/events'
 import { JOBS } from '../data/jobs'
 import { getMajor } from '../data/majors'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
@@ -236,6 +236,40 @@ function jobForCareer(career: string | undefined): Job | null {
     JOBS.find((j) => !j.special && j.title.toLowerCase().includes(c)) ??
     null
   )
+}
+
+/**
+ * How much a working-age adult NPC salts away in a year. Just like the player,
+ * they earn from their career and spend more the more children they support —
+ * so a childless doctor builds a real fortune while a barista with a big family
+ * barely saves. Under-22s and retirees (68+) add nothing.
+ */
+function npcAnnualSaving(
+  career: string | undefined,
+  age: number,
+  kids: number,
+  code: string | null,
+): number {
+  if (age < 22 || age >= 68) return 0
+  const salary = scaleByCountry(jobForCareer(career)?.salary ?? 32000, code)
+  const saved = salary * 0.12 - kids * salary * 0.03
+  return Math.max(0, Math.round(saved))
+}
+
+/**
+ * A nest egg to start an NPC on the first year we look — roughly a partial
+ * career's worth of the above, so someone we meet in middle age already has
+ * something put by rather than starting from zero.
+ */
+function seedNpcWealth(
+  career: string | undefined,
+  age: number,
+  kids: number,
+  code: string | null,
+): number {
+  const yearsWorked = Math.max(0, Math.min(age, 65) - 24)
+  const perYear = npcAnnualSaving(career, Math.min(age, 60), kids, code)
+  return Math.round(perYear * yearsWorked * 0.7)
 }
 
 /** How many jobs are hiring in any given year. */
@@ -567,6 +601,9 @@ interface GameState {
   plasticSurgery: () => void
   spaDay: () => void
 
+  /** A casual hookup from the Prowl app — a fun night, with a little risk. */
+  oneNightStand: () => void
+
   // Prison
   attemptEscape: () => void
   prisonBehave: () => void
@@ -690,13 +727,19 @@ function newLifeState() {
  * event never repeats within a single life — once the fresh pool for this
  * age is used up, there's simply no random event that year.
  */
-function drawEvent(age: number, usedIds: string[], inSchool: boolean): GameEvent | null {
+function drawEvent(
+  age: number,
+  usedIds: string[],
+  inSchool: boolean,
+  hasPartner: boolean,
+): GameEvent | null {
   const fresh = EVENTS.filter(
     (e) =>
       age >= e.minAge &&
       age <= e.maxAge &&
       !usedIds.includes(e.id) &&
-      (inSchool || !SCHOOL_ONLY_EVENTS.has(e.id)),
+      (inSchool || !SCHOOL_ONLY_EVENTS.has(e.id)) &&
+      (!hasPartner || !SINGLE_ONLY_EVENTS.has(e.id)),
   )
   return fresh.length > 0 ? pick(fresh) : null
 }
@@ -742,8 +785,19 @@ function catastropheRoll(age: number, health: number): string | null {
  */
 function gainStat(current: number, delta: number): number {
   if (delta <= 0) return clampStat(current + delta)
-  const factor = Math.pow(1 - current / 100, 1.6) // ~1 near 0, ~0 near 100
+  // Diminishing returns near the top, but gentle enough that steady effort
+  // (reading, chess, school) can carry a bright kid from ~75 into the high 80s
+  // and ~90 over a life — while a perfect 100 stays very hard to reach.
+  const factor = Math.pow(1 - current / 100, 0.9) // ~1 near 0, ~0 near 100
   return clampStat(current + delta * factor)
+}
+
+/**
+ * What a purchase costs the player. Under-18s pay nothing — their parents
+ * foot the bill — so children never spend their own money on anything.
+ */
+function outOfPocket(age: number, cost: number): number {
+  return age < 18 ? 0 : cost
 }
 
 /** Family members face their own mortality past 72. */
@@ -845,7 +899,27 @@ function simulateSeason(
 
 export const useGameStore = create<GameState>()(
   persist(
-    (set, get) => {
+    (baseSet, get) => {
+      // Children never spend their own money — their parents cover everything.
+      // Any state update that would lower an under-18's balance leaves the
+      // balance untouched, so a child can never dip into debt or drain their
+      // savings on a doctor's visit, a toy, or anything else.
+      const set: typeof baseSet = ((partial: unknown, replace?: boolean) =>
+        (baseSet as (p: unknown, r?: boolean) => void)((state: GameState) => {
+          const next =
+            typeof partial === 'function'
+              ? (partial as (s: GameState) => Partial<GameState>)(state)
+              : (partial as Partial<GameState>)
+          if (next && typeof (next as Partial<GameState>).money === 'number') {
+            const n = next as Partial<GameState>
+            const age = typeof n.age === 'number' ? n.age : state.age
+            if (age < 18 && (n.money as number) < state.money) {
+              return { ...n, money: state.money }
+            }
+          }
+          return next
+        }, replace)) as typeof baseSet
+
       /** Append log entries stamped with the current age/year. */
       const addLog = (entries: Array<Pick<LogEntry, 'text' | 'kind'>>) => {
         const s = get()
@@ -1146,9 +1220,23 @@ export const useGameStore = create<GameState>()(
           const CLOSE: Person['role'][] = ['mother', 'father', 'sibling', 'partner', 'child', 'friend']
           let funeralFor: { name: string; isPet: boolean; role?: string } | null = null
           let partnerStatus = s.partnerStatus
+          // How many children each inheritable relative supports: parents raise
+          // the player plus any siblings; a partner shares the player's kids.
+          const parentKids = 1 + s.relationships.filter((p) => p.role === 'sibling').length
+          const childCount = s.relationships.filter((p) => p.role === 'child' && p.alive).length
           const agedRelationships = s.relationships.map((p) => {
             if (!p.alive) return p
             const pAge = p.age + 1
+            const inheritRole =
+              p.role === 'mother' || p.role === 'father' || p.role === 'partner'
+            const kids = p.role === 'partner' ? childCount : inheritRole ? parentKids : 0
+            // Grow the relative's own savings from their career this year.
+            const priorWealth = inheritRole
+              ? (p.wealth ?? seedNpcWealth(p.career, pAge, kids, s.countryCode))
+              : p.wealth
+            const grownWealth = inheritRole
+              ? Math.max(0, (priorWealth ?? 0) + npcAnnualSaving(p.career, pAge, kids, s.countryCode))
+              : p.wealth
             if (familyDeathRoll(pAge)) {
               const label = relationLabel(p.role, p.gender, s.partnerStatus)
               entries.push({
@@ -1162,15 +1250,20 @@ export const useGameStore = create<GameState>()(
               if (p.role === 'partner') partnerStatus = null
               if (!funeralFor && CLOSE.includes(p.role))
                 funeralFor = { name: p.name, isPet: false, role: label }
-              // Inherit a parent's (or spouse's) estate when they pass.
-              if (p.role === 'mother' || p.role === 'father' || p.role === 'partner') {
-                const inheritance = scaleByCountry(randomInt(10000, 180000), s.countryCode)
+              // Inherit a parent's or spouse's own nest egg — what they saved
+              // over a lifetime of their career, so it varies with their job
+              // and how many kids they raised.
+              if (inheritRole) {
+                const inheritance = Math.round(grownWealth ?? 0)
                 money += inheritance
                 entries.push({
                   id: logId++,
                   age,
                   year,
-                  text: `You inherited $${inheritance.toLocaleString()} from ${p.name}. 💰`,
+                  text:
+                    inheritance > 0
+                      ? `You inherited $${inheritance.toLocaleString()} from ${p.name}. 💰`
+                      : `${p.name} passed on, but left behind little of value.`,
                   kind: 'money',
                 })
               }
@@ -1180,6 +1273,7 @@ export const useGameStore = create<GameState>()(
               ...p,
               age: pAge,
               relationship: clampRelationship(p.relationship - randomInt(0, 3)),
+              ...(inheritRole ? { wealth: grownWealth } : {}),
             }
           })
           // Old classmates and teachers move on when the stage changes.
@@ -1456,7 +1550,12 @@ export const useGameStore = create<GameState>()(
                       ? DIVORCE_EVENT
                       : relEvent
                         ? relEvent
-                        : drawEvent(age, s.usedEventIds, isInSchool(age) || inUniversity)
+                        : drawEvent(
+                            age,
+                            s.usedEventIds,
+                            isInSchool(age) || inUniversity,
+                            relationships.some((p) => p.id === 'partner' && p.alive),
+                          )
           set({
             age,
             year,
@@ -1710,7 +1809,7 @@ export const useGameStore = create<GameState>()(
         seeDoctor: () => {
           const s = get()
           if (!s.alive) return
-          const cost = scaleByCountry(150, s.countryCode)
+          const cost = outOfPocket(s.age, scaleByCountry(150, s.countryCode))
           if (s.money < cost) return
           if (!useYearlyAction('doctor')) return
           const healthy = s.stats.health >= 85
@@ -1732,7 +1831,7 @@ export const useGameStore = create<GameState>()(
         seeDentist: () => {
           const s = get()
           if (!s.alive) return
-          const cost = scaleByCountry(120, s.countryCode)
+          const cost = outOfPocket(s.age, scaleByCountry(120, s.countryCode))
           if (s.money < cost) return
           if (!useYearlyAction('dentist')) return
           set({
@@ -1750,7 +1849,7 @@ export const useGameStore = create<GameState>()(
         seeTherapist: () => {
           const s = get()
           if (!s.alive) return
-          const cost = scaleByCountry(250, s.countryCode)
+          const cost = outOfPocket(s.age, scaleByCountry(250, s.countryCode))
           if (s.money < cost) return
           if (!useYearlyAction('therapist')) return
           set({
@@ -1792,7 +1891,7 @@ export const useGameStore = create<GameState>()(
         spaDay: () => {
           const s = get()
           if (!s.alive) return
-          const cost = scaleByCountry(200, s.countryCode)
+          const cost = outOfPocket(s.age, scaleByCountry(200, s.countryCode))
           if (s.money < cost) return
           if (!useYearlyAction('spa')) return
           set({
@@ -1805,6 +1904,40 @@ export const useGameStore = create<GameState>()(
           })
           playSfx('cash')
           addLog([{ text: 'A day at the spa left you glowing and refreshed. 💆', kind: 'event' }])
+        },
+
+        oneNightStand: () => {
+          const s = get()
+          if (!s.alive || s.age < 18 || s.prison) return
+          if (!useYearlyAction('one-night-stand')) return
+          const roll = Math.random()
+          const stats = { ...s.stats }
+          if (roll < 0.58) {
+            // A good night out.
+            stats.happiness = clampStat(stats.happiness + randomInt(5, 9))
+            set({ stats })
+            playSfx('success')
+            addLog([{ text: 'You had a fun, no-strings night out. No regrets. 😏', kind: 'relationship' }])
+          } else if (roll < 0.8) {
+            // Forgettable.
+            stats.happiness = clampStat(stats.happiness - randomInt(1, 4))
+            set({ stats })
+            playSfx('click')
+            addLog([{ text: 'The date fizzled — you snuck out before breakfast. 😬', kind: 'relationship' }])
+          } else if (roll < 0.94) {
+            // A health scare.
+            stats.health = clampStat(stats.health - randomInt(4, 10))
+            stats.happiness = clampStat(stats.happiness - randomInt(3, 7))
+            set({ stats })
+            playSfx('hurt')
+            addLog([{ text: 'You picked up a nasty infection. A trip to the clinic was in order. 🤒', kind: 'event' }])
+          } else {
+            // They caught feelings.
+            stats.happiness = clampStat(stats.happiness + randomInt(1, 4))
+            set({ stats })
+            playSfx('pop')
+            addLog([{ text: 'They texted "had a great time 🥰" the next morning. Awkward.', kind: 'relationship' }])
+          }
         },
 
         commitCrime: (crimeId: string) => {

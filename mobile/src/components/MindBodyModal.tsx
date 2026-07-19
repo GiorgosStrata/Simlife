@@ -37,8 +37,10 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
   useCloseOnAction(onClose)
   const act = confirmAction(onClose)
   const used = (k: string) => usedActions.includes(k)
-  const price = (base: number) => scaleByCountry(base, countryCode)
-  const money$ = (base: number) => `$${price(base).toLocaleString()}`
+  // Under-18s don't pay — their parents cover every visit.
+  const free = age < 18
+  const price = (base: number) => (free ? 0 : scaleByCountry(base, countryCode))
+  const money$ = (base: number) => (free ? 'free' : `$${price(base).toLocaleString()}`)
 
   // A cost/availability-aware subtitle so locked reasons are obvious.
   const sub = (opts: { key: string; cost?: number; minAge?: number; ready: string }): string => {
