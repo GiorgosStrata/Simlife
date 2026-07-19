@@ -18,6 +18,7 @@ import { JobListingsModal } from './JobListingsModal'
 import { PrisonModal } from './PrisonModal'
 import { Row } from './Row'
 import { SchoolModal } from './SchoolModal'
+import { SectionHeading } from './SectionHeading'
 import { SpecialJobsModal } from './SpecialJobsModal'
 import { SportsHubModal } from './SportsHubModal'
 import { WorkplaceModal } from './WorkplaceModal'
@@ -92,7 +93,7 @@ export function CareerScreen() {
   if (prison) {
     return (
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <Text style={styles.sectionHeading}>🔒 INCARCERATED</Text>
+        <SectionHeading color={colors.rose500}>🔒 INCARCERATED</SectionHeading>
         <Row
           emoji="🔒"
           title="Prison"
@@ -107,7 +108,7 @@ export function CareerScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionHeading}>🎓 EDUCATION</Text>
+      <SectionHeading color={colors.sky500}>🎓 EDUCATION</SectionHeading>
       <Row
         emoji={edu.emoji}
         title={edu.title}
@@ -126,7 +127,7 @@ export function CareerScreen() {
         />
       )}
 
-      <Text style={styles.sectionHeading}>💼 WORK</Text>
+      <SectionHeading color={colors.cyan500}>💼 WORK</SectionHeading>
       {currentJob ? (
         <>
           <Row
@@ -174,7 +175,7 @@ export function CareerScreen() {
 
       {workingAge && (
         <>
-          <Text style={styles.sectionHeading}>🌟 SPECIAL JOBS</Text>
+          <SectionHeading color={colors.amber400}>🌟 SPECIAL JOBS</SectionHeading>
           <Row
             emoji="🌟"
             title="Fame & fortune"
@@ -201,12 +202,5 @@ const styles = StyleSheet.create({
   content: {
     gap: 8,
     paddingBottom: 110,
-  },
-  sectionHeading: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    color: colors.slate500,
   },
 })

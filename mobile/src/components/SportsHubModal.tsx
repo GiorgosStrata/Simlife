@@ -13,6 +13,7 @@ import { colors } from '../theme'
 import { PersonAvatar } from './Avatar'
 import { PersonModal } from './PersonModal'
 import { Row } from './Row'
+import { SectionHeading } from './SectionHeading'
 
 interface SportsHubModalProps {
   onClose: () => void
@@ -131,7 +132,7 @@ export function SportsHubModal({ onClose }: SportsHubModalProps) {
 
             {coach && (
               <>
-                <Text style={styles.sectionHeading}>🧑‍🏫 COACH</Text>
+                <SectionHeading color={colors.amber400}>🧑‍🏫 COACH</SectionHeading>
                 <Row
                   emoji="🙂"
                   avatar={<PersonAvatar person={coach} />}
@@ -146,7 +147,7 @@ export function SportsHubModal({ onClose }: SportsHubModalProps) {
               </>
             )}
 
-            <Text style={styles.sectionHeading}>🤝 TEAMMATES</Text>
+            <SectionHeading color={colors.sky500}>🤝 TEAMMATES</SectionHeading>
             {teammates.length === 0 && <Text style={styles.empty}>No teammates right now.</Text>}
             {teammates.map((p) => (
               <Row
@@ -227,13 +228,6 @@ const styles = StyleSheet.create({
   badgeCap: { fontSize: 11, color: colors.slate500, marginTop: 1 },
   list: { marginTop: 12 },
   listContent: { gap: 8, paddingBottom: 8 },
-  sectionHeading: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    color: colors.slate500,
-  },
   empty: { fontSize: 13, color: colors.slate400, paddingVertical: 6 },
   cancel: { marginTop: 8, alignItems: 'center', paddingVertical: 8 },
   cancelText: { fontSize: 14, fontWeight: '700', color: colors.slate500 },

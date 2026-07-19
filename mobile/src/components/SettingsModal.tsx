@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import { SectionHeading } from './SectionHeading'
 
 const VOLUME_LEVELS = [
   { label: 'Off', value: 0 },
@@ -39,7 +40,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             </Pressable>
           </View>
 
-          <Text style={styles.sectionHeading}>APPEARANCE</Text>
+          <SectionHeading color={colors.violet500}>APPEARANCE</SectionHeading>
           <View style={styles.volumeRow}>
             {THEME_OPTIONS.map((opt) => {
               const active = theme === opt.value
@@ -62,7 +63,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             })}
           </View>
 
-          <Text style={styles.sectionHeading}>SOUND EFFECTS</Text>
+          <SectionHeading color={colors.sky500}>SOUND EFFECTS</SectionHeading>
           <View style={styles.volumeRow}>
             {VOLUME_LEVELS.map((level) => {
               const active = Math.abs(sfxVolume - level.value) < 0.01
@@ -84,7 +85,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             })}
           </View>
 
-          <Text style={styles.sectionHeading}>DANGER ZONE</Text>
+          <SectionHeading color={colors.rose500}>DANGER ZONE</SectionHeading>
           {confirmingReset ? (
             <View style={styles.confirmBox}>
               <Text style={styles.confirmText}>
@@ -160,17 +161,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.slate600,
   },
-  sectionHeading: {
-    marginTop: 18,
-    marginBottom: 8,
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1,
-    color: colors.slate400,
-  },
   volumeRow: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 8,
   },
   volumeButton: {
     flex: 1,
@@ -194,6 +188,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.slate100,
     paddingVertical: 11,
+    marginTop: 8,
     alignItems: 'center',
   },
   dangerButtonPressed: {
@@ -208,6 +203,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.slate100,
     padding: 14,
+    marginTop: 8,
   },
   confirmText: {
     fontSize: 13,

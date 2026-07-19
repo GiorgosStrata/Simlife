@@ -13,6 +13,7 @@ import { confirmAction } from './actionRunner'
 import { PersonAvatar } from './Avatar'
 import { PersonModal } from './PersonModal'
 import { Row } from './Row'
+import { SectionHeading } from './SectionHeading'
 import { useCloseOnAction } from './useCloseOnAction'
 
 interface WorkplaceModalProps {
@@ -84,7 +85,7 @@ export function WorkplaceModal({ onClose }: WorkplaceModalProps) {
 
             {boss && (
               <>
-                <Text style={styles.sectionHeading}>👔 BOSS</Text>
+                <SectionHeading color={colors.violet500}>👔 BOSS</SectionHeading>
                 <Row
                   emoji="🙂"
                   avatar={<PersonAvatar person={boss} />}
@@ -99,7 +100,7 @@ export function WorkplaceModal({ onClose }: WorkplaceModalProps) {
               </>
             )}
 
-            <Text style={styles.sectionHeading}>🧑‍💼 COWORKERS</Text>
+            <SectionHeading color={colors.sky500}>🧑‍💼 COWORKERS</SectionHeading>
             {coworkers.length === 0 && <Text style={styles.empty}>You work alone.</Text>}
             {coworkers.map((p) => (
               <Row
@@ -157,13 +158,6 @@ const styles = StyleSheet.create({
   listContent: {
     gap: 8,
     paddingBottom: 8,
-  },
-  sectionHeading: {
-    marginTop: 10,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    color: colors.slate500,
   },
   empty: {
     fontSize: 13,

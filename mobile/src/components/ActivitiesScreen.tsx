@@ -13,6 +13,7 @@ import { HomeModal } from './HomeModal'
 import { MindBodyModal } from './MindBodyModal'
 import { PursuitModal } from './PursuitModal'
 import { Row } from './Row'
+import { SectionHeading } from './SectionHeading'
 import { StoreModal } from './StoreModal'
 
 /** The "Lifestyle" hub: wellness, pursuits, crime, and your belongings/shop. */
@@ -60,7 +61,7 @@ export function ActivitiesScreen() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionHeading}>WELLNESS</Text>
+      <SectionHeading color={colors.emerald700}>WELLNESS</SectionHeading>
       <Row
         emoji="🧘"
         title={STRINGS.wellnessHub}
@@ -69,7 +70,7 @@ export function ActivitiesScreen() {
         chevron
       />
 
-      <Text style={styles.sectionHeading}>PURSUITS</Text>
+      <SectionHeading color={colors.violet500}>PURSUITS</SectionHeading>
       <Row emoji="🏅" title="Sport" subtitle={activeLabel('sport')} onPress={open('sport')} chevron />
       <Row emoji="🧠" title="Mind" subtitle={activeLabel('mind')} onPress={open('mind')} chevron />
       <Row emoji="🎨" title="Hobbies" subtitle={activeLabel('hobby')} onPress={open('hobby')} chevron />
@@ -81,10 +82,10 @@ export function ActivitiesScreen() {
         chevron
       />
 
-      <Text style={styles.sectionHeading}>
+      <SectionHeading color={colors.amber400}>
         BELONGINGS{hasStuff ? ` · WORTH $${netWorth.toLocaleString()}` : ''}
         {rentTotal > 0 ? ` · $${rentTotal.toLocaleString()}/YR RENT` : ''}
-      </Text>
+      </SectionHeading>
       <Row
         emoji="🛍️"
         title="Go shopping"
@@ -135,13 +136,6 @@ export function ActivitiesScreen() {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { gap: 8, paddingBottom: 110 },
-  sectionHeading: {
-    marginTop: 10,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    color: colors.slate400,
-  },
   sell: {
     fontSize: 13,
     fontWeight: '700',

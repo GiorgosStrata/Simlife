@@ -8,6 +8,7 @@ import { confirmAction } from './actionRunner'
 import { PersonAvatar } from './Avatar'
 import { PersonModal } from './PersonModal'
 import { Row } from './Row'
+import { SectionHeading } from './SectionHeading'
 import { useCloseOnAction } from './useCloseOnAction'
 
 interface SchoolModalProps {
@@ -79,7 +80,7 @@ export function SchoolModal({ onClose }: SchoolModalProps) {
 
             {canDoSchoolSports && (
               <>
-                <Text style={styles.sectionHeading}>🏅 SCHOOL SPORTS</Text>
+                <SectionHeading color={colors.emerald700}>🏅 SCHOOL SPORTS</SectionHeading>
                 {schoolSport ? (
                   <>
                     <Row
@@ -114,7 +115,7 @@ export function SchoolModal({ onClose }: SchoolModalProps) {
               </>
             )}
 
-            <Text style={styles.sectionHeading}>🧑‍🎓 CLASSMATES</Text>
+            <SectionHeading color={colors.sky500}>🧑‍🎓 CLASSMATES</SectionHeading>
             {classmates.length === 0 && (
               <Text style={styles.empty}>No classmates right now.</Text>
             )}
@@ -133,7 +134,7 @@ export function SchoolModal({ onClose }: SchoolModalProps) {
               />
             ))}
 
-            <Text style={styles.sectionHeading}>🧑‍🏫 TEACHERS</Text>
+            <SectionHeading color={colors.amber400}>🧑‍🏫 TEACHERS</SectionHeading>
             {teachers.length === 0 && <Text style={styles.empty}>No teachers right now.</Text>}
             {teachers.map((p) => (
               <Row
@@ -191,13 +192,6 @@ const styles = StyleSheet.create({
   listContent: {
     gap: 8,
     paddingBottom: 8,
-  },
-  sectionHeading: {
-    marginTop: 10,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    color: colors.slate500,
   },
   empty: {
     fontSize: 13,

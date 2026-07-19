@@ -10,6 +10,7 @@ import { CareerScreen } from './src/components/CareerScreen'
 import { CharacterCreation } from './src/components/CharacterCreation'
 import { EventModal } from './src/components/EventModal'
 import { Flag } from './src/components/Flag'
+import { GRADIENTS, GradientFill } from './src/components/Gradient'
 import { GameOverModal } from './src/components/GameOverModal'
 import { LifeLog } from './src/components/LifeLog'
 import { MajorPickerModal } from './src/components/MajorPickerModal'
@@ -140,8 +141,15 @@ function Game() {
             <Text style={styles.metaValue}>{age}</Text>
             <Text style={styles.metaSub}>· {year}</Text>
           </View>
-          <View style={[styles.metaChip, styles.balanceChip]}>
-            <Text style={[styles.metaValue, money < 0 && styles.balanceNeg]}>{balance}</Text>
+          <View
+            style={[styles.metaChip, styles.balanceChip, money < 0 && styles.balanceChipNeg]}
+          >
+            <Text style={[styles.balanceDot, money < 0 ? styles.balanceNeg : styles.balancePos]}>
+              ●
+            </Text>
+            <Text style={[styles.metaValue, money < 0 ? styles.balanceNeg : styles.balancePos]}>
+              {balance}
+            </Text>
           </View>
         </View>
 
@@ -181,6 +189,7 @@ function Game() {
           advanceDisabled && styles.advanceButtonDisabled,
         ]}
       >
+        <GradientFill from={GRADIENTS.primary[0]} to={GRADIENTS.primary[1]} />
         <Text style={styles.advanceText}>Advance Year</Text>
         <Text style={styles.advanceArrow}>→</Text>
       </Pressable>
@@ -285,7 +294,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 7,
   },
-  balanceChip: {},
+  balanceChip: {
+    borderColor: colors.emerald700,
+    backgroundColor: colors.emerald50,
+  },
+  balanceChipNeg: {
+    borderColor: colors.rose500,
+    backgroundColor: colors.white,
+  },
+  balanceDot: {
+    fontSize: 9,
+  },
+  balancePos: {
+    color: colors.emerald700,
+  },
   metaLabel: {
     fontSize: 10,
     fontWeight: '700',
@@ -342,16 +364,17 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: colors.cyan500,
     borderRadius: 14,
+    overflow: 'hidden',
     paddingHorizontal: 20,
     paddingVertical: 14,
     shadowColor: colors.cyan500,
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
+    shadowOpacity: 0.55,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },
     elevation: 10,
   },
   advanceButtonPressed: {
-    backgroundColor: colors.cyan400,
+    opacity: 0.88,
   },
   advanceButtonDisabled: {
     opacity: 0.4,

@@ -39,18 +39,18 @@ export function TabBar({ active, onChange }: TabBarProps) {
   const age = useGameStore((s) => s.age)
   const careerLabel = age < 16 ? 'School' : 'Career'
 
-  const tabs: Array<{ key: TabKey; icon: IconName; label: string }> = [
-    { key: 'life', icon: 'dashboard', label: 'Dashboard' },
-    { key: 'career', icon: 'career', label: careerLabel },
-    { key: 'relationships', icon: 'social', label: 'Social' },
-    { key: 'activities', icon: 'lifestyle', label: 'Lifestyle' },
+  const tabs: Array<{ key: TabKey; icon: IconName; label: string; color: string }> = [
+    { key: 'life', icon: 'dashboard', label: 'Dashboard', color: colors.cyan500 },
+    { key: 'career', icon: 'career', label: careerLabel, color: colors.sky500 },
+    { key: 'relationships', icon: 'social', label: 'Social', color: colors.pink600 },
+    { key: 'activities', icon: 'lifestyle', label: 'Lifestyle', color: colors.emerald700 },
   ]
 
   return (
     <View style={styles.bar}>
       {tabs.map((tab) => {
         const isActive = tab.key === active
-        const tint = isActive ? colors.cyan500 : colors.slate400
+        const tint = isActive ? tab.color : colors.slate400
         return (
           <Pressable
             key={tab.key}
@@ -60,8 +60,8 @@ export function TabBar({ active, onChange }: TabBarProps) {
             style={styles.tab}
           >
             <TabIcon name={tab.icon} color={tint} />
-            <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
-            {isActive && <View style={styles.activeMark} />}
+            <Text style={[styles.tabLabel, isActive && { color: tab.color }]}>{tab.label}</Text>
+            {isActive && <View style={[styles.activeMark, { backgroundColor: tab.color }]} />}
           </Pressable>
         )
       })}
@@ -91,15 +91,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     color: colors.slate400,
   },
-  tabLabelActive: {
-    color: colors.cyan500,
-  },
   activeMark: {
     position: 'absolute',
     bottom: -8,
     width: 18,
     height: 2.5,
     borderRadius: 999,
-    backgroundColor: colors.cyan500,
   },
 })

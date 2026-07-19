@@ -6,6 +6,7 @@ import { colors } from '../theme'
 import { PetModal } from './PetModal'
 import { PetShopModal } from './PetShopModal'
 import { Row } from './Row'
+import { SectionHeading } from './SectionHeading'
 import { useCloseOnAction } from './useCloseOnAction'
 
 interface PetsModalProps {
@@ -41,7 +42,7 @@ export function PetsModal({ onClose }: PetsModalProps) {
               chevron
             />
 
-            <Text style={styles.sectionHeading}>YOUR PETS</Text>
+            <SectionHeading color={colors.emerald700}>YOUR PETS</SectionHeading>
             {pets.length === 0 && <Text style={styles.empty}>No pets yet — adopt one above.</Text>}
             {pets.map((pet) => (
               <Row
@@ -82,13 +83,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', color: colors.slate800 },
   list: { marginTop: 12 },
   listContent: { gap: 8, paddingBottom: 8 },
-  sectionHeading: {
-    marginTop: 10,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    color: colors.slate500,
-  },
   empty: { fontSize: 13, color: colors.slate400, paddingVertical: 6 },
   cancel: { marginTop: 8, alignItems: 'center', paddingVertical: 8 },
   cancelText: { fontSize: 14, fontWeight: '700', color: colors.slate500 },

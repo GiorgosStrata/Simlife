@@ -5,6 +5,7 @@ import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { Avatar, PersonAvatar } from './Avatar'
 import { Row } from './Row'
+import { SectionHeading } from './SectionHeading'
 
 interface FamilyTreeModalProps {
   onClose: () => void
@@ -37,7 +38,9 @@ export function FamilyTreeModal({ onClose }: FamilyTreeModalProps) {
           </Text>
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-            {ancestors.length > 0 && <Text style={styles.sectionHeading}>ANCESTORS</Text>}
+            {ancestors.length > 0 && (
+              <SectionHeading color={colors.violet500}>ANCESTORS</SectionHeading>
+            )}
             {ancestors.map((a, i) => (
               <Row
                 key={`${a.name}-${i}`}
@@ -48,7 +51,7 @@ export function FamilyTreeModal({ onClose }: FamilyTreeModalProps) {
               />
             ))}
 
-            <Text style={styles.sectionHeading}>YOU</Text>
+            <SectionHeading color={colors.cyan500}>YOU</SectionHeading>
             <Row
               emoji="🙂"
               avatar={
@@ -60,7 +63,9 @@ export function FamilyTreeModal({ onClose }: FamilyTreeModalProps) {
               subtitle={`Gen ${generation} · age ${age} · born ${year - age}`}
             />
 
-            {children.length > 0 && <Text style={styles.sectionHeading}>CHILDREN</Text>}
+            {children.length > 0 && (
+              <SectionHeading color={colors.pink600}>CHILDREN</SectionHeading>
+            )}
             {children.map((c) => (
               <Row
                 key={c.id}
@@ -98,13 +103,6 @@ const styles = StyleSheet.create({
   subtitle: { marginTop: 2, fontSize: 13, color: colors.slate500 },
   list: { marginTop: 12 },
   listContent: { gap: 8, paddingBottom: 8 },
-  sectionHeading: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    color: colors.slate500,
-  },
   you: {
     borderRadius: 22,
     borderWidth: 2,
