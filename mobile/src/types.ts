@@ -5,12 +5,13 @@ export interface Stats {
   smarts: number
   looks: number
   /**
-   * Public renown. Driven mostly by your career (athletes/entertainers reach
-   * ~90, respected professionals ~30, everyone else low), boosted by being a
-   * smart, good-looking kid and by a big social following. Drifts toward that
-   * target each year, so fame builds — and fades — over time.
+   * How wound-up you are, 0 (calm) to 100 (burnt out). A busy life — work,
+   * study, a packed schedule, a big family, money trouble — drives it up;
+   * rest, downtime and relaxation bring it down. Sustained high stress saps
+   * your mood and health (and can bring on high blood pressure), while a
+   * chronically low mood can tip into depression.
    */
-  fame: number
+  stress: number
 }
 
 export type StatKey = keyof Stats

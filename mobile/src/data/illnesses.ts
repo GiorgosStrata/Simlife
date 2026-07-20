@@ -7,7 +7,7 @@ import type { Stats } from '../types'
  *  - `serious` cancers and chronic disease — dangerous, sometimes terminal,
  *              but often beatable if you seek treatment.
  */
-export type IllnessKind = 'minor' | 'std' | 'serious'
+export type IllnessKind = 'minor' | 'std' | 'serious' | 'chronic'
 
 export interface Illness {
   id: string
@@ -54,6 +54,10 @@ export const ILLNESSES: Illness[] = [
   { id: 'leukemia', name: 'Leukemia', emoji: '🎗️', kind: 'serious', desc: 'Blood cancer — it can strike at any age.', yearly: { health: -6, happiness: -9 }, selfHeal: 0.04, treatCost: 35000, treatCure: 0.52, fatalPerYear: 0.18, minAge: 8 },
   { id: 'heart-disease', name: 'Heart Disease', emoji: '❤️‍🩹', kind: 'serious', desc: 'Manageable with care, deadly without it.', yearly: { health: -4, happiness: -6 }, selfHeal: 0.03, treatCost: 18000, treatCure: 0.5, fatalPerYear: 0.1, minAge: 40 },
   { id: 'diabetes', name: 'Type 2 Diabetes', emoji: '🩸', kind: 'serious', desc: 'A chronic condition — managed, rarely cured.', yearly: { health: -2, happiness: -4 }, selfHeal: 0, treatCost: 4000, treatCure: 0.2, fatalPerYear: 0.02, minAge: 30 },
+
+  // ----- Stress & mood conditions (from a life out of balance) -----
+  { id: 'hypertension', name: 'High Blood Pressure', emoji: '🫀', kind: 'chronic', desc: 'Stress straining your heart — manage it or risk worse.', yearly: { health: -2, happiness: -1 }, selfHeal: 0.1, treatCost: 3000, treatCure: 0.3, fatalPerYear: 0.015, minAge: 25 },
+  { id: 'depression', name: 'Depression', emoji: '🌧️', kind: 'chronic', desc: 'A heavy fog — therapy and support help lift it.', yearly: { health: -1, happiness: -4 }, selfHeal: 0.18, treatCost: 2500, treatCure: 0.42, fatalPerYear: 0.004 },
 ]
 
 export function getIllness(id: string): Illness | undefined {

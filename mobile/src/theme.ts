@@ -32,6 +32,7 @@ export const DARK = {
   amber400: '#f6b94e', // warm gold secondary accent
   sky500: '#56b7f5',
   violet500: '#a78bfa',
+  orange500: '#fb923c', // stress meter
   emerald50: '#12271e',
   emerald700: '#5ee08a',
   indigo700: '#a5b4fc',
@@ -64,6 +65,7 @@ export const LIGHT: ThemeColors = {
   amber400: '#d99a2b',
   sky500: '#3b82f6',
   violet500: '#8b5cf6',
+  orange500: '#ea580c', // stress meter
   emerald50: '#eafaf0',
   emerald700: '#0f9d58',
   indigo700: '#4f46e5',

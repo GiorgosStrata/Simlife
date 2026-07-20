@@ -146,43 +146,7 @@ function rollStats(): Stats {
     smarts = randomInt(48, 80)
     looks = randomInt(48, 80)
   } while (health + happiness + smarts + looks < 240 || health + happiness + smarts + looks > 280)
-  return { health, happiness, smarts, looks, fame: 0 } // no one is born famous
-}
-
-/**
- * The fame level a character is trending toward this year. Career is the main
- * driver: athletes and entertainers become household names, respected
- * professionals get modest recognition, and most jobs bring little. A smart,
- * good-looking kid is "popular" (a bigger effect the younger they are), and a
- * large social following adds real fame. Fame then drifts toward this target,
- * so it builds up and fades gradually rather than snapping.
- */
-function fameTarget(
-  job: Job | null,
-  jobTier: number,
-  sport: SportState | null,
-  followers: Record<SocialApp, number>,
-  age: number,
-  smarts: number,
-  looks: number,
-): number {
-  let jobBase = 0
-  if (job?.special) {
-    // Sports & entertainment: stardom, rising with rank and trophies.
-    const titles = (sport?.titles ?? 0) + (sport?.mvps ?? 0)
-    jobBase = 62 + jobTier * 11 + titles * 2
-  } else if (job) {
-    // Respected professions get ~30; ordinary jobs much less.
-    jobBase = job.salary >= 90000 ? 30 : job.salary >= 50000 ? 18 : 8
-  }
-  // Popular kid: smart + good-looking, strongest in the school years.
-  const pop = (smarts + looks) / 2
-  const youthFactor = age < 14 ? 0.5 : age < 20 ? 0.35 : age < 26 ? 0.15 : 0.04
-  const popBoost = Math.max(0, pop - 55) * youthFactor
-  // A big online following makes you famous in its own right.
-  const totalFollowers = Object.values(followers).reduce((sum, n) => sum + n, 0)
-  const followerBoost = Math.min(35, totalFollowers / 4000)
-  return clampStat(jobBase + popBoost + followerBoost)
+  return { health, happiness, smarts, looks, stress: randomInt(8, 22) } // children start calm
 }
 
 /** Parents (and maybe an older sibling) with country-appropriate names. */
@@ -1464,9 +1428,34 @@ export const useGameStore = create<GameState>()(
             schoolSport = null
           }
 
-          // Fame drifts toward what your career, youth and following warrant.
-          const famT = fameTarget(job, jobTier, sport, s.followers, age, stats.smarts, stats.looks)
-          stats.fame = clampStat(stats.fame + (famT - stats.fame) * 0.3)
+          // ----- Stress: settles toward how loaded your life is -----
+          // A calm baseline, pushed up by work, study, a packed schedule, a
+          // big family, money trouble and illness; meditation pulls it down.
+          // Stress drifts toward this target, so it builds and eases gradually
+          // (relaxing at the spa gives an extra one-off drop on top).
+          const activePursuitCount = Object.values(pursuits).filter(Boolean).length
+          let stressLoad = 15
+          if (job) stressLoad += 12 + jobTier * 6 // work and responsibility
+          if (inUniversity) stressLoad += 15
+          else if (isInSchool(age) && age >= 11) stressLoad += 10 // exams, from ~middle school
+          stressLoad += activePursuitCount * 8 // a packed schedule
+          if (familySize > 1) stressLoad += (familySize - 1) * 6 // people depending on you
+          if (money < 0) stressLoad += 12 // money trouble
+          if (prison) stressLoad += 20
+          if ((s.conditions ?? []).some((c) => getIllness(c.id)?.kind === 'serious')) stressLoad += 12
+          if (pursuits.mind?.id === 'meditation') stressLoad -= 15 // a calming practice
+          const stressTarget = clampStat(stressLoad)
+          stats.stress = clampStat(stats.stress + (stressTarget - stats.stress) * 0.4 + randomInt(-3, 3))
+          // High stress saps your mood and, sustained, your health; a calm life
+          // is quietly restorative.
+          if (stats.stress >= 80) {
+            stats.happiness = clampStat(stats.happiness - 4)
+            stats.health = clampStat(stats.health - 2)
+          } else if (stats.stress >= 60) {
+            stats.happiness = clampStat(stats.happiness - 2)
+          } else if (stats.stress <= 25) {
+            stats.happiness = clampStat(stats.happiness + 1)
+          }
 
           // Children never owe money — their parents cover everything.
           if (age < 18 && money < 0) money = 0
@@ -1527,8 +1516,13 @@ export const useGameStore = create<GameState>()(
               })
             }
           }
-          // A serious diagnosis — rare, rising with age and poor health.
-          const seriousChance = Math.max(0, (age - 35) * 0.0006) + ((100 - stats.health) / 100) * 0.006
+          // A serious diagnosis — rare, rising with age and poor health, and
+          // more likely if high blood pressure is straining your heart.
+          const hasHypertension = conditions.some((c) => c.id === 'hypertension')
+          const seriousChance =
+            Math.max(0, (age - 35) * 0.0006) +
+            ((100 - stats.health) / 100) * 0.006 +
+            (hasHypertension ? 0.012 : 0)
           if (age >= 5 && !conditions.some((c) => getIllness(c.id)?.kind === 'serious') && Math.random() < seriousChance) {
             const ill = pickIllness('serious', age, s.gender)
             if (ill) {
@@ -1541,6 +1535,28 @@ export const useGameStore = create<GameState>()(
                 kind: 'event',
               })
             }
+          }
+          // Chronic high stress can bring on high blood pressure.
+          if (stats.stress >= 80 && !hasHypertension && age >= 25 && Math.random() < 0.14) {
+            conditions.push({ id: 'hypertension', years: 0 })
+            entries.push({
+              id: logId++,
+              age,
+              year,
+              text: `Years of stress have caught up with you: high blood pressure. 🫀 Ease off and see a doctor.`,
+              kind: 'event',
+            })
+          }
+          // A sustained low mood can tip into depression.
+          if (stats.happiness <= 18 && !conditions.some((c) => c.id === 'depression') && Math.random() < 0.16) {
+            conditions.push({ id: 'depression', years: 0 })
+            entries.push({
+              id: logId++,
+              age,
+              year,
+              text: `You've been struggling with depression. 🌧️ Talking to someone can help.`,
+              kind: 'event',
+            })
           }
 
           const naturalDeath = oldAgeDeathRoll(age, stats.health)
@@ -1941,7 +1957,11 @@ export const useGameStore = create<GameState>()(
           if (!useYearlyAction('therapist')) return
           set({
             money: s.money - cost,
-            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + randomInt(8, 15)) },
+            stats: {
+              ...s.stats,
+              happiness: clampStat(s.stats.happiness + randomInt(8, 15)),
+              stress: clampStat(s.stats.stress - randomInt(10, 18)),
+            },
           })
           playSfx('success')
           addLog([{ text: 'Therapy helped you work through things. You feel lighter.', kind: 'event' }])
@@ -1987,6 +2007,7 @@ export const useGameStore = create<GameState>()(
               ...s.stats,
               happiness: clampStat(s.stats.happiness + randomInt(3, 7)),
               looks: gainStat(s.stats.looks, randomInt(1, 3)),
+              stress: clampStat(s.stats.stress - randomInt(8, 16)),
             },
           })
           playSfx('cash')
@@ -2591,7 +2612,11 @@ export const useGameStore = create<GameState>()(
           })
           set({
             money: get().money - GETAWAY_COST,
-            stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 8) },
+            stats: {
+              ...get().stats,
+              happiness: clampStat(get().stats.happiness + 8),
+              stress: clampStat(get().stats.stress - randomInt(10, 20)),
+            },
           })
           addLog([
             { text: `You whisked ${partner.name} away for a weekend getaway. 10/10, would elope again.`, kind: 'relationship' },
@@ -3391,7 +3416,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 28,
+      version: 29,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -3578,17 +3603,9 @@ export const useGameStore = create<GameState>()(
           state.residenceId = priciest?.id ?? null
           state.homeListings = rollHomeListings(state.countryCode ?? 'US')
         }
-        // v22 saves predate the Fame stat.
+        // v22 saves predate the 5th stat (formerly Fame, now Stress).
         if (version < 23) {
-          const job = JOBS.find((j) => j.id === state.jobId)
-          const startFame = job?.special
-            ? 75
-            : job?.requiresDegree || job?.requiredMajor
-              ? 25
-              : job
-                ? 8
-                : 0
-          state.stats = { ...(state.stats as Stats), fame: startFame }
+          state.stats = { ...(state.stats as Stats), stress: 20 }
         }
         // v20 saves predate NPCs having their own careers and hobbies.
         if (version < 21) {
@@ -3615,6 +3632,14 @@ export const useGameStore = create<GameState>()(
         // v27 saves predate the illness system.
         if (version < 28) {
           state.conditions = []
+        }
+        // v28 saves had a Fame stat; it's replaced by Stress.
+        if (version < 29) {
+          const st = state.stats as (Stats & { fame?: number }) | undefined
+          if (st) {
+            delete st.fame
+            if (typeof st.stress !== 'number') st.stress = 20
+          }
         }
         return state as GameState
       },
