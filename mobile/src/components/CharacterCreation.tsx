@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native'
 import {
+  EYEBROWS,
   FACIAL_HAIR,
   FEMALE_TOPS,
   GLASSES,
@@ -223,6 +224,11 @@ export function CharacterCreation() {
           label="Hairstyle"
           onPrev={() => setField({ top: cycle(tops, avatar.top, -1) })}
           onNext={() => setField({ top: cycle(tops, avatar.top, 1) })}
+        />
+        <Stepper
+          label="Eyebrows"
+          onPrev={() => setField({ eyebrows: cycle(EYEBROWS, avatar.eyebrows, -1) })}
+          onNext={() => setField({ eyebrows: cycle(EYEBROWS, avatar.eyebrows, 1) })}
         />
         <Stepper
           label={avatar.glasses ? 'Glasses' : 'No glasses'}

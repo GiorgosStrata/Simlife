@@ -134,7 +134,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
     ['friend', 'classmate', 'coworker', 'ex', 'fling'].includes(person.role) &&
     !hasPartner &&
     age >= 16
-  const hookUpable = (person.role === 'fling' || person.role === 'ex') && !hasPartner && age >= 18
+  const hookUpable = (person.role === 'fling' || person.role === 'ex') && age >= 18
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -292,8 +292,14 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
               {hookUpable && (
                 <Row
                   emoji="🔥"
-                  title="Hook up"
-                  subtitle={used(`hookup-${person.id}`) ? 'Done this year' : 'A casual night — a little risky'}
+                  title={hasPartner ? 'Hook up (cheat)' : 'Hook up'}
+                  subtitle={
+                    used(`hookup-${person.id}`)
+                      ? 'Done this year'
+                      : hasPartner
+                        ? 'Cheat on your partner — they might find out 😬'
+                        : 'A casual night — a little risky'
+                  }
                   onPress={act(() => hookUp(person.id), null)}
                   disabled={used(`hookup-${person.id}`)}
                   chevron

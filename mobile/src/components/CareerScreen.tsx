@@ -67,6 +67,7 @@ export function CareerScreen() {
   const pension = useGameStore((s) => s.pension)
   const quitJob = useGameStore((s) => s.quitJob)
   const retire = useGameStore((s) => s.retire)
+  const showToast = useGameStore((s) => s.showToast)
   const openUniversityApplication = useGameStore((s) => s.openUniversityApplication)
 
   const [browsingJobs, setBrowsingJobs] = useState(false)
@@ -179,8 +180,8 @@ export function CareerScreen() {
           <Row
             emoji="🌟"
             title="Fame & fortune"
-            subtitle="Try out as an athlete or entertainer"
-            onPress={action(() => setSpecialJobs(true))}
+            subtitle="Athlete or entertainer careers — coming soon"
+            onPress={action(() => showToast('Special jobs are coming soon! 🚧'))}
             chevron
           />
         </>

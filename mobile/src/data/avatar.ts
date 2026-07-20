@@ -34,6 +34,12 @@ export const FEMALE_TOPS = [
   'miaWallace', 'straight01', 'straight02', 'straightAndStrand', 'bigHair', 'shavedSides',
 ]
 
+/** Eyebrow shapes (DiceBear avataaars ids) — recoloured to match hair below. */
+export const EYEBROWS = [
+  'defaultNatural', 'flatNatural', 'raisedExcitedNatural', 'upDownNatural', 'default',
+  'raisedExcited', 'angryNatural', 'frownNatural', 'sadConcernedNatural', 'unibrowNatural',
+]
+
 /** '' = clean-shaven; the rest are DiceBear facial-hair ids (men). */
 export const FACIAL_HAIR = ['', 'beardLight', 'beardMedium', 'beardMajestic', 'moustacheFancy', 'moustacheMagnum']
 /** '' = no glasses; the rest are DiceBear accessory ids. */
@@ -53,6 +59,8 @@ export interface AvatarConfig {
   skinColor: string
   hairColor: string
   top: string
+  /** DiceBear eyebrow shape id (see EYEBROWS). */
+  eyebrows: string
   /** '' = none */
   facialHair: string
   /** '' = none */
@@ -71,6 +79,7 @@ export function randomAvatarConfig(gender: Gender): AvatarConfig {
     skinColor: pickRandom(SKIN_TONES),
     hairColor: pickRandom(NATURAL_HAIR),
     top: pickRandom(male ? MALE_TOPS : FEMALE_TOPS),
+    eyebrows: pickRandom(EYEBROWS),
     facialHair: male && Math.random() < 0.35 ? pickRandom(FACIAL_HAIR.slice(1)) : '',
     glasses: Math.random() < 0.18 ? pickRandom(GLASSES.slice(1)) : '',
   }
@@ -96,6 +105,24 @@ function build(opts: Record<string, unknown>): string {
   return createAvatar(avataaars, opts as AvataaarsOptions).toString()
 }
 
+/** Darken a 6-hex colour (no #) toward black by a factor — for brows/shadow. */
+function darken(hex: string, factor = 0.68): string {
+  const n = parseInt(hex, 16)
+  if (Number.isNaN(n)) return '2a1e18'
+  const r = Math.round(((n >> 16) & 255) * factor)
+  const g = Math.round(((n >> 8) & 255) * factor)
+  const b = Math.round((n & 255) * factor)
+  return ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
+}
+
+/**
+ * Avataaars draws eyebrows as a fixed 60%-black shape, so they never match the
+ * hair. We repaint them to a slightly-darkened hair colour after rendering.
+ */
+function recolorEyebrows(svg: string, hexNoHash: string): string {
+  return svg.replace(/fill="#000" fill-opacity="\.6"/g, `fill="#${hexNoHash}" fill-opacity=".92"`)
+}
+
 /** Exact DiceBear options for the player's picked config. */
 function configToOptions(c: AvatarConfig): Record<string, unknown> {
   return {
@@ -104,6 +131,7 @@ function configToOptions(c: AvatarConfig): Record<string, unknown> {
     topProbability: 100,
     hairColor: [c.hairColor],
     skinColor: [c.skinColor],
+    eyebrows: c.eyebrows ? [c.eyebrows] : EYEBROWS,
     facialHair: c.facialHair ? [c.facialHair] : [],
     facialHairProbability: c.facialHair ? 100 : 0,
     accessories: c.glasses ? [c.glasses] : [],
@@ -126,6 +154,7 @@ function seedToOptions(seed: string, gender: Gender, age: number): Record<string
     topProbability: 100,
     hairColor: old ? ['b7b7b7', 'e8e1e1'] : NATURAL_HAIR,
     skinColor: SKIN_TONES,
+    eyebrows: EYEBROWS,
     facialHair: FACIAL_HAIR.slice(1),
     facialHairProbability: male && age >= 18 ? 35 : 0,
     accessories: GLASSES.slice(1),
@@ -140,10 +169,12 @@ function seedToOptions(seed: string, gender: Gender, age: number): Record<string
 
 /** Build the avatar SVG string for a player config. */
 export function configAvatarSvg(config: AvatarConfig): string {
-  return build(configToOptions(config))
+  // Match brows to hair (a touch darker); old white brows are gone.
+  return recolorEyebrows(build(configToOptions(config)), darken(config.hairColor))
 }
 
 /** Build the avatar SVG string for an NPC from a seed. */
 export function seedAvatarSvg(seed: string, gender: Gender, age: number): string {
-  return build(seedToOptions(seed, gender, age))
+  const grey = age >= 60
+  return recolorEyebrows(build(seedToOptions(seed, gender, age)), grey ? '8a8a8a' : '2a1e18')
 }

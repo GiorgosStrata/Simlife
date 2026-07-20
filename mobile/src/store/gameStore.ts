@@ -2115,27 +2115,74 @@ export const useGameStore = create<GameState>()(
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive || s.age < 18) return
           if (person.role !== 'fling' && person.role !== 'ex') return
-          if (s.relationships.some((p) => p.id === 'partner' && p.alive)) return
           if (!useYearlyAction(`hookup-${personId}`)) return
-          updatePerson(personId, {
-            relationship: clampRelationship(person.relationship + randomInt(4, 9)),
-          })
-          const stats = { ...get().stats, happiness: clampStat(get().stats.happiness + randomInt(3, 7)) }
+          const partner = s.relationships.find((p) => p.id === 'partner' && p.alive)
+
+          let relationships = s.relationships.map((p) =>
+            p.id === personId
+              ? { ...p, relationship: clampRelationship(p.relationship + randomInt(4, 9)) }
+              : p,
+          )
+          const stats = { ...s.stats, happiness: clampStat(s.stats.happiness + randomInt(3, 7)) }
+          let conditions = s.conditions ?? []
+          const logs: Array<Pick<LogEntry, 'text' | 'kind'>> = []
+          let sfx: Parameters<typeof playSfx>[0] = 'success'
+
           // A small chance of an STD, same as any casual encounter.
           if (Math.random() < 0.12) {
             const std = pickIllness('std', s.age)
-            if (std && !(s.conditions ?? []).some((c) => c.id === std.id)) {
-              set({ stats, conditions: [...(s.conditions ?? []), { id: std.id, years: 0 }] })
-              playSfx('hurt')
-              addLog([
-                { text: `You hooked up with ${person.name} — and caught ${std.name}. ${std.emoji}`, kind: 'event' },
-              ])
-              return
+            if (std && !conditions.some((c) => c.id === std.id)) {
+              conditions = [...conditions, { id: std.id, years: 0 }]
+              logs.push({
+                text: `You hooked up with ${person.name} — and caught ${std.name}. ${std.emoji}`,
+                kind: 'event',
+              })
+              sfx = 'hurt'
             }
           }
-          set({ stats })
-          playSfx('success')
-          addLog([{ text: `You hooked up with ${person.name} again. 😏`, kind: 'relationship' }])
+
+          let nextFriendId = s.nextFriendId
+          let partnerStatus = s.partnerStatus
+          if (partner) {
+            // This is cheating — there's a chance your partner finds out.
+            if (Math.random() < 0.32) {
+              sfx = 'heartbreak'
+              const newRel = clampRelationship(partner.relationship - randomInt(30, 55))
+              stats.happiness = clampStat(stats.happiness - randomInt(8, 15))
+              const dumped = newRel < 25 && Math.random() < 0.6
+              if (dumped) {
+                const exId = `ex-${nextFriendId++}`
+                relationships = relationships.map((p) =>
+                  p.id === 'partner' ? { ...p, id: exId, role: 'ex', relationship: newRel } : p,
+                )
+                partnerStatus = null
+                logs.push({
+                  text: `${partner.name} caught you cheating with ${person.name} — and left you. 💔`,
+                  kind: 'relationship',
+                })
+              } else {
+                relationships = relationships.map((p) =>
+                  p.id === 'partner' ? { ...p, relationship: newRel } : p,
+                )
+                logs.push({
+                  text: `${partner.name} found out you cheated with ${person.name}. They're furious. 😡`,
+                  kind: 'relationship',
+                })
+              }
+            } else {
+              stats.happiness = clampStat(stats.happiness - randomInt(0, 2)) // a twinge of guilt
+              logs.push({
+                text: `You secretly hooked up with ${person.name} behind ${partner.name}'s back. 😬`,
+                kind: 'relationship',
+              })
+            }
+          } else if (logs.length === 0) {
+            logs.push({ text: `You hooked up with ${person.name} again. 😏`, kind: 'relationship' })
+          }
+
+          set({ relationships, stats, conditions, nextFriendId, partnerStatus })
+          playSfx(sfx)
+          addLog(logs)
         },
 
         treatIllness: (id: string) => {
@@ -3517,7 +3564,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 29,
+      version: 30,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -3741,6 +3788,11 @@ export const useGameStore = create<GameState>()(
             delete st.fame
             if (typeof st.stress !== 'number') st.stress = 20
           }
+        }
+        // v29 saves predate the eyebrow avatar option.
+        if (version < 30) {
+          const av = state.avatarConfig as (AvatarConfig & { eyebrows?: string }) | undefined
+          if (av && !av.eyebrows) av.eyebrows = 'defaultNatural'
         }
         return state as GameState
       },

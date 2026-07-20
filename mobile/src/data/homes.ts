@@ -32,6 +32,7 @@ const TYPES = [
   { word: 'Villa', emoji: '🌴', min: 700000, max: 1400000, size: 6 },
   { word: 'Mansion', emoji: '🏰', min: 1200000, max: 3000000, size: 7 },
   { word: 'Penthouse', emoji: '🏙️', min: 900000, max: 2200000, size: 5 },
+  { word: 'Estate', emoji: '🏯', min: 3000000, max: 10000000, size: 10 },
 ]
 
 const STREETS = [
