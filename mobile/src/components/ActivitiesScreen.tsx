@@ -1,66 +1,47 @@
 import { useState } from 'react'
-import { ScrollView, StyleSheet, Text } from 'react-native'
+import { ScrollView, StyleSheet } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { getActivity } from '../data/activities'
-import { getAsset, homeRent, resaleValue } from '../data/assets'
-import { assetUpkeep } from '../data/economy'
+import { getAsset } from '../data/assets'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
-import type { ActivityCategory } from '../types'
+import { ActivitiesModal } from './ActivitiesModal'
+import { BelongingsModal } from './BelongingsModal'
 import { CrimeModal } from './CrimeModal'
-import { HomeModal } from './HomeModal'
 import { MindBodyModal } from './MindBodyModal'
 import { PhoneModal } from './PhoneModal'
-import { PursuitModal } from './PursuitModal'
 import { Row } from './Row'
 import { SectionHeading } from './SectionHeading'
 import { StoreModal } from './StoreModal'
 
-/** The "Lifestyle" hub: wellness, pursuits, crime, and your belongings/shop. */
+/** The "Lifestyle" hub — every area behind a single tappable row. */
 export function ActivitiesScreen() {
   const pursuits = useGameStore((s) => s.pursuits)
   const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
   const homes = useGameStore((s) => s.homes)
-  const residenceId = useGameStore((s) => s.residenceId)
-  const sellAsset = useGameStore((s) => s.sellAsset)
-  const [category, setCategory] = useState<ActivityCategory | null>(null)
+  const [activities, setActivities] = useState(false)
   const [crime, setCrime] = useState(false)
   const [wellness, setWellness] = useState(false)
   const [shopping, setShopping] = useState(false)
   const [phoneOpen, setPhoneOpen] = useState(false)
-  const [homeId, setHomeId] = useState<string | null>(null)
+  const [belongings, setBelongings] = useState(false)
 
   const hasPhone = ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')
+  const itemCount = ownedAssetIds.length + homes.length
 
-  const owned = ownedAssetIds
-    .map((id) => getAsset(id))
-    .filter((a): a is NonNullable<typeof a> => !!a)
-  const netWorth =
-    owned.reduce((sum, a) => sum + resaleValue(a), 0) +
-    homes.reduce((sum, h) => sum + Math.round(h.price / 2), 0)
-  const rentTotal = homes.reduce(
-    (sum, h) => (h.id !== residenceId ? sum + homeRent(h.price) : sum),
-    0,
-  )
+  const activeCount = Object.values(pursuits).filter(Boolean).length
+  const activitiesSub = (() => {
+    if (activeCount === 0) return 'Sports, hobbies, learning — take something up'
+    const names = (Object.values(pursuits).filter(Boolean) as Array<{ id: string }>)
+      .map((p) => getActivity(p.id)?.name)
+      .filter(Boolean)
+    return `Doing: ${names.join(', ')}`
+  })()
 
-  const activeLabel = (cat: ActivityCategory): string => {
-    const active = pursuits[cat]
-    if (!active) return 'Nothing yet — tap to start'
-    const a = getActivity(active.id)
-    if (active.label) return `Learning ${active.label} · ${active.years}/${a?.durationYears} yrs`
-    return `Currently: ${a?.name ?? '...'}`
-  }
-
-  const open = (cat: ActivityCategory) => () => {
-    playSfx('click')
-    setCategory(cat)
-  }
   const tap = (fn: () => void) => () => {
     playSfx('click')
     fn()
   }
-
-  const hasStuff = owned.length > 0 || homes.length > 0
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -68,19 +49,17 @@ export function ActivitiesScreen() {
       <Row
         emoji="🩺"
         title="Health & wellness"
-        subtitle="Doctor, dentist, therapy, botox — stay healthy, live longer"
+        subtitle="Doctor, dentist, therapy, botox — and treat any illnesses"
         onPress={tap(() => setWellness(true))}
         chevron
       />
 
       <SectionHeading color={colors.violet500}>ACTIVITIES</SectionHeading>
-      <Row emoji="🏅" title="Sport" subtitle={activeLabel('sport')} onPress={open('sport')} chevron />
-      <Row emoji="🎨" title="Hobbies" subtitle={activeLabel('hobby')} onPress={open('hobby')} chevron />
       <Row
-        emoji="🧠"
-        title="Mind training"
-        subtitle={activeLabel('mind')}
-        onPress={open('mind')}
+        emoji="🎯"
+        title="Activities"
+        subtitle={activitiesSub}
+        onPress={tap(() => setActivities(true))}
         chevron
       />
 
@@ -98,19 +77,14 @@ export function ActivitiesScreen() {
         emoji="📱"
         title="Phone"
         subtitle={
-          hasPhone
-            ? 'Social media, dating & more apps'
-            : 'Buy a phone in the shop below to unlock apps'
+          hasPhone ? 'Social media, dating & more apps' : 'Buy a phone in the shop to unlock apps'
         }
         onPress={hasPhone ? tap(() => setPhoneOpen(true)) : undefined}
         disabled={!hasPhone}
         chevron={hasPhone}
       />
 
-      <SectionHeading color={colors.amber400}>
-        BELONGINGS{hasStuff ? ` · WORTH $${netWorth.toLocaleString()}` : ''}
-        {rentTotal > 0 ? ` · $${rentTotal.toLocaleString()}/YR RENT` : ''}
-      </SectionHeading>
+      <SectionHeading color={colors.amber400}>SHOP & BELONGINGS</SectionHeading>
       <Row
         emoji="🛍️"
         title="Go shopping"
@@ -118,43 +92,20 @@ export function ActivitiesScreen() {
         onPress={tap(() => setShopping(true))}
         chevron
       />
-      {!hasStuff && (
-        <Row emoji="📭" title="Nothing yet" subtitle="Buy something from the shop above" />
-      )}
-      {homes.map((home) => (
-        <Row
-          key={home.id}
-          emoji={home.emoji}
-          title={home.name}
-          subtitle={
-            home.id === residenceId
-              ? '🏠 You live here · tap to manage'
-              : `💰 Rented · $${homeRent(home.price).toLocaleString()}/yr · tap to manage`
-          }
-          onPress={tap(() => setHomeId(home.id))}
-          chevron
-        />
-      ))}
-      {owned.map((asset) => {
-        const upkeep = assetUpkeep(asset.price, asset.category)
-        return (
-          <Row
-            key={asset.id}
-            emoji={asset.emoji}
-            title={asset.name}
-            subtitle={`Sell for $${resaleValue(asset).toLocaleString()}${upkeep > 0 ? ` · upkeep $${upkeep.toLocaleString()}/yr` : ''}`}
-            onPress={tap(() => sellAsset(asset.id))}
-            right={<Text style={styles.sell}>Sell</Text>}
-          />
-        )
-      })}
+      <Row
+        emoji="🎒"
+        title="My belongings"
+        subtitle={itemCount > 0 ? `${itemCount} item${itemCount === 1 ? '' : 's'} — manage & sell` : 'Nothing yet'}
+        onPress={tap(() => setBelongings(true))}
+        chevron
+      />
 
-      {category && <PursuitModal category={category} onClose={() => setCategory(null)} />}
+      {activities && <ActivitiesModal onClose={() => setActivities(false)} />}
       {crime && <CrimeModal onClose={() => setCrime(false)} />}
       {wellness && <MindBodyModal onClose={() => setWellness(false)} />}
       {shopping && <StoreModal onClose={() => setShopping(false)} />}
       {phoneOpen && <PhoneModal onClose={() => setPhoneOpen(false)} />}
-      {homeId && <HomeModal homeId={homeId} onClose={() => setHomeId(null)} />}
+      {belongings && <BelongingsModal onClose={() => setBelongings(false)} />}
     </ScrollView>
   )
 }
@@ -162,10 +113,4 @@ export function ActivitiesScreen() {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { gap: 8, paddingBottom: 110 },
-  sell: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.rose500,
-    marginRight: 4,
-  },
 })

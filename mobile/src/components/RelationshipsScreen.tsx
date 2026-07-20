@@ -3,21 +3,19 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
-import type { Person } from '../types'
+import type { Person, PersonRole } from '../types'
 import { PersonAvatar } from './Avatar'
 import { FamilyTreeModal } from './FamilyTreeModal'
 import { PersonModal, roleLabel } from './PersonModal'
 import { PetsModal } from './PetsModal'
 import { Row } from './Row'
+import { SectionHeading } from './SectionHeading'
 
-const SECTION_ORDER: Person['role'][] = [
-  'partner',
-  'child',
-  'mother',
-  'father',
-  'sibling',
-  'friend',
-  'enemy',
+/** People grouped into the three sections the player cares about. */
+const GROUPS: Array<{ title: string; color: string; roles: PersonRole[] }> = [
+  { title: 'RELATIONSHIPS', color: colors.pink600, roles: ['partner', 'ex', 'fling'] },
+  { title: 'FAMILY', color: colors.sky500, roles: ['mother', 'father', 'sibling', 'child'] },
+  { title: 'FRIENDS', color: colors.emerald700, roles: ['friend', 'enemy'] },
 ]
 
 /** Clean BitLife-style list: tap a person to open their interaction sheet. */
@@ -32,9 +30,47 @@ export function RelationshipsScreen() {
   const ancestors = useGameStore((s) => s.ancestors)
   const petCount = useGameStore((s) => s.pets.length)
 
-  const people = relationships
-    .filter((p) => SECTION_ORDER.includes(p.role))
-    .sort((a, b) => SECTION_ORDER.indexOf(a.role) - SECTION_ORDER.indexOf(b.role))
+  const renderPerson = (person: Person) => (
+    <Row
+      key={person.id}
+      emoji="🙂"
+      avatar={<PersonAvatar person={person} />}
+      title={person.name}
+      subtitle={
+        person.alive
+          ? `${roleLabel(person, partnerStatus)} · age ${person.age} · Bond ${person.relationship}`
+          : `${roleLabel(person, partnerStatus)} · passed away at ${person.age}`
+      }
+      onPress={
+        person.alive
+          ? () => {
+              playSfx('click')
+              setPersonId(person.id)
+            }
+          : undefined
+      }
+      disabled={!person.alive}
+      chevron={person.alive}
+      right={
+        person.alive ? (
+          <View style={styles.bondPill}>
+            <View
+              style={styles.bondTrack}
+              accessibilityRole="progressbar"
+              accessibilityLabel={`Bond with ${person.name}`}
+              accessibilityValue={{ min: 0, max: 100, now: person.relationship }}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={person.relationship}
+            >
+              <View style={[styles.bondFill, { width: `${person.relationship}%` }]} />
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </View>
+        ) : undefined
+      }
+    />
+  )
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -62,47 +98,24 @@ export function RelationshipsScreen() {
         }}
         chevron
       />
-      {people.map((person) => (
-        <Row
-          key={person.id}
-          emoji="🙂"
-          avatar={<PersonAvatar person={person} />}
-          title={person.name}
-          subtitle={
-            person.alive
-              ? `${roleLabel(person, partnerStatus)} · age ${person.age} · Bond ${person.relationship}`
-              : `${roleLabel(person, partnerStatus)} · passed away at ${person.age}`
-          }
-          onPress={
-            person.alive
-              ? () => {
-                  playSfx('click')
-                  setPersonId(person.id)
-                }
-              : undefined
-          }
-          disabled={!person.alive}
-          chevron={person.alive}
-          right={
-            person.alive ? (
-              <View style={styles.bondPill}>
-                <View
-                  style={styles.bondTrack}
-                  accessibilityRole="progressbar"
-                  accessibilityLabel={`Bond with ${person.name}`}
-                  accessibilityValue={{ min: 0, max: 100, now: person.relationship }}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={person.relationship}
-                >
-                  <View style={[styles.bondFill, { width: `${person.relationship}%` }]} />
-                </View>
-                <Text style={styles.chevron}>›</Text>
-              </View>
-            ) : undefined
-          }
-        />
-      ))}
+
+      {GROUPS.map((group) => {
+        const members = relationships
+          .filter((p) => group.roles.includes(p.role))
+          // Living first, then by role order within the group.
+          .sort(
+            (a, b) =>
+              Number(b.alive) - Number(a.alive) ||
+              group.roles.indexOf(a.role) - group.roles.indexOf(b.role),
+          )
+        if (members.length === 0) return null
+        return (
+          <View key={group.title} style={styles.group}>
+            <SectionHeading color={group.color}>{group.title}</SectionHeading>
+            {members.map(renderPerson)}
+          </View>
+        )
+      })}
 
       {personId && <PersonModal personId={personId} onClose={() => setPersonId(null)} />}
       {treeOpen && <FamilyTreeModal onClose={() => setTreeOpen(false)} />}
@@ -119,25 +132,8 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingBottom: 110,
   },
-  bigButton: {
-    backgroundColor: colors.cyan500,
-    borderRadius: 16,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  friendButton: {
-    backgroundColor: colors.cyan600,
-  },
-  bigButtonPressed: {
-    backgroundColor: colors.cyan400,
-  },
-  buttonDisabled: {
-    opacity: 0.45,
-  },
-  bigButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.onColor,
+  group: {
+    gap: 8,
   },
   bondPill: {
     flexDirection: 'row',

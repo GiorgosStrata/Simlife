@@ -130,6 +130,10 @@ export function relationLabel(
       return 'boss'
     case 'enemy':
       return 'enemy'
+    case 'ex':
+      return male ? 'ex-boyfriend' : 'ex-girlfriend'
+    case 'fling':
+      return 'fling'
   }
 }
 
@@ -571,6 +575,9 @@ interface GameState {
 
   /** A casual hookup from the Prowl app — a fun night, with a little risk. */
   oneNightStand: () => void
+
+  /** Hook up again with an existing fling or ex (once a year each). */
+  hookUp: (personId: string) => void
 
   /** Pay to treat an active illness — may cure it (see data/illnesses.ts). */
   treatIllness: (id: string) => void
@@ -2020,12 +2027,42 @@ export const useGameStore = create<GameState>()(
           if (!useYearlyAction('one-night-stand')) return
           const roll = Math.random()
           const stats = { ...s.stats }
+          // Build a new fling you can reach out to later (capped, to avoid clutter).
+          const flingCount = s.relationships.filter((p) => p.role === 'fling' && p.alive).length
+          const makeFling = (): { person: Person; nextFriendId: number } | null => {
+            if (flingCount >= 6) return null
+            const g: Gender = s.gender === 'male' ? 'female' : 'male'
+            const person: Person = {
+              id: `fling-${s.nextFriendId}`,
+              role: 'fling',
+              gender: g,
+              name: `${randomFirstName(s.countryCode, g)} ${randomLastName(s.countryCode)}`,
+              age: Math.max(18, s.age + randomInt(-5, 5)),
+              alive: true,
+              relationship: randomInt(30, 55),
+              ...makeNpcLife(),
+            }
+            return { person, nextFriendId: s.nextFriendId + 1 }
+          }
           if (roll < 0.58) {
-            // A good night out.
+            // A good night out — you swap numbers.
             stats.happiness = clampStat(stats.happiness + randomInt(5, 9))
-            set({ stats })
+            const f = makeFling()
+            set({
+              stats,
+              ...(f
+                ? { relationships: [...s.relationships, f.person], nextFriendId: f.nextFriendId }
+                : {}),
+            })
             playSfx('success')
-            addLog([{ text: 'You had a fun, no-strings night out. No regrets. 😏', kind: 'relationship' }])
+            addLog([
+              {
+                text: f
+                  ? `You had a fun night with ${f.person.name} — and swapped numbers. 😏`
+                  : 'You had a fun, no-strings night out. No regrets. 😏',
+                kind: 'relationship',
+              },
+            ])
           } else if (roll < 0.8) {
             // Forgettable.
             stats.happiness = clampStat(stats.happiness - randomInt(1, 4))
@@ -2051,12 +2088,54 @@ export const useGameStore = create<GameState>()(
               addLog([{ text: 'A rough morning after — you felt off for days. 🤒', kind: 'event' }])
             }
           } else {
-            // They caught feelings.
+            // They caught feelings — and they're not going anywhere.
             stats.happiness = clampStat(stats.happiness + randomInt(1, 4))
-            set({ stats })
+            const f = makeFling()
+            if (f) f.person.relationship = randomInt(55, 75)
+            set({
+              stats,
+              ...(f
+                ? { relationships: [...s.relationships, f.person], nextFriendId: f.nextFriendId }
+                : {}),
+            })
             playSfx('pop')
-            addLog([{ text: 'They texted "had a great time 🥰" the next morning. Awkward.', kind: 'relationship' }])
+            addLog([
+              {
+                text: f
+                  ? `${f.person.name} texted "had a great time 🥰" the next morning. They're keen.`
+                  : 'They texted "had a great time 🥰" the next morning. Awkward.',
+                kind: 'relationship',
+              },
+            ])
           }
+        },
+
+        hookUp: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive || s.age < 18) return
+          if (person.role !== 'fling' && person.role !== 'ex') return
+          if (s.relationships.some((p) => p.id === 'partner' && p.alive)) return
+          if (!useYearlyAction(`hookup-${personId}`)) return
+          updatePerson(personId, {
+            relationship: clampRelationship(person.relationship + randomInt(4, 9)),
+          })
+          const stats = { ...get().stats, happiness: clampStat(get().stats.happiness + randomInt(3, 7)) }
+          // A small chance of an STD, same as any casual encounter.
+          if (Math.random() < 0.12) {
+            const std = pickIllness('std', s.age)
+            if (std && !(s.conditions ?? []).some((c) => c.id === std.id)) {
+              set({ stats, conditions: [...(s.conditions ?? []), { id: std.id, years: 0 }] })
+              playSfx('hurt')
+              addLog([
+                { text: `You hooked up with ${person.name} — and caught ${std.name}. ${std.emoji}`, kind: 'event' },
+              ])
+              return
+            }
+          }
+          set({ stats })
+          playSfx('success')
+          addLog([{ text: `You hooked up with ${person.name} again. 😏`, kind: 'relationship' }])
         },
 
         treatIllness: (id: string) => {
@@ -2663,8 +2742,8 @@ export const useGameStore = create<GameState>()(
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive || s.age < 16) return
           if (s.relationships.some((p) => p.id === 'partner' && p.alive)) return
-          // You can only ask out acquaintances (not family or your enemies).
-          const eligible: PersonRole[] = ['friend', 'classmate', 'coworker']
+          // You can ask out acquaintances, exes and flings — not family/enemies.
+          const eligible: PersonRole[] = ['friend', 'classmate', 'coworker', 'ex', 'fling']
           if (!eligible.includes(person.role)) return
           if (!useYearlyAction(`askout-${personId}`)) return
           // Better odds with a strong bond and good looks.
@@ -3235,8 +3314,15 @@ export const useGameStore = create<GameState>()(
           const partner = s.relationships.find((p) => p.id === 'partner')
           if (!s.alive || !partner) return
           const divorced = s.partnerStatus === 'married'
+          // The partner sticks around as an ex you can still reach out to.
+          const exId = `ex-${s.nextFriendId}`
           set({
-            relationships: s.relationships.filter((p) => p.id !== 'partner'),
+            relationships: s.relationships.map((p) =>
+              p.id === 'partner'
+                ? { ...p, id: exId, role: 'ex', relationship: clampRelationship(p.relationship - 20) }
+                : p,
+            ),
+            nextFriendId: s.nextFriendId + 1,
             partnerStatus: null,
             money: divorced ? Math.floor(s.money / 2) : s.money,
             stats: { ...s.stats, happiness: clampStat(s.stats.happiness - 10) },
@@ -3295,8 +3381,16 @@ export const useGameStore = create<GameState>()(
           if (!heir) return
 
           // Estate split evenly among living children; the heir keeps a share.
+          // A 10% inheritance tax is skimmed off the cash each time the family
+          // hands down its wealth.
+          const ESTATE_TAX = 0.1
           const livingKids = s.relationships.filter((p) => p.role === 'child' && p.alive)
-          const inheritance = s.money > 0 ? Math.floor(s.money / livingKids.length) : 0
+          const grossShare = s.money > 0 ? Math.floor(s.money / livingKids.length) : 0
+          const estateTax = Math.round(grossShare * ESTATE_TAX)
+          const inheritance = grossShare - estateTax
+          // The heir also inherits the family's real estate (homes + residence).
+          const inheritedHomes = s.homes
+          const inheritedResidenceId = s.residenceId
 
           const ancestor: Ancestor = {
             name: s.name,
@@ -3384,6 +3478,8 @@ export const useGameStore = create<GameState>()(
             year: s.year,
             stats: rollStats(),
             money: inheritance,
+            homes: inheritedHomes,
+            residenceId: inheritedResidenceId,
             relationships: rebuilt,
             nextFriendId,
             schoolName,
@@ -3404,7 +3500,12 @@ export const useGameStore = create<GameState>()(
                 text:
                   `You continue the family story as ${heir.name}, generation ${s.generation + 1}.` +
                   (heirJob ? ` You're a ${jobTitle(heirJob, heirTier)} ${heirJob.emoji}.` : '') +
-                  (inheritance > 0 ? ` You inherited $${inheritance.toLocaleString()}.` : ''),
+                  (inheritance > 0
+                    ? ` You inherited $${inheritance.toLocaleString()} after a $${estateTax.toLocaleString()} estate tax.`
+                    : '') +
+                  (inheritedHomes.length > 0
+                    ? ` You also inherited ${inheritedHomes.length} propert${inheritedHomes.length === 1 ? 'y' : 'ies'}. 🏠`
+                    : ''),
                 kind: 'info',
               },
             ],

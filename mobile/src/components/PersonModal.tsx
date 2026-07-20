@@ -45,6 +45,10 @@ export function personEmoji(person: Person): string {
       return male ? '🤵' : '🤵‍♀️'
     case 'enemy':
       return '😠'
+    case 'ex':
+      return male ? '🙎‍♂️' : '🙎‍♀️'
+    case 'fling':
+      return male ? '😏' : '😏'
   }
 }
 
@@ -58,6 +62,8 @@ export function roleLabel(person: Person, partnerStatus: PartnerStatus | null): 
   if (person.role === 'sibling') return male ? 'Brother' : 'Sister'
   if (person.role === 'child') return male ? 'Son' : 'Daughter'
   if (person.role === 'enemy') return 'Enemy'
+  if (person.role === 'ex') return male ? 'Ex-boyfriend' : 'Ex-girlfriend'
+  if (person.role === 'fling') return 'Fling'
   return person.role.charAt(0).toUpperCase() + person.role.slice(1)
 }
 
@@ -88,6 +94,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const askTeacherHelp = useGameStore((s) => s.askTeacherHelp)
   const befriend = useGameStore((s) => s.befriend)
   const askOut = useGameStore((s) => s.askOut)
+  const hookUp = useGameStore((s) => s.hookUp)
   const goOnDate = useGameStore((s) => s.goOnDate)
   const propose = useGameStore((s) => s.propose)
   const marry = useGameStore((s) => s.marry)
@@ -123,7 +130,11 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   // you're single, asked out.
   const befriendable = ['classmate', 'coworker', 'boss', 'teacher'].includes(person.role)
   const befriendNeeded = person.role === 'boss' || person.role === 'teacher' ? 75 : 55
-  const askOutable = ['friend', 'classmate', 'coworker'].includes(person.role) && !hasPartner && age >= 16
+  const askOutable =
+    ['friend', 'classmate', 'coworker', 'ex', 'fling'].includes(person.role) &&
+    !hasPartner &&
+    age >= 16
+  const hookUpable = (person.role === 'fling' || person.role === 'ex') && !hasPartner && age >= 18
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -278,16 +289,28 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                   chevron
                 />
               )}
+              {hookUpable && (
+                <Row
+                  emoji="🔥"
+                  title="Hook up"
+                  subtitle={used(`hookup-${person.id}`) ? 'Done this year' : 'A casual night — a little risky'}
+                  onPress={act(() => hookUp(person.id), null)}
+                  disabled={used(`hookup-${person.id}`)}
+                  chevron
+                />
+              )}
               {askOutable && (
                 <Row
                   emoji="💘"
-                  title="Ask them out"
+                  title={person.role === 'ex' ? 'Rekindle things' : 'Ask them out'}
                   subtitle={
                     used(`askout-${person.id}`)
                       ? 'You asked this year'
                       : person.relationship < 30
                         ? 'Grow your bond first'
-                        : 'Shoot your shot — they might say yes'
+                        : person.role === 'ex'
+                          ? 'Give it another shot'
+                          : 'Shoot your shot — they might say yes'
                   }
                   onPress={act(() => askOut(person.id), null)}
                   disabled={used(`askout-${person.id}`) || person.relationship < 30}

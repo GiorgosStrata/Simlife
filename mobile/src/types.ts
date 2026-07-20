@@ -77,6 +77,10 @@ export type PersonRole =
   | 'coworker'
   | 'boss'
   | 'enemy'
+  /** A former partner you split up with. */
+  | 'ex'
+  /** Someone from a one-night stand you can still reach out to. */
+  | 'fling'
 
 export interface Person {
   /**
