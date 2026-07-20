@@ -2,11 +2,13 @@ import { useEffect } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { scaleByCountry } from '../data/countries'
+import { getIllness } from '../data/illnesses'
 import { STRINGS } from '../data/strings'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { confirmAction } from './actionRunner'
 import { Row } from './Row'
+import { SectionHeading } from './SectionHeading'
 import { useCloseOnAction } from './useCloseOnAction'
 
 interface MindBodyModalProps {
@@ -29,6 +31,8 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
   const seeTherapist = useGameStore((s) => s.seeTherapist)
   const plasticSurgery = useGameStore((s) => s.plasticSurgery)
   const spaDay = useGameStore((s) => s.spaDay)
+  const conditions = useGameStore((s) => s.conditions)
+  const treatIllness = useGameStore((s) => s.treatIllness)
 
   useEffect(() => {
     playSfx('pop')
@@ -78,6 +82,36 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
           </View>
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+            {conditions.length > 0 && (
+              <SectionHeading color={colors.rose500}>CONDITIONS</SectionHeading>
+            )}
+            {conditions.map((c) => {
+              const ill = getIllness(c.id)
+              if (!ill) return null
+              const key = `treat-${ill.id}`
+              const treated = used(key)
+              const broke = !free && money < price(ill.treatCost)
+              const chance = Math.round(ill.treatCure * 100)
+              const subtitle = treated
+                ? 'Being treated — see how it goes next year'
+                : broke
+                  ? `${ill.desc} · treatment costs ${money$(ill.treatCost)}`
+                  : `${ill.desc} · treat (${money$(ill.treatCost)} · ~${chance}% success)`
+              return (
+                <Row
+                  key={ill.id}
+                  emoji={ill.emoji}
+                  title={ill.name}
+                  subtitle={subtitle}
+                  onPress={act(() => treatIllness(ill.id), 'cash')}
+                  disabled={treated || broke}
+                  chevron
+                />
+              )
+            })}
+            {conditions.length > 0 && (
+              <SectionHeading color={colors.sky500}>CARE</SectionHeading>
+            )}
             <Row
               emoji="🩺"
               title={`${STRINGS.clinic} (${money$(150)})`}

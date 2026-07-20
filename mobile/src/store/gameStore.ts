@@ -5,6 +5,7 @@ import { playSfx } from '../audio/sfx'
 import type { ThemeName } from '../theme'
 import { randomAvatarConfig, type AvatarConfig } from '../data/avatar'
 import type {
+  ActiveCondition,
   Ancestor,
   ActivePursuit,
   ActivityCategory,
@@ -26,6 +27,7 @@ import { makeNpcLife, randomHobby } from '../data/npc'
 import { LEAGUES, getTeam, jobSport, leaguesForSport, teamName } from '../data/leagues'
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, homeRent, resaleValue } from '../data/assets'
+import { getIllness, pickIllness } from '../data/illnesses'
 import { rollHomeListings, type HomeListing, type OwnedHome } from '../data/homes'
 import { COUNTRIES, countrySalary, getCountry, scaleByCountry } from '../data/countries'
 import {
@@ -454,6 +456,8 @@ interface GameState {
   year: number
   stats: Stats
   money: number
+  /** Illnesses the character currently has (colds, STDs, cancers…). */
+  conditions: ActiveCondition[]
   log: LogEntry[]
   currentEvent: GameEvent | null
   /** Transient confirmation bubble shown after a user action; not persisted. */
@@ -604,6 +608,9 @@ interface GameState {
   /** A casual hookup from the Prowl app — a fun night, with a little risk. */
   oneNightStand: () => void
 
+  /** Pay to treat an active illness — may cure it (see data/illnesses.ts). */
+  treatIllness: (id: string) => void
+
   // Prison
   attemptEscape: () => void
   prisonBehave: () => void
@@ -677,6 +684,7 @@ function newLifeState() {
     year: START_YEAR_BASE,
     stats: rollStats(),
     money: 0,
+    conditions: [] as ActiveCondition[],
     currentEvent: null,
     toast: null as { text: string } | null,
     usedEventIds: [] as string[],
@@ -1478,15 +1486,81 @@ export const useGameStore = create<GameState>()(
             })
           }
 
+          // ----- Illness: run current conditions, then maybe catch something -----
+          let illnessDeathCause: string | null = null
+          const conditions: ActiveCondition[] = []
+          for (const c of s.conditions ?? []) {
+            const ill = getIllness(c.id)
+            if (!ill) continue
+            // The yearly toll on body and mood.
+            stats.health = clampStat(stats.health + (ill.yearly.health ?? 0))
+            stats.happiness = clampStat(stats.happiness + (ill.yearly.happiness ?? 0))
+            if (ill.yearly.looks) stats.looks = clampStat(stats.looks + (ill.yearly.looks ?? 0))
+            // A terminal illness can prove fatal.
+            if (ill.fatalPerYear > 0 && !illnessDeathCause && Math.random() < ill.fatalPerYear) {
+              illnessDeathCause = ill.name
+            }
+            // Some things clear up on their own; others linger until treated.
+            if (Math.random() < ill.selfHeal) {
+              entries.push({
+                id: logId++,
+                age,
+                year,
+                text: `You got over your ${ill.name.toLowerCase()}. 😌`,
+                kind: 'event',
+              })
+            } else {
+              conditions.push({ ...c, years: c.years + 1 })
+            }
+          }
+          // Catch a common bug — likelier when run-down. (Not a pile-up: capped.)
+          if (age >= 1 && conditions.length < 3 && Math.random() < 0.11 + (100 - stats.health) / 100 * 0.09) {
+            const ill = pickIllness('minor', age)
+            if (ill && !conditions.some((c) => c.id === ill.id)) {
+              conditions.push({ id: ill.id, years: 0 })
+              entries.push({
+                id: logId++,
+                age,
+                year,
+                text: `You came down with ${ill.name.toLowerCase()}. ${ill.emoji}`,
+                kind: 'event',
+              })
+            }
+          }
+          // A serious diagnosis — rare, rising with age and poor health.
+          const seriousChance = Math.max(0, (age - 35) * 0.0006) + ((100 - stats.health) / 100) * 0.006
+          if (age >= 5 && !conditions.some((c) => getIllness(c.id)?.kind === 'serious') && Math.random() < seriousChance) {
+            const ill = pickIllness('serious', age, s.gender)
+            if (ill) {
+              conditions.push({ id: ill.id, years: 0 })
+              entries.push({
+                id: logId++,
+                age,
+                year,
+                text: `You've been diagnosed with ${ill.name}. ${ill.emoji} See a doctor — treatment can help.`,
+                kind: 'event',
+              })
+            }
+          }
+
           const naturalDeath = oldAgeDeathRoll(age, stats.health)
           const catastrophe = naturalDeath ? null : catastropheRoll(age, stats.health)
-          if (stats.health <= 0 || naturalDeath || catastrophe || age >= MAX_AGE) {
+          const illnessDeath = !naturalDeath && !catastrophe ? illnessDeathCause : null
+          if (
+            stats.health <= 0 ||
+            naturalDeath ||
+            catastrophe ||
+            illnessDeath ||
+            age >= MAX_AGE
+          ) {
             const deathText =
-              stats.health <= 0
-                ? `${s.name}'s health finally gave out at age ${age}.`
-                : catastrophe
-                  ? `${s.name} died of ${catastrophe} at age ${age}. Gone in an instant.`
-                  : `${s.name} passed away peacefully at age ${age}. What a life it was.`
+              illnessDeath && stats.health > 0
+                ? `${s.name} lost their battle with ${illnessDeath} at age ${age}. 🎗️`
+                : stats.health <= 0
+                  ? `${s.name}'s health finally gave out at age ${age}.`
+                  : catastrophe
+                    ? `${s.name} died of ${catastrophe} at age ${age}. Gone in an instant.`
+                    : `${s.name} passed away peacefully at age ${age}. What a life it was.`
             entries.push({
               id: logId++,
               age,
@@ -1499,6 +1573,7 @@ export const useGameStore = create<GameState>()(
               year,
               stats,
               money,
+              conditions,
               jobId: jobIdNext,
               jobTier,
               yearsInJob,
@@ -1570,6 +1645,7 @@ export const useGameStore = create<GameState>()(
             year,
             stats,
             money,
+            conditions,
             jobId: jobIdNext,
             jobTier,
             yearsInJob,
@@ -1936,18 +2012,62 @@ export const useGameStore = create<GameState>()(
             playSfx('click')
             addLog([{ text: 'The date fizzled — you snuck out before breakfast. 😬', kind: 'relationship' }])
           } else if (roll < 0.94) {
-            // A health scare.
-            stats.health = clampStat(stats.health - randomInt(4, 10))
-            stats.happiness = clampStat(stats.happiness - randomInt(3, 7))
-            set({ stats })
-            playSfx('hurt')
-            addLog([{ text: 'You picked up a nasty infection. A trip to the clinic was in order. 🤒', kind: 'event' }])
+            // A health scare — you may catch an STD.
+            const std = pickIllness('std', s.age)
+            const already = std ? (s.conditions ?? []).some((c) => c.id === std.id) : true
+            if (std && !already) {
+              stats.happiness = clampStat(stats.happiness - randomInt(3, 6))
+              set({ stats, conditions: [...(s.conditions ?? []), { id: std.id, years: 0 }] })
+              playSfx('hurt')
+              addLog([
+                { text: `You caught ${std.name} from a hookup. ${std.emoji} Get it treated at the clinic.`, kind: 'event' },
+              ])
+            } else {
+              stats.health = clampStat(stats.health - randomInt(3, 7))
+              stats.happiness = clampStat(stats.happiness - randomInt(3, 7))
+              set({ stats })
+              playSfx('hurt')
+              addLog([{ text: 'A rough morning after — you felt off for days. 🤒', kind: 'event' }])
+            }
           } else {
             // They caught feelings.
             stats.happiness = clampStat(stats.happiness + randomInt(1, 4))
             set({ stats })
             playSfx('pop')
             addLog([{ text: 'They texted "had a great time 🥰" the next morning. Awkward.', kind: 'relationship' }])
+          }
+        },
+
+        treatIllness: (id: string) => {
+          const s = get()
+          if (!s.alive) return
+          const cond = (s.conditions ?? []).find((c) => c.id === id)
+          const ill = getIllness(id)
+          if (!cond || !ill) return
+          const cost = outOfPocket(s.age, scaleByCountry(ill.treatCost, s.countryCode))
+          if (s.money < cost) return
+          if (!useYearlyAction(`treat-${id}`)) return
+          const cured = Math.random() < ill.treatCure
+          if (cured) {
+            set({
+              money: s.money - cost,
+              conditions: (s.conditions ?? []).filter((c) => c.id !== id),
+              stats: {
+                ...s.stats,
+                health: gainStat(s.stats.health, ill.kind === 'serious' ? 12 : 5),
+              },
+            })
+            playSfx('success')
+            addLog([{ text: `You beat ${ill.name} — the treatment worked! 🎉`, kind: 'event' }])
+          } else {
+            set({
+              money: s.money - cost,
+              stats: { ...s.stats, health: gainStat(s.stats.health, 2) },
+            })
+            playSfx('hurt')
+            addLog([
+              { text: `You underwent treatment for ${ill.name}, but it hasn't cleared up. Keep fighting.`, kind: 'event' },
+            ])
           }
         },
 
@@ -3271,7 +3391,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 27,
+      version: 28,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -3491,6 +3611,10 @@ export const useGameStore = create<GameState>()(
             youtube: 0,
             ...(state.followers ?? {}),
           } as Record<SocialApp, number>
+        }
+        // v27 saves predate the illness system.
+        if (version < 28) {
+          state.conditions = []
         }
         return state as GameState
       },

@@ -104,6 +104,14 @@ export interface Person {
 
 export type PartnerStatus = 'dating' | 'engaged' | 'married'
 
+/** An illness the character currently has (see data/illnesses.ts). */
+export interface ActiveCondition {
+  /** Illness catalogue id. */
+  id: string
+  /** How many years they've had it, for progression and flavour. */
+  years: number
+}
+
 /** A pet the character has adopted. */
 export interface Pet {
   id: string
