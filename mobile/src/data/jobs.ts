@@ -359,6 +359,54 @@ const ROWS: Row[] = [
 ]
 
 /**
+ * Adult-entertainment careers (18+, looks-gated). They pay well for
+ * no-degree work, but the content stays strictly tongue-in-cheek.
+ */
+const ADULT_Q: JobQuestion[] = [
+  q('Rule number one of the industry?', ['Consent and professionalism', 'Never read contracts', 'Wing it']),
+  q('A brand offers a shady deal. You...', ['Read the contract carefully', 'Sign instantly', 'Pay them instead']),
+  q('How do you deal with online hate?', ['Block and move on', 'Answer every troll', 'Quit on the spot']),
+  q('Your work schedule should be...', ['Organized and on time', 'A total mystery', 'Written on a napkin']),
+  q('Your public image is...', ['Part of the job — manage it', 'Someone else’s problem', 'Illegal']),
+]
+
+const ADULT_JOBS: Job[] = [
+  {
+    id: 'stripper',
+    title: 'Stripper',
+    emoji: '💃',
+    salary: 45000,
+    minAge: 18,
+    minSmarts: 0,
+    minLooks: 55,
+    questions: ADULT_Q,
+    tiers: ['New Dancer', 'Dancer', 'Headliner', 'Club Legend'],
+  },
+  {
+    id: 'webcam-model',
+    title: 'Webcam Model',
+    emoji: '📹',
+    salary: 38000,
+    minAge: 18,
+    minSmarts: 0,
+    minLooks: 45,
+    questions: ADULT_Q,
+    tiers: ['Newcomer', 'Streamer', 'Top Model', 'Cam Icon'],
+  },
+  {
+    id: 'adult-film-star',
+    title: 'Adult Film Star',
+    emoji: '🔞',
+    salary: 85000,
+    minAge: 18,
+    minSmarts: 0,
+    minLooks: 70,
+    questions: ADULT_Q,
+    tiers: ['Newcomer', 'Performer', 'Star', 'Industry Icon'],
+  },
+]
+
+/**
  * Fame careers. You don't apply on the job board — you try out, and a
  * roll on `auditionStat` (vs `auditionMin`) decides whether you make it.
  * Salaries are high and climb steeply as you rise to stardom.
@@ -433,5 +481,6 @@ export const JOBS: Job[] = [
       ...(tiers ? { tiers } : {}),
     }),
   ),
+  ...ADULT_JOBS,
   ...SPECIAL_JOBS,
 ]

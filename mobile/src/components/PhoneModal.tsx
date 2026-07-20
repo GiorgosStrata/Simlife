@@ -52,7 +52,7 @@ export function PhoneModal({ onClose }: PhoneModalProps) {
     social('youtube'),
     { key: 'cinder', emoji: '🔥', name: 'Cinder', color: '#f97316', launch: { kind: 'app', app: 'cinder' } },
     { key: 'prowl', emoji: '😈', name: 'Prowl', color: '#be123c', launch: { kind: 'app', app: 'prowl' } },
-    { key: 'onlystans', emoji: '💎', name: 'OnlyStans', color: '#0ea5e9', launch: { kind: 'soon', name: 'OnlyStans' } },
+    { key: 'onlystans', emoji: '💎', name: 'OnlyStans', color: '#0ea5e9', launch: { kind: 'app', app: 'onlystans' } },
     { key: 'vestr', emoji: '📈', name: 'Vestr', color: '#16a34a', launch: { kind: 'app', app: 'vestr' } },
     { key: 'messages', emoji: '💬', name: 'Messages', color: '#2563eb', launch: { kind: 'soon', name: 'Messages' } },
   ]
@@ -127,7 +127,7 @@ export function PhoneModal({ onClose }: PhoneModalProps) {
         </View>
       </View>
 
-      {(open === 'rizzgram' || open === 'flicktok' || open === 'youtube') && (
+      {(open === 'rizzgram' || open === 'flicktok' || open === 'youtube' || open === 'onlystans') && (
         <SocialModal app={open} onClose={() => setOpen(null)} />
       )}
       {open === 'cinder' && <DatingModal onClose={() => setOpen(null)} />}
@@ -160,6 +160,7 @@ const SOCIAL_COLORS: Record<SocialApp, string> = {
   rizzgram: '#d6336c',
   flicktok: '#111827',
   youtube: '#e11d48',
+  onlystans: '#0ea5e9',
 }
 
 /** Compact follower counts: 1200 → 1.2K, 3_400_000 → 3.4M. */

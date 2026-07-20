@@ -96,6 +96,13 @@ function pick<T>(arr: T[]): T {
   return arr[randomInt(0, arr.length - 1)]
 }
 
+/**
+ * Health, mood, smarts and looks grow naturally only up to here; the last
+ * five points are reserved for enhancement (cosmetic surgery and the like).
+ * Enforced centrally in the store's set wrapper.
+ */
+const NATURAL_STAT_CAP = 95
+
 function clampStat(value: number): number {
   return Math.max(0, Math.min(100, value))
 }
@@ -300,7 +307,14 @@ export function jobTitle(job: Job, tier: number): string {
  */
 export function jobBlocker(
   job: Job,
-  who: { age: number; smarts: number; hasDegree: boolean; major: string | null; criminalRecord?: boolean },
+  who: {
+    age: number
+    smarts: number
+    looks?: number
+    hasDegree: boolean
+    major: string | null
+    criminalRecord?: boolean
+  },
 ): string | null {
   // Licensed professions won't hire anyone with a criminal record.
   if (who.criminalRecord && job.requiredMajor) return 'clean record required'
@@ -312,6 +326,9 @@ export function jobBlocker(
   const needsDegree = !!job.requiredMajor || !!job.requiresDegree
   if (!needsDegree && who.age < job.minAge) return `age ${job.minAge}+`
   if (who.smarts < job.minSmarts) return `${job.minSmarts} smarts required`
+  // Adult-entertainment jobs are strictly 18+, degree or not.
+  if (job.minAge >= 18 && job.minLooks && who.age < 18) return 'age 18+'
+  if (job.minLooks && (who.looks ?? 0) < job.minLooks) return `${job.minLooks} looks required`
   return null
 }
 
@@ -333,7 +350,11 @@ export const SOCIAL_APPS: Record<SocialApp, { name: string; emoji: string; kind:
   rizzgram: { name: 'Rizzgram', emoji: '📸', kind: 'photos' },
   flicktok: { name: 'FlickTok', emoji: '🎵', kind: 'short videos' },
   youtube: { name: 'Streamly', emoji: '▶️', kind: 'videos' },
+  onlystans: { name: 'OnlyStans', emoji: '💎', kind: 'exclusive content' },
 }
+
+/** OnlyStans monetizes from far fewer followers — subscriptions pay early. */
+export const ONLYSTANS_MIN_SUBS = 1000
 
 /** Followers needed before a platform will pay you. */
 export const MONETIZE_MIN_FOLLOWERS = 10000
@@ -707,7 +728,7 @@ function newLifeState() {
     residenceId: null as string | null,
     pets: [] as Pet[],
     nextPetId: 1,
-    followers: { rizzgram: 0, flicktok: 0, youtube: 0 } as Record<SocialApp, number>,
+    followers: { rizzgram: 0, flicktok: 0, youtube: 0, onlystans: 0 } as Record<SocialApp, number>,
     pursuits: { sport: null, mind: null, hobby: null } as Record<
       ActivityCategory,
       ActivePursuit | null
@@ -909,22 +930,39 @@ function simulateSeason(
 export const useGameStore = create<GameState>()(
   persist(
     (baseSet, get) => {
-      // Children never spend their own money — their parents cover everything.
-      // Any state update that would lower an under-18's balance leaves the
-      // balance untouched, so a child can never dip into debt or drain their
-      // savings on a doctor's visit, a toy, or anything else.
+      // Every store update passes through here, enforcing two world rules:
+      //  - children never spend their own money (an under-18's balance can't
+      //    drop — their parents cover everything);
+      //  - the four core stats grow naturally only up to NATURAL_STAT_CAP.
+      //    Gains stop there; only enhancement that bypasses this wrapper
+      //    (cosmetic surgery uses baseSet) can push a stat above the cap,
+      //    and a stat already above it holds its value but can't climb.
       const set: typeof baseSet = ((partial: unknown, replace?: boolean) =>
         (baseSet as (p: unknown, r?: boolean) => void)((state: GameState) => {
-          const next =
+          const computed =
             typeof partial === 'function'
               ? (partial as (s: GameState) => Partial<GameState>)(state)
               : (partial as Partial<GameState>)
-          if (next && typeof (next as Partial<GameState>).money === 'number') {
-            const n = next as Partial<GameState>
-            const age = typeof n.age === 'number' ? n.age : state.age
-            if (age < 18 && (n.money as number) < state.money) {
-              return { ...n, money: state.money }
+          if (!computed) return computed
+          let next = computed as Partial<GameState>
+          if (typeof next.money === 'number') {
+            const age = typeof next.age === 'number' ? next.age : state.age
+            if (age < 18 && next.money < state.money) {
+              next = { ...next, money: state.money }
             }
+          }
+          if (next.stats) {
+            const prev = state.stats
+            const ns = { ...next.stats }
+            let changed = false
+            for (const k of ['health', 'happiness', 'smarts', 'looks'] as const) {
+              const limit = Math.max(NATURAL_STAT_CAP, prev[k])
+              if (ns[k] > prev[k] && ns[k] > limit) {
+                ns[k] = limit
+                changed = true
+              }
+            }
+            if (changed) next = { ...next, stats: ns }
           }
           return next
         }, replace)) as typeof baseSet
@@ -2036,9 +2074,11 @@ export const useGameStore = create<GameState>()(
             addLog([{ text: 'The surgery was botched. Not the look you paid for. 😬', kind: 'event' }])
             return
           }
-          set({
+          // Surgery is enhancement: it bypasses the natural stat cap (baseSet),
+          // so it's the one way to push looks beyond NATURAL_STAT_CAP.
+          baseSet({
             money: s.money - cost,
-            stats: { ...s.stats, looks: gainStat(s.stats.looks, randomInt(8, 16)) },
+            stats: { ...s.stats, looks: clampStat(s.stats.looks + randomInt(8, 16)) },
           })
           playSfx('cash')
           addLog([{ text: 'You went under the knife and came out looking fabulous. ✨', kind: 'event' }])
@@ -2926,6 +2966,7 @@ export const useGameStore = create<GameState>()(
             jobBlocker(job, {
               age: s.age,
               smarts: s.stats.smarts,
+              looks: s.stats.looks,
               hasDegree: s.hasDegree,
               major: s.major,
               criminalRecord: s.criminalRecord,
@@ -3345,6 +3386,8 @@ export const useGameStore = create<GameState>()(
         socialPost: (app: SocialApp) => {
           const s = get()
           if (!s.alive) return
+          // OnlyStans is strictly adults-only.
+          if (app === 'onlystans' && s.age < 18) return
           if (!useYearlyAction(`post-${app}`)) return
           const meta = SOCIAL_APPS[app]
           // Looks and existing reach help; there's a small viral jackpot.
@@ -3358,6 +3401,10 @@ export const useGameStore = create<GameState>()(
             // Flop: it barely lands, you even shed a few followers.
             gained = -randomInt(0, 30)
             flop = true
+          } else if (app === 'onlystans') {
+            // Subscribers come almost entirely from looks — beauty is the product.
+            const base = randomInt(5, 40) + Math.round(s.stats.looks * 1.5)
+            gained = base + Math.round(s.followers[app] * 0.03)
           } else {
             // Normal growth, nudged by looks and your current audience.
             const base = randomInt(10, 120) + Math.round(s.stats.looks / 2)
@@ -3387,12 +3434,17 @@ export const useGameStore = create<GameState>()(
         monetizeSocial: (app: SocialApp) => {
           const s = get()
           if (!s.alive) return
+          if (app === 'onlystans' && s.age < 18) return
           const count = s.followers[app]
-          if (count < MONETIZE_MIN_FOLLOWERS) return
+          const isSubs = app === 'onlystans'
+          if (count < (isSubs ? ONLYSTANS_MIN_SUBS : MONETIZE_MIN_FOLLOWERS)) return
           if (!useYearlyAction(`monetize-${app}`)) return
           const meta = SOCIAL_APPS[app]
-          // Roughly $2–5 per hundred followers, country-scaled like other pay.
-          const gross = Math.round(count * (randomInt(2, 5) / 100))
+          // Brand deals pay ~$2–5 per hundred followers; OnlyStans subscribers
+          // pay real money each — far fewer of them go a lot further.
+          const gross = isSubs
+            ? Math.round(count * (randomInt(40, 80) / 100))
+            : Math.round(count * (randomInt(2, 5) / 100))
           const payout = scaleByCountry(gross, s.countryCode)
           set({
             money: s.money + payout,
@@ -3401,7 +3453,9 @@ export const useGameStore = create<GameState>()(
           playSfx('cash')
           addLog([
             {
-              text: `You cashed in your ${meta.name} following for $${payout.toLocaleString()} in brand deals. 💰`,
+              text: isSubs
+                ? `Your OnlyStans subscriptions paid out $${payout.toLocaleString()}. 💎`
+                : `You cashed in your ${meta.name} following for $${payout.toLocaleString()} in brand deals. 💰`,
               kind: 'money',
             },
           ])
@@ -3712,7 +3766,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 31,
+      version: 32,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -3830,7 +3884,7 @@ export const useGameStore = create<GameState>()(
         }
         // v12 saves predate the phone / social media follower counts.
         if (version < 13) {
-          state.followers = { rizzgram: 0, flicktok: 0, youtube: 0 }
+          state.followers = { rizzgram: 0, flicktok: 0, youtube: 0, onlystans: 0 }
         }
         // v13 saves predate customizable avatars.
         if (version < 14) {
@@ -3946,6 +4000,16 @@ export const useGameStore = create<GameState>()(
         if (version < 31) {
           state.investPrices = initialInvestPrices()
           state.investments = {}
+        }
+        // v31 saves predate the OnlyStans app.
+        if (version < 32) {
+          state.followers = {
+            rizzgram: 0,
+            flicktok: 0,
+            youtube: 0,
+            onlystans: 0,
+            ...(state.followers ?? {}),
+          } as Record<SocialApp, number>
         }
         return state as GameState
       },

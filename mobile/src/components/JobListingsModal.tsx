@@ -69,7 +69,7 @@ export function JobListingsModal({ onClose }: JobListingsModalProps) {
           </Text>
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {openings.map((job) => {
-              const blocker = jobBlocker(job, { age, smarts: stats.smarts, hasDegree, major, criminalRecord })
+              const blocker = jobBlocker(job, { age, smarts: stats.smarts, looks: stats.looks, hasDegree, major, criminalRecord })
               const isCurrent = job.id === jobId
               return (
                 <Row

@@ -160,7 +160,7 @@ export interface SportState {
 }
 
 /** Social media apps on the character's phone. */
-export type SocialApp = 'rizzgram' | 'flicktok' | 'youtube'
+export type SocialApp = 'rizzgram' | 'flicktok' | 'youtube' | 'onlystans'
 
 export type ActivityCategory = 'sport' | 'mind' | 'hobby'
 
@@ -257,6 +257,8 @@ export interface Job {
   salary: number
   minAge: number
   minSmarts: number
+  /** Some image-driven lines of work also demand looks. */
+  minLooks?: number
   /** Needs a university degree in any major. */
   requiresDegree?: boolean
   /** Needs a degree in this specific major (implies requiresDegree). */

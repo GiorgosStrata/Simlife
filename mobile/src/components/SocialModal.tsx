@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
-import { MONETIZE_MIN_FOLLOWERS, SOCIAL_APPS, useGameStore } from '../store/gameStore'
+import { MONETIZE_MIN_FOLLOWERS, ONLYSTANS_MIN_SUBS, SOCIAL_APPS, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { SocialApp } from '../types'
 import { confirmAction } from './actionRunner'
@@ -16,14 +16,20 @@ interface SocialModalProps {
 /** A single social platform: post to grow followers, then cash them in. */
 export function SocialModal({ app, onClose }: SocialModalProps) {
   const followers = useGameStore((s) => s.followers[app])
+  const age = useGameStore((s) => s.age)
   const usedActions = useGameStore((s) => s.usedActions)
   const socialPost = useGameStore((s) => s.socialPost)
   const monetizeSocial = useGameStore((s) => s.monetizeSocial)
 
   const meta = SOCIAL_APPS[app]
+  // OnlyStans counts paying subscribers, not followers — and is 18+.
+  const isSubs = app === 'onlystans'
+  const audience = isSubs ? 'subscribers' : 'followers'
+  const tooYoung = isSubs && age < 18
+  const minAudience = isSubs ? ONLYSTANS_MIN_SUBS : MONETIZE_MIN_FOLLOWERS
   const posted = usedActions.includes(`post-${app}`)
   const monetized = usedActions.includes(`monetize-${app}`)
-  const canMonetize = followers >= MONETIZE_MIN_FOLLOWERS
+  const canMonetize = followers >= minAudience && !tooYoung
   useCloseOnAction(onClose)
   const act = confirmAction(onClose)
 
@@ -41,7 +47,9 @@ export function SocialModal({ app, onClose }: SocialModalProps) {
             </View>
             <View style={styles.headerInfo}>
               <Text style={styles.name}>{meta.name}</Text>
-              <Text style={styles.meta}>{followers.toLocaleString()} followers</Text>
+              <Text style={styles.meta}>
+                {followers.toLocaleString()} {audience}
+              </Text>
             </View>
           </View>
 
@@ -50,21 +58,31 @@ export function SocialModal({ app, onClose }: SocialModalProps) {
               emoji="✏️"
               title={`Post ${meta.kind}`}
               subtitle={
-                posted ? 'Already posted this year' : 'Grow your following — you might go viral'
+                tooYoung
+                  ? 'You must be 18 to post here'
+                  : posted
+                    ? 'Already posted this year'
+                    : isSubs
+                      ? 'Grow your subscriber base — looks are everything'
+                      : 'Grow your following — you might go viral'
               }
               onPress={act(() => socialPost(app), null)}
-              disabled={posted}
+              disabled={posted || tooYoung}
               chevron
             />
             <Row
               emoji="💰"
-              title="Monetize your following"
+              title={isSubs ? 'Cash out subscriptions' : 'Monetize your following'}
               subtitle={
                 monetized
                   ? 'Already cashed in this year'
                   : canMonetize
-                    ? 'Land some brand deals'
-                    : `Needs ${MONETIZE_MIN_FOLLOWERS.toLocaleString()}+ followers`
+                    ? isSubs
+                      ? 'Collect what your subscribers pay'
+                      : 'Land some brand deals'
+                    : tooYoung
+                      ? 'You must be 18'
+                      : `Needs ${minAudience.toLocaleString()}+ ${audience}`
               }
               onPress={act(() => monetizeSocial(app), null)}
               disabled={monetized || !canMonetize}
