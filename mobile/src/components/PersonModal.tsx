@@ -76,6 +76,7 @@ interface PersonModalProps {
 export function PersonModal({ personId, onClose }: PersonModalProps) {
   const person = useGameStore((s) => s.relationships.find((p) => p.id === personId))
   const age = useGameStore((s) => s.age)
+  const playerGender = useGameStore((s) => s.gender)
   const money = useGameStore((s) => s.money)
   const usedActions = useGameStore((s) => s.usedActions)
   const partnerStatus = useGameStore((s) => s.partnerStatus)
@@ -363,22 +364,36 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                     disabled={used('getaway') || money < GETAWAY_COST}
                     chevron
                   />
-                  <Row
-                    emoji="👶"
-                    title="Try for a baby"
-                    subtitle={
-                      used('try-baby')
-                        ? 'Done this year'
-                        : age < 18 || age > 55
-                          ? 'Not the right time in life'
-                          : partnerStatus === 'married'
-                            ? 'Good odds'
-                            : 'Possible, but harder unmarried'
-                    }
-                    onPress={act(tryForBaby, 'baby')}
-                    disabled={used('try-baby') || age < 18 || age > 55}
-                    chevron
-                  />
+                  {(() => {
+                    const womanAge =
+                      playerGender === 'female'
+                        ? age
+                        : person.gender === 'female'
+                          ? person.age
+                          : null
+                    const canBear =
+                      womanAge !== null && womanAge <= 55 && age >= 18 && person.age >= 18
+                    return (
+                      <Row
+                        emoji="👶"
+                        title="Try for a baby"
+                        subtitle={
+                          used('try-baby')
+                            ? 'Done this year'
+                            : !canBear
+                              ? womanAge !== null && womanAge > 55
+                                ? 'Too old to have children now'
+                                : 'Not possible at your ages'
+                              : partnerStatus === 'married'
+                                ? 'Good odds'
+                                : 'Possible, but harder unmarried'
+                        }
+                        onPress={act(tryForBaby, 'baby')}
+                        disabled={used('try-baby') || !canBear}
+                        chevron
+                      />
+                    )
+                  })()}
                   {partnerStatus === 'dating' && (
                     <Row
                       emoji="💍"

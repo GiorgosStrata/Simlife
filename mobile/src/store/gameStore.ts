@@ -28,6 +28,12 @@ import { LEAGUES, getTeam, jobSport, leaguesForSport, teamName } from '../data/l
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, homeRent, resaleValue } from '../data/assets'
 import { getIllness, pickIllness } from '../data/illnesses'
+import {
+  INVESTMENTS,
+  getInvestment,
+  initialInvestPrices,
+  stepInvestmentPrice,
+} from '../data/investments'
 import { rollHomeListings, type HomeListing, type OwnedHome } from '../data/homes'
 import { COUNTRIES, countrySalary, getCountry, scaleByCountry } from '../data/countries'
 import {
@@ -426,6 +432,10 @@ interface GameState {
   money: number
   /** Illnesses the character currently has (colds, STDs, cancers…). */
   conditions: ActiveCondition[]
+  /** Current unit price of each investable asset (see data/investments.ts). */
+  investPrices: Record<string, number>
+  /** The player's holdings: units owned and total cash invested, per asset. */
+  investments: Record<string, { units: number; invested: number }>
   log: LogEntry[]
   currentEvent: GameEvent | null
   /** Transient confirmation bubble shown after a user action; not persisted. */
@@ -573,6 +583,11 @@ interface GameState {
   plasticSurgery: () => void
   spaDay: () => void
 
+  /** Put cash into an investment (buys as many units as the cash affords). */
+  buyInvestment: (id: string, cash: number) => void
+  /** Sell a fraction (0–1) of a holding back to cash. */
+  sellInvestment: (id: string, fraction: number) => void
+
   /** A casual hookup from the Prowl app — a fun night, with a little risk. */
   oneNightStand: () => void
 
@@ -656,6 +671,8 @@ function newLifeState() {
     stats: rollStats(),
     money: 0,
     conditions: [] as ActiveCondition[],
+    investPrices: initialInvestPrices(),
+    investments: {} as Record<string, { units: number; invested: number }>,
     currentEvent: null,
     toast: null as { text: string } | null,
     usedEventIds: [] as string[],
@@ -777,6 +794,19 @@ function gainStat(current: number, delta: number): number {
  */
 function outOfPocket(age: number, cost: number): number {
   return age < 18 ? 0 : cost
+}
+
+/** Current market value of a set of investment holdings. */
+function portfolioValue(
+  holdings: Record<string, { units: number; invested: number }>,
+  prices: Record<string, number>,
+): number {
+  let total = 0
+  for (const [id, h] of Object.entries(holdings)) {
+    const price = prices[id] ?? getInvestment(id)?.start ?? 0
+    total += h.units * price
+  }
+  return total
 }
 
 /** Family members face their own mortality past 72. */
@@ -1464,6 +1494,12 @@ export const useGameStore = create<GameState>()(
             stats.happiness = clampStat(stats.happiness + 1)
           }
 
+          // ----- Markets move every year -----
+          const investPrices: Record<string, number> = {}
+          for (const inv of INVESTMENTS) {
+            investPrices[inv.id] = stepInvestmentPrice(inv, s.investPrices[inv.id] ?? inv.start)
+          }
+
           // Children never owe money — their parents cover everything.
           if (age < 18 && money < 0) money = 0
           // Debt grows a little each year you stay in the red.
@@ -1576,6 +1612,9 @@ export const useGameStore = create<GameState>()(
             illnessDeath ||
             age >= MAX_AGE
           ) {
+            // Cash out any investments — they become part of the estate.
+            const holdingsValue = Math.round(portfolioValue(s.investments, investPrices))
+            if (holdingsValue > 0) money += holdingsValue
             const deathText =
               illnessDeath && stats.health > 0
                 ? `${s.name} lost their battle with ${illnessDeath} at age ${age}. 🎗️`
@@ -1597,6 +1636,8 @@ export const useGameStore = create<GameState>()(
               stats,
               money,
               conditions,
+              investPrices,
+              investments: {},
               jobId: jobIdNext,
               jobTier,
               yearsInJob,
@@ -1669,6 +1710,7 @@ export const useGameStore = create<GameState>()(
             stats,
             money,
             conditions,
+            investPrices,
             jobId: jobIdNext,
             jobTier,
             yearsInJob,
@@ -2019,6 +2061,51 @@ export const useGameStore = create<GameState>()(
           })
           playSfx('cash')
           addLog([{ text: 'A day at the spa left you glowing and refreshed. 💆', kind: 'event' }])
+        },
+
+        buyInvestment: (id: string, cash: number) => {
+          const s = get()
+          const inv = getInvestment(id)
+          if (!s.alive || s.age < 18 || !inv || cash <= 0 || s.money < cash) return
+          const price = s.investPrices[id] ?? inv.start
+          const units = cash / price
+          const cur = s.investments[id] ?? { units: 0, invested: 0 }
+          set({
+            money: s.money - cash,
+            investments: {
+              ...s.investments,
+              [id]: { units: cur.units + units, invested: cur.invested + cash },
+            },
+          })
+          playSfx('cash')
+          addLog([
+            { text: `You invested $${Math.round(cash).toLocaleString()} in ${inv.name} (${inv.ticker}). 📈`, kind: 'money' },
+          ])
+        },
+
+        sellInvestment: (id: string, fraction: number) => {
+          const s = get()
+          const inv = getInvestment(id)
+          const holding = s.investments[id]
+          if (!s.alive || !inv || !holding || holding.units <= 0) return
+          const f = Math.max(0, Math.min(1, fraction))
+          const unitsSold = holding.units * f
+          const price = s.investPrices[id] ?? inv.start
+          const proceeds = Math.round(unitsSold * price)
+          const costSold = holding.invested * f
+          const investments = { ...s.investments }
+          const remaining = holding.units - unitsSold
+          if (remaining < 1e-6) delete investments[id]
+          else investments[id] = { units: remaining, invested: holding.invested - costSold }
+          const gain = proceeds - Math.round(costSold)
+          set({ money: s.money + proceeds, investments })
+          playSfx('cash')
+          addLog([
+            {
+              text: `You sold ${inv.name} (${inv.ticker}) for $${proceeds.toLocaleString()} — a ${gain >= 0 ? 'gain' : 'loss'} of $${Math.abs(gain).toLocaleString()}.`,
+              kind: 'money',
+            },
+          ])
         },
 
         oneNightStand: () => {
@@ -3385,7 +3472,11 @@ export const useGameStore = create<GameState>()(
         tryForBaby: () => {
           const s = get()
           const partner = s.relationships.find((p) => p.id === 'partner' && p.alive)
-          if (!s.alive || !partner || s.age < 18 || s.age > 55) return
+          if (!s.alive || !partner || s.age < 18 || partner.age < 18) return
+          // A pregnancy needs the woman of the couple to be 18–55; the man's
+          // age doesn't matter. (Same-gender couples can't conceive here.)
+          const womanAge = s.gender === 'female' ? s.age : partner.gender === 'female' ? partner.age : null
+          if (womanAge === null || womanAge > 55) return
           const kids = s.relationships.filter((p) => p.role === 'child')
           if (kids.length >= 8) return
           if (!useYearlyAction('try-baby')) return
@@ -3512,6 +3603,62 @@ export const useGameStore = create<GameState>()(
           }
           const heirJob = getJob(heirJobId)
 
+          // The heir has been living their own life all along: give them friends,
+          // maybe a partner, and — depending on their age — kids of their own, so
+          // the world isn't empty when you take over.
+          let heirPartnerStatus: PartnerStatus | null = null
+          const heirLast = heir.name.split(' ').slice(-1)[0] ?? ''
+          const oppGender: Gender = heirGender === 'male' ? 'female' : 'male'
+          const friendCount = heir.age >= 14 ? randomInt(1, 3) : randomInt(0, 2)
+          for (let i = 0; i < friendCount; i++) {
+            const g: Gender = Math.random() < 0.7 ? heirGender : oppGender
+            rebuilt.push({
+              id: `friend-${nextFriendId++}`,
+              role: 'friend',
+              gender: g,
+              name: `${randomFirstName(s.countryCode, g)} ${randomLastName(s.countryCode)}`,
+              age: Math.max(6, heir.age + randomInt(-3, 3)),
+              alive: true,
+              relationship: randomInt(45, 80),
+              ...makeNpcLife(),
+            })
+          }
+          let heirHasPartner = false
+          if (heir.age >= 20 && Math.random() < (heir.age >= 26 ? 0.62 : 0.4)) {
+            heirHasPartner = true
+            heirPartnerStatus =
+              heir.age >= 30 ? 'married' : heir.age >= 25 ? (Math.random() < 0.5 ? 'married' : 'engaged') : 'dating'
+            rebuilt.push({
+              id: 'partner',
+              role: 'partner',
+              gender: oppGender,
+              name: `${randomFirstName(s.countryCode, oppGender)} ${randomLastName(s.countryCode)}`,
+              age: Math.max(18, heir.age + randomInt(-4, 4)),
+              alive: true,
+              relationship: randomInt(60, 90),
+              ...makeNpcLife(),
+            })
+          }
+          // Their own children (they had to be an adult to have them).
+          if (heirHasPartner && heir.age >= 24) {
+            const maxKids = heir.age >= 40 ? 3 : heir.age >= 32 ? 2 : 1
+            const kidCount = randomInt(0, maxKids)
+            for (let i = 0; i < kidCount; i++) {
+              const g = randomGender()
+              const kidAge = randomInt(0, Math.max(0, heir.age - 20))
+              rebuilt.push({
+                id: `child-${nextFriendId++}`,
+                role: 'child',
+                gender: g,
+                name: `${randomFirstName(s.countryCode, g)} ${heirLast}`.trim(),
+                age: kidAge,
+                alive: true,
+                relationship: randomInt(70, 95),
+                ...makeNpcLife(),
+              })
+            }
+          }
+
           // Raw setter: a young heir's inherited balance is a fresh start, not
           // spending, so the child money-guard must not clamp it.
           baseSet({
@@ -3528,6 +3675,7 @@ export const useGameStore = create<GameState>()(
             homes: inheritedHomes,
             residenceId: inheritedResidenceId,
             relationships: rebuilt,
+            partnerStatus: heirPartnerStatus,
             nextFriendId,
             schoolName,
             jobId: heirJobId,
@@ -3564,7 +3712,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 30,
+      version: 31,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
         rest,
@@ -3793,6 +3941,11 @@ export const useGameStore = create<GameState>()(
         if (version < 30) {
           const av = state.avatarConfig as (AvatarConfig & { eyebrows?: string }) | undefined
           if (av && !av.eyebrows) av.eyebrows = 'defaultNatural'
+        }
+        // v30 saves predate the investing app.
+        if (version < 31) {
+          state.investPrices = initialInvestPrices()
+          state.investments = {}
         }
         return state as GameState
       },

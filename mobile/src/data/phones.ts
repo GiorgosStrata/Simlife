@@ -32,13 +32,16 @@ function getBrand(id: string): PhoneBrand | undefined {
   return PHONE_BRANDS.find((b) => b.id === id)
 }
 
-/** The flagship model number a brand sells in a given year. */
+/** The flagship model number a brand sells in a given year (a new one every
+ *  10 years, so the shop feels current without churning constantly). */
 export function modelForYear(brand: PhoneBrand, year: number): number {
-  return Math.max(brand.anchorModel, brand.anchorModel + (year - brand.anchorYear))
+  return brand.anchorModel + Math.max(0, Math.floor((year - brand.anchorYear) / 10))
 }
 
 function buildPhone(brand: PhoneBrand, model: number): Asset {
-  const price = Math.max(60, brand.basePrice + (model - brand.anchorModel) * brand.pricePerModel)
+  // Flat pricing: a flagship costs the same in 2100 as it does today — tech
+  // doesn't get more expensive as the years roll on.
+  const price = brand.basePrice
   return {
     id: `phone-${brand.id}-${model}`,
     emoji: brand.emoji,
