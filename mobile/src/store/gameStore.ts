@@ -2416,10 +2416,15 @@ export const useGameStore = create<GameState>()(
           const s = get()
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive) return
-          // Only your first text to each person each year moves the needle.
-          if (!useYearlyAction(`text-${personId}`)) return
-          // A conversational line is spent for the rest of this life.
-          if (payload.consumable && payload.messageId) {
+          const isUtility = payload.consumable === false
+          if (isUtility) {
+            // Asking a parent for allowance is capped once per year, so it
+            // can't be farmed for cash.
+            if (!useYearlyAction(`text-util-${personId}`)) return
+          } else {
+            // Conversational lines: send as many different ones as you like,
+            // but never the same line twice — it's spent for the rest of life.
+            if (!payload.messageId || s.usedTexts.includes(`${personId}:${payload.messageId}`)) return
             set({ usedTexts: [...s.usedTexts, `${personId}:${payload.messageId}`] })
           }
           updatePerson(personId, {

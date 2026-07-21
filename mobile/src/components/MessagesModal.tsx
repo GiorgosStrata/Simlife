@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { textOptionsFor, textReply, type TextReply } from '../data/messages'
@@ -56,20 +56,28 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
     setOpenId(person.id)
   }
 
+  // This year's slate is fixed once the chat opens (it doesn't reshuffle as
+  // you send), then we simply drop any line you've already used this life.
+  const slate = useMemo(
+    () =>
+      open ? textOptionsFor(open.role, age, open.relationship, open.id, year, usedTexts) : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [open?.id, year],
+  )
   const options = open
-    ? textOptionsFor(open.role, age, open.relationship, open.id, year, usedTexts)
+    ? slate.filter((o) => o.consumable === false || !usedTexts.includes(`${open.id}:${o.id}`))
     : []
-  // One text per contact per year — after that, the options rest until next year.
-  const textedThisYear = open ? usedActions.includes(`text-${open.id}`) : false
+  // The allowance ask is capped once a year; chit-chat isn't.
+  const askedThisYear = open ? usedActions.includes(`text-util-${open.id}`) : false
 
-  const send = (toneIndex: number) => {
-    if (!open || textedThisYear) return
-    const opt = options[toneIndex]
+  const send = (opt: (typeof options)[number]) => {
+    if (!open) return
+    if (opt.consumable === false && askedThisYear) return
     const reply: TextReply = textReply(open.role, open.relationship, opt.tone)
     setThread((t) => [...t, { from: 'me', text: opt.label }])
     playSfx('click')
-    // Apply the reply's effects (gated to your first text per person per year),
-    // and spend this line for the rest of the life unless it's a utility ask.
+    // Apply the reply's bond/mood nudge, and spend this line for the rest of
+    // the life unless it's a utility ask (allowance).
     sendText(open.id, {
       bond: reply.bond,
       happiness: reply.happiness,
@@ -147,25 +155,32 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
               </ScrollView>
 
               <View style={styles.options}>
-                {textedThisYear ? (
+                {options.length === 0 ? (
                   <Text style={styles.sentNote}>
-                    You’ve already reached out this year 💬 Come back next year.
-                  </Text>
-                ) : options.length === 0 ? (
-                  <Text style={styles.sentNote}>
-                    You’ve said it all to {open.name.split(' ')[0]} — nothing new to add right now.
+                    You’ve said it all to {open.name.split(' ')[0]} — check back next year.
                   </Text>
                 ) : (
-                  options.map((opt, i) => (
-                    <Pressable
-                      key={opt.id}
-                      accessibilityRole="button"
-                      onPress={() => send(i)}
-                      style={({ pressed }) => [styles.optBtn, pressed && styles.optBtnPressed]}
-                    >
-                      <Text style={styles.optText}>{opt.label}</Text>
-                    </Pressable>
-                  ))
+                  options.map((opt) => {
+                    const disabled = opt.consumable === false && askedThisYear
+                    return (
+                      <Pressable
+                        key={opt.id}
+                        accessibilityRole="button"
+                        disabled={disabled}
+                        onPress={() => send(opt)}
+                        style={({ pressed }) => [
+                          styles.optBtn,
+                          pressed && styles.optBtnPressed,
+                          disabled && styles.optBtnDisabled,
+                        ]}
+                      >
+                        <Text style={[styles.optText, disabled && styles.optTextDisabled]}>
+                          {opt.label}
+                          {disabled ? '  · asked this year' : ''}
+                        </Text>
+                      </Pressable>
+                    )
+                  })
                 )}
               </View>
 
@@ -219,7 +234,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   optBtnPressed: { backgroundColor: colors.cyan50 },
+  optBtnDisabled: { opacity: 0.5 },
   optText: { fontSize: 14, fontWeight: '600', color: colors.slate800 },
+  optTextDisabled: { color: colors.slate400 },
   sentNote: {
     fontSize: 13,
     color: colors.slate500,
