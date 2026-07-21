@@ -27,9 +27,14 @@ import { AchievementToast } from './src/components/AchievementToast'
 import { AdBanner } from './src/components/AdBanner'
 import { AuthScreen } from './src/components/AuthScreen'
 import { InterstitialAd } from './src/components/InterstitialAd'
+import { PremiumModal } from './src/components/PremiumModal'
+import { SaveSlotsModal } from './src/components/SaveSlotsModal'
 import { Toast } from './src/components/Toast'
 import { getMajor } from './src/data/majors'
+import { ensureSeeded } from './src/saves'
 import { useAuthStore } from './src/store/authStore'
+import { usePremiumStore } from './src/store/premiumStore'
+import { useSlotsStore } from './src/store/slotsStore'
 import { getJob, isInSchool, jobTitle, useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
 
@@ -40,14 +45,20 @@ function Game() {
   const [tab, setTab] = useState<TabKey>('life')
   const [prevTab, setPrevTab] = useState<TabKey>('career')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [premiumOpen, setPremiumOpen] = useState(false)
+  const [livesOpen, setLivesOpen] = useState(false)
   const [adOpen, setAdOpen] = useState(false)
   const tabRef = useRef<TabKey>(tab)
   tabRef.current = tab
 
+  const premium = usePremiumStore((s) => s.premium)
+  const slotsHydrated = useSlotsStore((s) => s.hasHydrated)
+
   // Show a full-screen interstitial ad roughly every 10 minutes of play, but
-  // never on top of a pending life event (that would eat the choice).
+  // never for premium players or on top of a pending life event.
   useEffect(() => {
     const id = setInterval(() => {
+      if (usePremiumStore.getState().premium) return
       if (!useGameStore.getState().currentEvent) setAdOpen(true)
     }, AD_INTERVAL_MS)
     return () => clearInterval(id)
@@ -86,6 +97,16 @@ function Game() {
   useEffect(() => {
     applyTheme(theme)
   }, [theme])
+
+  // Once the game and the slot roster are loaded, make sure the current game
+  // is represented by a save slot (seeds the first slot on a fresh install).
+  const seededRef = useRef(false)
+  useEffect(() => {
+    if (hasHydrated && slotsHydrated && !seededRef.current) {
+      seededRef.current = true
+      ensureSeeded()
+    }
+  }, [hasHydrated, slotsHydrated])
 
   // After any confirmed action (which closes all sheets), snap back to the
   // "Dashboard" tab — you always land on the main screen.
@@ -138,8 +159,9 @@ function Game() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.column}>
-        {/* Banner ad slot (AdMob on native; house-ad placeholder on web). */}
-        <AdBanner />
+        {/* Banner ad slot (AdMob on native; house-ad placeholder on web).
+            Premium removes ads entirely. */}
+        {!premium && <AdBanner />}
 
         {/* Flat character summary bar */}
         <View style={styles.topBar}>
@@ -157,6 +179,19 @@ function Game() {
               {occupation}
             </Text>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={premium ? 'Premium' : 'Get Premium'}
+            onPress={() => setPremiumOpen(true)}
+            style={({ pressed }) => [
+              styles.premiumBox,
+              premium && styles.premiumBoxOwned,
+              pressed && styles.gearPressed,
+            ]}
+          >
+            <Text style={styles.premiumIcon}>👑</Text>
+            {!premium && <Text style={styles.premiumLabel}>PRO</Text>}
+          </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Settings"
@@ -233,9 +268,31 @@ function Game() {
 
       <Toast />
       <EventModal />
-      <GameOverModal />
+      <GameOverModal onWantPremium={() => setPremiumOpen(true)} />
       {applyingToUniversity && <MajorPickerModal />}
-      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsModal
+          onClose={() => setSettingsOpen(false)}
+          onOpenLives={() => {
+            setSettingsOpen(false)
+            setLivesOpen(true)
+          }}
+          onOpenPremium={() => {
+            setSettingsOpen(false)
+            setPremiumOpen(true)
+          }}
+        />
+      )}
+      {premiumOpen && <PremiumModal onClose={() => setPremiumOpen(false)} />}
+      {livesOpen && (
+        <SaveSlotsModal
+          onClose={() => setLivesOpen(false)}
+          onWantPremium={() => {
+            setLivesOpen(false)
+            setPremiumOpen(true)
+          }}
+        />
+      )}
 
       {/* Event choices can jump straight into an app area ("Invest" → Vestr). */}
       {deepLink === 'investing' && <InvestingModal onClose={clearDeepLink} />}
@@ -356,6 +413,28 @@ const styles = StyleSheet.create({
   gearIcon: {
     fontSize: 17,
     color: colors.slate600,
+  },
+  premiumBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.amber400,
+    backgroundColor: colors.white,
+    paddingHorizontal: 8,
+  },
+  premiumBoxOwned: {
+    borderColor: colors.amber400,
+    backgroundColor: colors.emerald50,
+  },
+  premiumIcon: { fontSize: 15 },
+  premiumLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    color: colors.amber400,
   },
   metaBar: {
     flexDirection: 'row',

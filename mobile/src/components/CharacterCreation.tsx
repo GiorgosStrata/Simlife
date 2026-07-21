@@ -24,6 +24,7 @@ import {
 import { playSfx } from '../audio/sfx'
 import { COUNTRIES, getCountry } from '../data/countries'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
+import { usePremiumStore } from '../store/premiumStore'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Gender } from '../types'
@@ -59,11 +60,55 @@ function Stepper({
   )
 }
 
+/** A birth stat with − / + controls (premium stat editing). */
+function EditableStat({
+  label,
+  value,
+  color,
+  icon,
+  onAdjust,
+}: {
+  label: string
+  value: number
+  color: string
+  icon: string
+  onAdjust: (delta: number) => void
+}) {
+  return (
+    <View style={styles.editStat}>
+      <Text style={styles.editIcon}>{icon}</Text>
+      <Text style={styles.editLabel}>{label}</Text>
+      <View style={styles.editTrack}>
+        <View style={[styles.editFill, { width: `${value}%`, backgroundColor: color }]} />
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label} down`}
+        onPress={() => onAdjust(-5)}
+        style={({ pressed }) => [styles.statBtn, pressed && styles.statBtnPressed]}
+      >
+        <Text style={styles.statBtnText}>−</Text>
+      </Pressable>
+      <Text style={styles.editValue}>{value}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label} up`}
+        onPress={() => onAdjust(5)}
+        style={({ pressed }) => [styles.statBtn, pressed && styles.statBtnPressed]}
+      >
+        <Text style={styles.statBtnText}>+</Text>
+      </Pressable>
+    </View>
+  )
+}
+
 export function CharacterCreation() {
   const stats = useGameStore((s) => s.stats)
   const year = useGameStore((s) => s.year)
   const rerollStats = useGameStore((s) => s.rerollStats)
+  const adjustCreationStat = useGameStore((s) => s.adjustCreationStat)
   const startLife = useGameStore((s) => s.startLife)
+  const premium = usePremiumStore((s) => s.premium)
 
   const [countryCode, setCountryCode] = useState(randomCountryCode)
   const [gender, setGender] = useState<Gender>(randomGender)
@@ -290,10 +335,22 @@ export function CharacterCreation() {
             <Text style={styles.smallButtonText}>🎲 Reroll</Text>
           </Pressable>
         </View>
-        <StatBar label="Health" value={stats.health} color={colors.rose500} icon="❤️" />
-        <StatBar label="Happiness" value={stats.happiness} color={colors.amber400} icon="😊" />
-        <StatBar label="Smarts" value={stats.smarts} color={colors.sky500} icon="🧠" />
-        <StatBar label="Looks" value={stats.looks} color={colors.violet500} icon="✨" />
+        {premium ? (
+          <>
+            <EditableStat label="Health" value={stats.health} color={colors.rose500} icon="❤️" onAdjust={(d) => { playSfx('click'); adjustCreationStat('health', d) }} />
+            <EditableStat label="Happiness" value={stats.happiness} color={colors.amber400} icon="😊" onAdjust={(d) => { playSfx('click'); adjustCreationStat('happiness', d) }} />
+            <EditableStat label="Smarts" value={stats.smarts} color={colors.sky500} icon="🧠" onAdjust={(d) => { playSfx('click'); adjustCreationStat('smarts', d) }} />
+            <EditableStat label="Looks" value={stats.looks} color={colors.violet500} icon="✨" onAdjust={(d) => { playSfx('click'); adjustCreationStat('looks', d) }} />
+          </>
+        ) : (
+          <>
+            <StatBar label="Health" value={stats.health} color={colors.rose500} icon="❤️" />
+            <StatBar label="Happiness" value={stats.happiness} color={colors.amber400} icon="😊" />
+            <StatBar label="Smarts" value={stats.smarts} color={colors.sky500} icon="🧠" />
+            <StatBar label="Looks" value={stats.looks} color={colors.violet500} icon="✨" />
+            <Text style={styles.premiumHint}>👑 Premium lets you edit your starting stats.</Text>
+          </>
+        )}
       </View>
 
       <Pressable
@@ -539,6 +596,47 @@ const styles = StyleSheet.create({
     color: colors.slate400,
     fontWeight: '600',
   },
+  premiumHint: {
+    fontSize: 12,
+    color: colors.amber400,
+    fontWeight: '600',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  editStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  editIcon: { fontSize: 16, width: 20, textAlign: 'center' },
+  editLabel: { width: 70, fontSize: 13, fontWeight: '700', color: colors.slate600 },
+  editTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: colors.slate200,
+    overflow: 'hidden',
+  },
+  editFill: { height: '100%', borderRadius: 999 },
+  editValue: {
+    width: 26,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.slate800,
+    fontVariant: ['tabular-nums'],
+  },
+  statBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: colors.slate100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statBtnPressed: { backgroundColor: colors.cyan50 },
+  statBtnText: { fontSize: 18, fontWeight: '900', color: colors.cyan600, lineHeight: 20 },
   startButton: {
     backgroundColor: colors.cyan500,
     borderRadius: 16,

@@ -14,6 +14,8 @@ import {
 } from '../store/gameStore'
 import { getAsset } from '../data/assets'
 import { describeOccupation } from '../data/npc'
+import { saveActiveSlot } from '../saves'
+import { usePremiumStore } from '../store/premiumStore'
 import { colors } from '../theme'
 import type { PartnerStatus, Person } from '../types'
 import { confirmAction } from './actionRunner'
@@ -92,6 +94,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const askForMoney = useGameStore((s) => s.askForMoney)
   const askForPhone = useGameStore((s) => s.askForPhone)
   const askForAdvice = useGameStore((s) => s.askForAdvice)
+  const continueAsChild = useGameStore((s) => s.continueAsChild)
   const prankSibling = useGameStore((s) => s.prankSibling)
   const watchMovie = useGameStore((s) => s.watchMovie)
   const studyTogether = useGameStore((s) => s.studyTogether)
@@ -127,6 +130,8 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const isTeacher = person.role === 'teacher'
   const isWorkPerson = person.role === 'coworker' || person.role === 'boss'
   const isEnemy = person.role === 'enemy'
+  const isChild = person.role === 'child'
+  const premium = usePremiumStore((s) => s.premium)
   const livingFriends = relationships.filter((p) => p.role === 'friend' && p.alive).length
   const canPropose =
     isPartner && partnerStatus === 'dating' && person.relationship >= PROPOSAL_MIN_RELATIONSHIP
@@ -246,6 +251,20 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                   subtitle={used(`advice-${person.id}`) ? 'Done this year' : '+ smarts, + bond'}
                   onPress={act(() => askForAdvice(person.id))}
                   disabled={used(`advice-${person.id}`)}
+                  chevron
+                />
+              )}
+              {isChild && person.alive && premium && (
+                <Row
+                  emoji="👑"
+                  title={`Take over as ${person.name.split(' ')[0]}`}
+                  subtitle="Continue the story as your child — you inherit the estate"
+                  onPress={() => {
+                    playSfx('baby')
+                    continueAsChild(person.id)
+                    saveActiveSlot()
+                    onClose()
+                  }}
                   chevron
                 />
               )}

@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
+import { saveActiveSlot } from '../saves'
 import { useAuthStore } from '../store/authStore'
 import { useGameStore } from '../store/gameStore'
+import { usePremiumStore } from '../store/premiumStore'
 import { colors } from '../theme'
 import { SectionHeading } from './SectionHeading'
 
@@ -17,6 +19,8 @@ const VOLUME_LEVELS = [
 
 interface SettingsModalProps {
   onClose: () => void
+  onOpenLives?: () => void
+  onOpenPremium?: () => void
 }
 
 const THEME_OPTIONS = [
@@ -24,7 +28,8 @@ const THEME_OPTIONS = [
   { label: '🌙 Dark', value: 'dark' as const },
 ]
 
-export function SettingsModal({ onClose }: SettingsModalProps) {
+export function SettingsModal({ onClose, onOpenLives, onOpenPremium }: SettingsModalProps) {
+  const premium = usePremiumStore((s) => s.premium)
   const sfxVolume = useGameStore((s) => s.sfxVolume)
   const setSfxVolume = useGameStore((s) => s.setSfxVolume)
   const theme = useGameStore((s) => s.theme)
@@ -113,6 +118,36 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             </View>
 
             <View style={styles.group}>
+              <SectionHeading color={colors.cyan500}>GAME</SectionHeading>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  playSfx('click')
+                  onOpenLives?.()
+                }}
+                style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+              >
+                <Text style={styles.linkText}>💾 My Lives</Text>
+                <Text style={styles.linkChev}>›</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  playSfx('click')
+                  onOpenPremium?.()
+                }}
+                style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+              >
+                <Text style={styles.linkText}>
+                  {premium ? '👑 Premium' : '👑 Get Premium'}
+                </Text>
+                <Text style={[styles.linkChev, premium && styles.ownedTag]}>
+                  {premium ? 'Active' : '›'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.group}>
               <SectionHeading color={colors.emerald700}>ABOUT</SectionHeading>
               <View style={styles.aboutRow}>
                 <Text style={styles.aboutKey}>Simlife</Text>
@@ -158,6 +193,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                       onPress={() => {
                         playSfx('fail')
                         startNewLife()
+                        // Keep the current save slot pointed at the restarted life.
+                        saveActiveSlot()
                         onClose()
                       }}
                       style={({ pressed }) => [styles.resetButton, pressed && styles.resetButtonPressed]}
@@ -333,6 +370,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.slate600,
   },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  linkRowPressed: { backgroundColor: colors.cyan50 },
+  linkText: { fontSize: 14, fontWeight: '700', color: colors.slate800 },
+  linkChev: { fontSize: 18, fontWeight: '700', color: colors.slate400 },
+  ownedTag: { fontSize: 12, fontWeight: '800', color: colors.emerald700 },
   confirmBox: {
     borderRadius: 12,
     backgroundColor: colors.slate100,

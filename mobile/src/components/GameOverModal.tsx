@@ -1,18 +1,26 @@
 import { useEffect } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
+import { saveActiveSlot } from '../saves'
+import { FREE_MAX_GENERATION, usePremiumStore } from '../store/premiumStore'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { PersonAvatar } from './Avatar'
 
-export function GameOverModal() {
+interface GameOverModalProps {
+  onWantPremium?: () => void
+}
+
+export function GameOverModal({ onWantPremium }: GameOverModalProps) {
   const alive = useGameStore((s) => s.alive)
   const name = useGameStore((s) => s.name)
   const age = useGameStore((s) => s.age)
   const money = useGameStore((s) => s.money)
+  const generation = useGameStore((s) => s.generation)
   const relationships = useGameStore((s) => s.relationships)
   const startNewLife = useGameStore((s) => s.startNewLife)
   const continueAsChild = useGameStore((s) => s.continueAsChild)
+  const premium = usePremiumStore((s) => s.premium)
 
   useEffect(() => {
     if (!alive) playSfx('death')
@@ -20,6 +28,8 @@ export function GameOverModal() {
 
   const heirs = relationships.filter((p) => p.role === 'child' && p.alive)
   const share = money > 0 && heirs.length > 0 ? Math.floor(money / heirs.length) : 0
+  // Free play continues the bloodline only up to a few generations.
+  const canContinue = premium || generation < FREE_MAX_GENERATION
 
   return (
     <Modal visible={!alive} transparent animationType="fade" onRequestClose={() => {}}>
@@ -31,7 +41,7 @@ export function GameOverModal() {
             {name} lived to the age of {age}.
           </Text>
 
-          {heirs.length > 0 && (
+          {heirs.length > 0 && canContinue && (
             <>
               <Text style={styles.heirHeading}>
                 Continue your bloodline as one of your children
@@ -45,6 +55,7 @@ export function GameOverModal() {
                     onPress={() => {
                       playSfx('baby')
                       continueAsChild(child.id)
+                      saveActiveSlot()
                     }}
                     style={({ pressed }) => [styles.heirRow, pressed && styles.heirRowPressed]}
                   >
@@ -62,9 +73,26 @@ export function GameOverModal() {
             </>
           )}
 
+          {heirs.length > 0 && !canContinue && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => onWantPremium?.()}
+              style={({ pressed }) => [styles.lockBox, pressed && styles.heirRowPressed]}
+            >
+              <Text style={styles.lockTitle}>👑 Continue the bloodline forever</Text>
+              <Text style={styles.lockSub}>
+                Free play ends after {FREE_MAX_GENERATION} generations. Go Premium for unlimited
+                generations and keep your children's story going.
+              </Text>
+            </Pressable>
+          )}
+
           <Pressable
             accessibilityRole="button"
-            onPress={startNewLife}
+            onPress={() => {
+              startNewLife()
+              saveActiveSlot()
+            }}
             style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
           >
             <Text style={styles.buttonText}>Start a New Life</Text>
@@ -146,6 +174,17 @@ const styles = StyleSheet.create({
     color: colors.cyan600,
     fontWeight: '800',
   },
+  lockBox: {
+    alignSelf: 'stretch',
+    marginTop: 18,
+    backgroundColor: colors.emerald50,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.amber400,
+    padding: 14,
+  },
+  lockTitle: { fontSize: 14, fontWeight: '800', color: colors.slate800 },
+  lockSub: { fontSize: 12, color: colors.slate600, marginTop: 4, lineHeight: 17 },
   button: {
     marginTop: 20,
     alignSelf: 'stretch',

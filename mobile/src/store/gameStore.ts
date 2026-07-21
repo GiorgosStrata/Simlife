@@ -22,10 +22,12 @@ import type {
   PrisonState,
   SocialApp,
   SportState,
+  StatKey,
   Stats,
 } from '../types'
 import { PET_NAMES, getPetOption, randomPetOfSpecies } from '../data/pets'
 import { ACHIEVEMENTS_BY_ID } from '../data/achievements'
+import { FREE_MAX_GENERATION, usePremiumStore } from './premiumStore'
 import { makeNpcLife, randomHobby } from '../data/npc'
 import { LEAGUES, getTeam, jobSport, leaguesForSport, teamName } from '../data/leagues'
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
@@ -576,6 +578,8 @@ interface GameState {
   gender: Gender
 
   rerollStats: () => void
+  /** Premium: nudge a birth stat up/down on the creation screen. */
+  adjustCreationStat: (key: StatKey, delta: number) => void
   startLife: (
     firstName: string,
     lastName: string,
@@ -723,6 +727,12 @@ interface GameState {
 
   // Lineage
   continueAsChild: (childId: string) => void
+
+  // Save slots — snapshot/restore the persisted game state.
+  /** A plain-data copy of the current game (everything the save keeps). */
+  exportSave: () => Record<string, unknown>
+  /** Load a previously exported game snapshot as the active game. */
+  importSave: (data: Record<string, unknown>) => void
 
   // Phone apps
   socialPost: (app: SocialApp) => void
@@ -1185,6 +1195,13 @@ export const useGameStore = create<GameState>()(
         rerollStats: () => {
           if (get().screen !== 'creation') return
           set({ stats: rollStats() })
+        },
+
+        adjustCreationStat: (key: StatKey, delta: number) => {
+          const s = get()
+          if (s.screen !== 'creation') return
+          const v = Math.max(5, Math.min(NATURAL_STAT_CAP, s.stats[key] + delta))
+          set({ stats: { ...s.stats, [key]: v } })
         },
 
         startLife: (
@@ -4023,7 +4040,12 @@ export const useGameStore = create<GameState>()(
 
         continueAsChild: (childId: string) => {
           const s = get()
-          if (s.alive) return
+          const premium = usePremiumStore.getState().premium
+          // Premium lets you hand the story to a child at any time; free play
+          // only continues the bloodline after death.
+          if (s.alive && !premium) return
+          // Free play is capped at a few generations; premium is unlimited.
+          if (!premium && s.generation >= FREE_MAX_GENERATION) return
           const heir = s.relationships.find((p) => p.id === childId && p.role === 'child' && p.alive)
           if (!heir) return
 
@@ -4216,6 +4238,26 @@ export const useGameStore = create<GameState>()(
             nextLogId: 1,
           })
           playSfx('baby')
+        },
+
+        exportSave: () => {
+          const s = get() as unknown as Record<string, unknown>
+          // Everything the persisted save keeps: all data fields, minus the
+          // transient ones and the action functions.
+          const skip = new Set(['hasHydrated', 'toast', 'achievementQueue', 'modalNonce', 'deepLink'])
+          const out: Record<string, unknown> = {}
+          for (const key of Object.keys(s)) {
+            if (skip.has(key)) continue
+            if (typeof s[key] === 'function') continue
+            out[key] = s[key]
+          }
+          // Deep-clone so the snapshot can't be mutated by ongoing play.
+          return JSON.parse(JSON.stringify(out))
+        },
+
+        importSave: (data: Record<string, unknown>) => {
+          // Load a snapshot as the live game (functions are untouched by set).
+          baseSet({ ...(data as Partial<GameState>), hasHydrated: true })
         },
       }
     },
