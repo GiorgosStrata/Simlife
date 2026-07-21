@@ -45,6 +45,8 @@ const SOURCES = {
   honk: require('../../assets/sfx/honk.wav'),
   /** Rest in peace. */
   death: require('../../assets/sfx/death.wav'),
+  /** Rolling dice: rerolling stats, randomizing name/country/appearance. */
+  dice: require('../../assets/sfx/dice.wav'),
 } as const
 
 export type SfxName = keyof typeof SOURCES

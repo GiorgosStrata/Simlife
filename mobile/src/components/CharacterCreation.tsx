@@ -21,6 +21,7 @@ import {
   retargetGender,
   type AvatarConfig,
 } from '../data/avatar'
+import { playSfx } from '../audio/sfx'
 import { COUNTRIES, getCountry } from '../data/countries'
 import { randomFirstName, randomGender, randomLastName } from '../data/names'
 import { useGameStore } from '../store/gameStore'
@@ -125,7 +126,10 @@ export function CharacterCreation() {
           <Text style={styles.cardHeading}>NAME & GENDER</Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => rollName(countryCode, gender)}
+            onPress={() => {
+              playSfx('dice')
+              rollName(countryCode, gender)
+            }}
             style={({ pressed }) => [styles.smallButton, pressed && styles.smallButtonPressed]}
           >
             <Text style={styles.smallButtonText}>🎲 Randomize</Text>
@@ -175,7 +179,10 @@ export function CharacterCreation() {
           <Text style={styles.cardHeading}>APPEARANCE</Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setAvatar(randomAvatarConfig(gender))}
+            onPress={() => {
+              playSfx('dice')
+              setAvatar(randomAvatarConfig(gender))
+            }}
             style={({ pressed }) => [styles.smallButton, pressed && styles.smallButtonPressed]}
           >
             <Text style={styles.smallButtonText}>🎲 Surprise me</Text>
@@ -249,7 +256,10 @@ export function CharacterCreation() {
           <Text style={styles.cardHeading}>COUNTRY</Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => changeCountry(randomCountryCode())}
+            onPress={() => {
+              playSfx('dice')
+              changeCountry(randomCountryCode())
+            }}
             style={({ pressed }) => [styles.smallButton, pressed && styles.smallButtonPressed]}
           >
             <Text style={styles.smallButtonText}>🎲 Random</Text>
@@ -271,7 +281,10 @@ export function CharacterCreation() {
           <Text style={styles.cardHeading}>BIRTH STATS</Text>
           <Pressable
             accessibilityRole="button"
-            onPress={rerollStats}
+            onPress={() => {
+              playSfx('dice')
+              rerollStats()
+            }}
             style={({ pressed }) => [styles.smallButton, pressed && styles.smallButtonPressed]}
           >
             <Text style={styles.smallButtonText}>🎲 Reroll</Text>

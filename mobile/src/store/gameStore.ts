@@ -362,6 +362,13 @@ export const ONLYSTANS_MIN_SUBS = 1000
 /** Followers needed before a platform will pay you. */
 export const MONETIZE_MIN_FOLLOWERS = 10000
 
+/** Audience needed before another creator will collab with you. */
+export const COLLAB_MIN_FOLLOWERS = 500
+export const COLLAB_MIN_SUBS = 100
+
+/** What a shady "followers" pack costs (before country scaling). */
+export const BUY_FOLLOWERS_COST = 500
+
 /** A fresh classroom for a school stage: classmates + teachers. */
 function rollSchoolPeople(
   countryCode: string,
@@ -706,6 +713,12 @@ interface GameState {
   // Phone apps
   socialPost: (app: SocialApp) => void
   monetizeSocial: (app: SocialApp) => void
+  /** Reply to comments and DMs — small, safe growth plus a mood lift. */
+  socialEngage: (app: SocialApp) => void
+  /** Team up with another creator for a shout-out — a bigger, free boost. */
+  socialCollab: (app: SocialApp) => void
+  /** Buy a follower pack — instant reach, but the platform might purge it. */
+  socialBuyFollowers: (app: SocialApp) => void
   propose: () => void
   marry: () => void
   breakUp: () => void
@@ -3627,6 +3640,112 @@ export const useGameStore = create<GameState>()(
                 ? `Your OnlyStans subscriptions paid out $${payout.toLocaleString()}. 💎`
                 : `You cashed in your ${meta.name} following for $${payout.toLocaleString()} in brand deals. 💰`,
               kind: 'money',
+            },
+          ])
+        },
+
+        socialEngage: (app: SocialApp) => {
+          const s = get()
+          if (!s.alive) return
+          if (app === 'onlystans' && s.age < 18) return
+          if (!useYearlyAction(`engage-${app}`)) return
+          const meta = SOCIAL_APPS[app]
+          // Replying to fans: small, reliable growth and a genuine mood lift.
+          const gained = randomInt(20, 150) + Math.round(s.followers[app] * 0.01)
+          set({
+            followers: { ...s.followers, [app]: s.followers[app] + gained },
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 2) },
+          })
+          playSfx('success')
+          addLog([
+            {
+              text: `You spent the day replying to fans on ${meta.name}. +${gained.toLocaleString()} ${
+                app === 'onlystans' ? 'subscribers' : 'followers'
+              }, and it felt good. 💬`,
+              kind: 'relationship',
+            },
+          ])
+        },
+
+        socialCollab: (app: SocialApp) => {
+          const s = get()
+          if (!s.alive) return
+          if (app === 'onlystans' && s.age < 18) return
+          const isSubs = app === 'onlystans'
+          const min = isSubs ? COLLAB_MIN_SUBS : COLLAB_MIN_FOLLOWERS
+          if (s.followers[app] < min) return
+          if (!useYearlyAction(`collab-${app}`)) return
+          const meta = SOCIAL_APPS[app]
+          // A shout-out swap: a chunky boost off your current reach. Small
+          // chance the collab turns into drama and costs you a few followers.
+          const drama = Math.random() < 0.15
+          if (drama) {
+            const lost = Math.round(s.followers[app] * (randomInt(3, 8) / 100))
+            set({
+              followers: { ...s.followers, [app]: Math.max(0, s.followers[app] - lost) },
+              stats: { ...s.stats, happiness: clampStat(s.stats.happiness - 3) },
+            })
+            playSfx('fail')
+            addLog([
+              {
+                text: `Your ${meta.name} collab turned into drama — you lost ${lost.toLocaleString()} followers. 😬`,
+                kind: 'relationship',
+              },
+            ])
+            return
+          }
+          const gained = Math.round(s.followers[app] * (randomInt(20, 45) / 100)) + randomInt(80, 400)
+          set({
+            followers: { ...s.followers, [app]: s.followers[app] + gained },
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 4) },
+          })
+          playSfx('levelup')
+          addLog([
+            {
+              text: `You collabed with another ${meta.name} creator and gained ${gained.toLocaleString()} followers. 🤝`,
+              kind: 'relationship',
+            },
+          ])
+        },
+
+        socialBuyFollowers: (app: SocialApp) => {
+          const s = get()
+          if (!s.alive) return
+          if (app === 'onlystans' && s.age < 18) return
+          const cost = scaleByCountry(BUY_FOLLOWERS_COST, s.countryCode)
+          if (s.money < cost) return
+          if (!useYearlyAction(`buy-${app}`)) return
+          const meta = SOCIAL_APPS[app]
+          const bought = randomInt(2000, 6000)
+          // The platform runs a bot sweep ~35% of the time: you lose the fakes
+          // and a slice of your real audience, and take a reputation hit.
+          const caught = Math.random() < 0.35
+          if (caught) {
+            const penalty = Math.round(s.followers[app] * (randomInt(10, 25) / 100))
+            set({
+              money: s.money - cost,
+              followers: { ...s.followers, [app]: Math.max(0, s.followers[app] - penalty) },
+              stats: { ...s.stats, happiness: clampStat(s.stats.happiness - 4) },
+            })
+            playSfx('police')
+            addLog([
+              {
+                text: `You bought fake ${meta.name} followers — and got flagged. The bots were purged and you lost ${penalty.toLocaleString()} real followers too. 🚨`,
+                kind: 'relationship',
+              },
+            ])
+            return
+          }
+          set({
+            money: s.money - cost,
+            followers: { ...s.followers, [app]: s.followers[app] + bought },
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 1) },
+          })
+          playSfx('cash')
+          addLog([
+            {
+              text: `You bought a follower pack on ${meta.name}. +${bought.toLocaleString()} (mostly bots, but who's counting). 🤫`,
+              kind: 'relationship',
             },
           ])
         },

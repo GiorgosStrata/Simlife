@@ -311,6 +311,27 @@ def build_death():
     )
 
 
+def build_dice():
+    # Dice rattling in a cup then settling: a cluster of short, dry wooden
+    # "tak" clicks at randomish offsets, tumbling closer together, then two
+    # final settle taps as they land.
+    def tak(f, vol=0.5):
+        # Very short click: quick noise transient + a tight mid-pitch blip.
+        return mix(
+            (0.0, noise(0.03, vol=vol * 0.7, a=0.0004, d=0.028, lowpass=0.5)),
+            (0.0, tone(f, 0.045, 'tri', vol=vol * 0.5, a=0.001, d=0.03, s=0.0,
+                       r=0.012, harmonics=[(2.0, 0.15)])),
+        )
+    # Tumbling: accelerating clicks (gaps shrink) with wandering pitch.
+    offsets = [0.00, 0.075, 0.14, 0.195, 0.24, 0.275]
+    pitches = [520, 610, 470, 660, 500, 580]
+    segs = [(o, tak(p, vol=0.42 + 0.03 * i)) for i, (o, p) in enumerate(zip(offsets, pitches))]
+    # Two settle taps as the dice come to rest.
+    segs.append((0.33, tak(430, vol=0.6)))
+    segs.append((0.40, tak(390, vol=0.5)))
+    return mix(*segs)
+
+
 SOUNDS = {
     'click': build_click,
     'pop': build_pop,
@@ -331,6 +352,7 @@ SOUNDS = {
     'gym': build_gym,
     'honk': build_honk,
     'death': build_death,
+    'dice': build_dice,
 }
 
 

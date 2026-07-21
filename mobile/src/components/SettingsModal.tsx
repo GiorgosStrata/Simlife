@@ -1,15 +1,17 @@
 import { useState } from 'react'
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { SectionHeading } from './SectionHeading'
 
+const APP_VERSION = '0.1.0'
+
 const VOLUME_LEVELS = [
-  { label: 'Off', value: 0 },
-  { label: 'Low', value: 0.33 },
-  { label: 'Medium', value: 0.66 },
-  { label: 'High', value: 1 },
+  { label: 'Off', value: 0, emoji: '🔇' },
+  { label: 'Low', value: 0.33, emoji: '🔈' },
+  { label: 'Medium', value: 0.66, emoji: '🔉' },
+  { label: 'High', value: 1, emoji: '🔊' },
 ]
 
 interface SettingsModalProps {
@@ -27,6 +29,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const theme = useGameStore((s) => s.theme)
   const setTheme = useGameStore((s) => s.setTheme)
   const startNewLife = useGameStore((s) => s.startNewLife)
+  const generation = useGameStore((s) => s.generation)
   const [confirmingReset, setConfirmingReset] = useState(false)
 
   return (
@@ -34,93 +37,129 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.headerRow}>
-            <Text style={styles.title}>Settings</Text>
+            <View style={styles.headerLeft}>
+              <View style={styles.headerIcon}>
+                <Text style={styles.headerIconText}>⚙️</Text>
+              </View>
+              <Text style={styles.title}>Settings</Text>
+            </View>
             <Pressable accessibilityRole="button" onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeText}>✕</Text>
             </Pressable>
           </View>
 
-          <SectionHeading color={colors.violet500}>APPEARANCE</SectionHeading>
-          <View style={styles.volumeRow}>
-            {THEME_OPTIONS.map((opt) => {
-              const active = theme === opt.value
-              return (
-                <Pressable
-                  key={opt.value}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${opt.value} theme`}
-                  onPress={() => {
-                    setTheme(opt.value)
-                    playSfx('click')
-                  }}
-                  style={[styles.volumeButton, active && styles.volumeButtonActive]}
-                >
-                  <Text style={[styles.volumeText, active && styles.volumeTextActive]}>
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-
-          <SectionHeading color={colors.sky500}>SOUND EFFECTS</SectionHeading>
-          <View style={styles.volumeRow}>
-            {VOLUME_LEVELS.map((level) => {
-              const active = Math.abs(sfxVolume - level.value) < 0.01
-              return (
-                <Pressable
-                  key={level.label}
-                  accessibilityRole="button"
-                  onPress={() => {
-                    setSfxVolume(level.value)
-                    playSfx('click')
-                  }}
-                  style={[styles.volumeButton, active && styles.volumeButtonActive]}
-                >
-                  <Text style={[styles.volumeText, active && styles.volumeTextActive]}>
-                    {level.label}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-
-          <SectionHeading color={colors.rose500}>DANGER ZONE</SectionHeading>
-          {confirmingReset ? (
-            <View style={styles.confirmBox}>
-              <Text style={styles.confirmText}>
-                Abandon this life and start over? This cannot be undone.
-              </Text>
-              <View style={styles.confirmRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => {
-                    playSfx('fail')
-                    startNewLife()
-                    onClose()
-                  }}
-                  style={({ pressed }) => [styles.resetButton, pressed && styles.resetButtonPressed]}
-                >
-                  <Text style={styles.resetButtonText}>Yes, reset</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setConfirmingReset(false)}
-                  style={({ pressed }) => [styles.cancelButton, pressed && styles.cancelButtonPressed]}
-                >
-                  <Text style={styles.cancelButtonText}>Keep living</Text>
-                </Pressable>
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.bodyContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.group}>
+              <SectionHeading color={colors.violet500}>APPEARANCE</SectionHeading>
+              <Text style={styles.groupHint}>Pick a light or dark look.</Text>
+              <View style={styles.optionRow}>
+                {THEME_OPTIONS.map((opt) => {
+                  const active = theme === opt.value
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${opt.value} theme`}
+                      onPress={() => {
+                        setTheme(opt.value)
+                        playSfx('click')
+                      }}
+                      style={[styles.optionButton, active && styles.optionButtonActive]}
+                    >
+                      <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
               </View>
             </View>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setConfirmingReset(true)}
-              style={({ pressed }) => [styles.dangerButton, pressed && styles.dangerButtonPressed]}
-            >
-              <Text style={styles.dangerButtonText}>🔄 Reset character</Text>
-            </Pressable>
-          )}
+
+            <View style={styles.group}>
+              <SectionHeading color={colors.sky500}>SOUND EFFECTS</SectionHeading>
+              <Text style={styles.groupHint}>Tap a level to preview and set the volume.</Text>
+              <View style={styles.optionRow}>
+                {VOLUME_LEVELS.map((level) => {
+                  const active = Math.abs(sfxVolume - level.value) < 0.01
+                  return (
+                    <Pressable
+                      key={level.label}
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setSfxVolume(level.value)
+                        // Play a sample at the new level so you can hear it.
+                        if (level.value > 0) playSfx('pop')
+                      }}
+                      style={[styles.optionButton, active && styles.optionButtonActive]}
+                    >
+                      <Text style={[styles.optionEmoji, active && styles.optionTextActive]}>
+                        {level.emoji}
+                      </Text>
+                      <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                        {level.label}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
+            </View>
+
+            <View style={styles.group}>
+              <SectionHeading color={colors.emerald700}>ABOUT</SectionHeading>
+              <View style={styles.aboutRow}>
+                <Text style={styles.aboutKey}>Simlife</Text>
+                <Text style={styles.aboutVal}>v{APP_VERSION}</Text>
+              </View>
+              <View style={styles.aboutRow}>
+                <Text style={styles.aboutKey}>Generation</Text>
+                <Text style={styles.aboutVal}>#{generation}</Text>
+              </View>
+              <Text style={styles.tagline}>A life, one year at a time. 🌱</Text>
+            </View>
+
+            <View style={styles.group}>
+              <SectionHeading color={colors.rose500}>DANGER ZONE</SectionHeading>
+              {confirmingReset ? (
+                <View style={styles.confirmBox}>
+                  <Text style={styles.confirmText}>
+                    Abandon this life and start over? This cannot be undone.
+                  </Text>
+                  <View style={styles.confirmRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        playSfx('fail')
+                        startNewLife()
+                        onClose()
+                      }}
+                      style={({ pressed }) => [styles.resetButton, pressed && styles.resetButtonPressed]}
+                    >
+                      <Text style={styles.resetButtonText}>Yes, reset</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setConfirmingReset(false)}
+                      style={({ pressed }) => [styles.cancelButton, pressed && styles.cancelButtonPressed]}
+                    >
+                      <Text style={styles.cancelButtonText}>Keep living</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setConfirmingReset(true)}
+                  style={({ pressed }) => [styles.dangerButton, pressed && styles.dangerButtonPressed]}
+                >
+                  <Text style={styles.dangerButtonText}>🔄 Reset character</Text>
+                </Pressable>
+              )}
+            </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -137,16 +176,34 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
     borderRadius: 24,
-    padding: 22,
+    padding: 20,
+    maxHeight: '88%',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.cyan50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerIconText: {
+    fontSize: 18,
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.slate800,
   },
   closeButton: {
@@ -161,34 +218,82 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.slate600,
   },
-  volumeRow: {
-    flexDirection: 'row',
-    gap: 8,
+  body: {
+    marginTop: 6,
+  },
+  bodyContent: {
+    gap: 6,
+    paddingBottom: 4,
+  },
+  group: {
+    backgroundColor: colors.slate100,
+    borderRadius: 16,
+    padding: 14,
     marginTop: 8,
   },
-  volumeButton: {
+  groupHint: {
+    fontSize: 12,
+    color: colors.slate500,
+    marginTop: 6,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  optionButton: {
     flex: 1,
-    borderRadius: 10,
-    backgroundColor: colors.slate100,
-    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    paddingVertical: 10,
     alignItems: 'center',
+    gap: 2,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  volumeButtonActive: {
-    backgroundColor: colors.cyan500,
+  optionButtonActive: {
+    backgroundColor: colors.cyan50,
+    borderColor: colors.cyan500,
   },
-  volumeText: {
+  optionEmoji: {
+    fontSize: 16,
+  },
+  optionText: {
     fontSize: 13,
+    fontWeight: '700',
+    color: colors.slate600,
+  },
+  optionTextActive: {
+    color: colors.cyan600,
+  },
+  aboutRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  aboutKey: {
+    fontSize: 14,
     fontWeight: '600',
     color: colors.slate600,
   },
-  volumeTextActive: {
-    color: colors.onColor,
+  aboutVal: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.slate800,
+  },
+  tagline: {
+    fontSize: 12,
+    color: colors.slate400,
+    marginTop: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
   dangerButton: {
     borderRadius: 12,
-    backgroundColor: colors.slate100,
+    backgroundColor: colors.white,
     paddingVertical: 11,
-    marginTop: 8,
+    marginTop: 10,
     alignItems: 'center',
   },
   dangerButtonPressed: {
