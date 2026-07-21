@@ -24,17 +24,34 @@ import { SettingsModal } from './src/components/SettingsModal'
 import { StatsPanel } from './src/components/StatsPanel'
 import { TabBar, type TabKey } from './src/components/TabBar'
 import { AchievementToast } from './src/components/AchievementToast'
+import { AdBanner } from './src/components/AdBanner'
+import { AuthScreen } from './src/components/AuthScreen'
+import { InterstitialAd } from './src/components/InterstitialAd'
 import { Toast } from './src/components/Toast'
 import { getMajor } from './src/data/majors'
+import { useAuthStore } from './src/store/authStore'
 import { getJob, isInSchool, jobTitle, useGameStore } from './src/store/gameStore'
 import { colors } from './src/theme'
+
+/** How often a full-screen interstitial ad appears during play (~10 min). */
+const AD_INTERVAL_MS = 10 * 60 * 1000
 
 function Game() {
   const [tab, setTab] = useState<TabKey>('life')
   const [prevTab, setPrevTab] = useState<TabKey>('career')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [adOpen, setAdOpen] = useState(false)
   const tabRef = useRef<TabKey>(tab)
   tabRef.current = tab
+
+  // Show a full-screen interstitial ad roughly every 10 minutes of play, but
+  // never on top of a pending life event (that would eat the choice).
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!useGameStore.getState().currentEvent) setAdOpen(true)
+    }, AD_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [])
 
   // Switch tabs while remembering where we came from, so the Back button can
   // return there (BitLife style).
@@ -121,6 +138,9 @@ function Game() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.column}>
+        {/* Banner ad slot (AdMob on native; house-ad placeholder on web). */}
+        <AdBanner />
+
         {/* Flat character summary bar */}
         <View style={styles.topBar}>
           <View style={styles.avatar}>
@@ -225,15 +245,44 @@ function Game() {
       {deepLink === 'social' && <SocialModal app="flicktok" onClose={clearDeepLink} />}
 
       <AchievementToast />
+      {adOpen && <InterstitialAd onClose={() => setAdOpen(false)} />}
     </SafeAreaView>
   )
+}
+
+/** Gates the game behind sign-up / log-in. */
+function Root() {
+  const authHydrated = useAuthStore((s) => s.hasHydrated)
+  const loggedIn = useAuthStore((s) => s.currentEmail !== null)
+  const theme = useGameStore((s) => s.theme)
+
+  // Apply the theme up here so the auth screen is themed too (Game re-applies).
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme])
+
+  if (!authHydrated) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={colors.cyan500} />
+      </View>
+    )
+  }
+  if (!loggedIn) {
+    return (
+      <SafeAreaView style={styles.authScreen} edges={['top', 'bottom']}>
+        <AuthScreen />
+      </SafeAreaView>
+    )
+  }
+  return <Game />
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <Game />
+      <Root />
     </SafeAreaProvider>
   )
 }
@@ -249,6 +298,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.slate100,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  authScreen: {
+    flex: 1,
+    backgroundColor: colors.slate100,
   },
   column: {
     flex: 1,

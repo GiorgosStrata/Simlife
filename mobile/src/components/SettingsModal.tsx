@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
+import { useAuthStore } from '../store/authStore'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { SectionHeading } from './SectionHeading'
@@ -30,6 +31,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const setTheme = useGameStore((s) => s.setTheme)
   const startNewLife = useGameStore((s) => s.startNewLife)
   const generation = useGameStore((s) => s.generation)
+  const currentEmail = useAuthStore((s) => s.currentEmail)
+  const accountName = useAuthStore((s) => (s.currentEmail ? s.users[s.currentEmail]?.name : null))
+  const logOut = useAuthStore((s) => s.logOut)
   const [confirmingReset, setConfirmingReset] = useState(false)
 
   return (
@@ -119,6 +123,26 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 <Text style={styles.aboutVal}>#{generation}</Text>
               </View>
               <Text style={styles.tagline}>A life, one year at a time. 🌱</Text>
+            </View>
+
+            <View style={styles.group}>
+              <SectionHeading color={colors.emerald700}>ACCOUNT</SectionHeading>
+              <View style={styles.aboutRow}>
+                <Text style={styles.aboutKey}>{accountName ?? 'Signed in'}</Text>
+                <Text style={styles.aboutVal} numberOfLines={1}>
+                  {currentEmail}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  playSfx('click')
+                  logOut()
+                }}
+                style={({ pressed }) => [styles.dangerButton, pressed && styles.dangerButtonPressed]}
+              >
+                <Text style={styles.logoutText}>Log out</Text>
+              </Pressable>
             </View>
 
             <View style={styles.group}>
@@ -303,6 +327,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.rose700,
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.slate600,
   },
   confirmBox: {
     borderRadius: 12,

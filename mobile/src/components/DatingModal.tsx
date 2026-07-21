@@ -68,6 +68,7 @@ export function DatingModal({ onClose }: DatingModalProps) {
 
   const [profile, setProfile] = useState<Profile>(() => makeProfile())
   const [matched, setMatched] = useState<Profile | null>(null)
+  const [flash, setFlash] = useState<string | null>(null)
   useCloseOnAction(onClose)
 
   useEffect(() => {
@@ -76,19 +77,24 @@ export function DatingModal({ onClose }: DatingModalProps) {
 
   const pass = () => {
     playSfx('whoosh')
+    setFlash(null)
     setProfile(makeProfile())
   }
 
   const like = () => {
     // First right-swipe ever earns a badge.
     useGameStore.getState().unlockAchievement('swipe-right')
-    // Mutual-match chance rises with both people's looks.
-    const chance = 0.25 + (playerLooks + profile.looks) / 400
+    // Mutual-match chance rises with both people's looks, but a like should
+    // usually land — being ghosted every other swipe felt broken. Floor it high.
+    const chance = Math.min(0.95, 0.6 + (playerLooks + profile.looks) / 320)
     if (Math.random() < chance) {
       playSfx('match')
+      setFlash(null)
       setMatched(profile)
     } else {
+      // Not a match — say so clearly, then move on to the next profile.
       playSfx('whoosh')
+      setFlash(`${profile.name.split(' ')[0]} didn't swipe back. On to the next! 💔`)
       setProfile(makeProfile())
     }
   }
@@ -128,6 +134,11 @@ export function DatingModal({ onClose }: DatingModalProps) {
             </View>
           ) : (
             <>
+              {flash && (
+                <View style={styles.flash}>
+                  <Text style={styles.flashText}>{flash}</Text>
+                </View>
+              )}
               <View style={styles.profileCard}>
                 <View style={styles.photo}>
                   <Avatar seed={profile.seed} gender={profile.gender} age={profile.age} size={120} />
@@ -184,6 +195,14 @@ const styles = StyleSheet.create({
     maxHeight: '85%',
   },
   title: { fontSize: 20, fontWeight: '800', color: colors.slate800, marginBottom: 12 },
+  flash: {
+    backgroundColor: colors.cyan50,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+  },
+  flashText: { fontSize: 13, fontWeight: '600', color: colors.slate600, textAlign: 'center' },
   profileCard: {
     backgroundColor: colors.white,
     borderRadius: 20,
