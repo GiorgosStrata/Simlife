@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
-import { TEXT_OPTIONS, textReply, type TextReply } from '../data/messages'
+import { textOptionsFor, textReply, type TextReply } from '../data/messages'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Person, PersonRole } from '../types'
@@ -28,6 +28,7 @@ interface MessagesModalProps {
 export function MessagesModal({ onClose }: MessagesModalProps) {
   const relationships = useGameStore((s) => s.relationships)
   const partnerStatus = useGameStore((s) => s.partnerStatus)
+  const age = useGameStore((s) => s.age)
   const sendText = useGameStore((s) => s.sendText)
   const [openId, setOpenId] = useState<string | null>(null)
   const [thread, setThread] = useState<Bubble[]>([])
@@ -47,14 +48,21 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
     setOpenId(person.id)
   }
 
+  const options = open ? textOptionsFor(open.role, age) : []
+
   const send = (toneIndex: number) => {
     if (!open) return
-    const opt = TEXT_OPTIONS[toneIndex]
+    const opt = options[toneIndex]
     const reply: TextReply = textReply(open.role, open.relationship, opt.tone)
     setThread((t) => [...t, { from: 'me', text: opt.label }])
     playSfx('click')
-    // Apply the bond/mood nudge (gated to once per person per year in the store).
-    sendText(open.id, reply.bond, reply.happiness)
+    // Apply the reply's effects (gated to your first text per person per year).
+    sendText(open.id, {
+      bond: reply.bond,
+      happiness: reply.happiness,
+      money: reply.money,
+      grantsPhone: reply.grantsPhone,
+    })
     // Their reply lands a beat later.
     setTimeout(() => {
       setThread((t) => [...t, { from: 'them', text: reply.text }])
@@ -124,7 +132,7 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
               </ScrollView>
 
               <View style={styles.options}>
-                {TEXT_OPTIONS.map((opt, i) => (
+                {options.map((opt, i) => (
                   <Pressable
                     key={opt.id}
                     accessibilityRole="button"

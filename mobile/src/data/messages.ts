@@ -1,29 +1,70 @@
 import type { PersonRole } from '../types'
 
 /**
- * The Messages app: pick one of three texts to send a contact, and they
- * reply based on who they are to you and how strong your bond is.
+ * The Messages app: the three texts you can send depend on who the contact is
+ * to you (and, for parents, whether you're still a kid), and their reply is
+ * written for that relationship and how strong your bond is. Children can ask
+ * their parents for allowance or a new phone right from here.
  */
+
+export type TextTone =
+  | 'casual'
+  | 'warm'
+  | 'bold'
+  | 'flirt'
+  | 'rude'
+  | 'truce'
+  | 'ask-money'
+  | 'ask-phone'
 
 export interface TextOption {
   id: string
   /** The message you send. */
   label: string
-  /** How affectionate the text is — shapes the reply and the bond nudge. */
-  tone: 'casual' | 'warm' | 'bold'
+  tone: TextTone
 }
 
-export const TEXT_OPTIONS: TextOption[] = [
-  { id: 'checkin', label: 'Hey, how have you been? 😊', tone: 'casual' },
-  { id: 'hangout', label: 'We should hang out soon!', tone: 'warm' },
-  { id: 'love', label: 'You mean a lot to me ❤️', tone: 'bold' },
-]
+/** The three texts available for a given contact. */
+export function textOptionsFor(role: PersonRole, age: number): TextOption[] {
+  const isParent = role === 'mother' || role === 'father'
+  const romance = role === 'partner' || role === 'ex' || role === 'fling'
+  if (isParent && age < 18) {
+    return [
+      { id: 'ask-money', label: 'Can I have some allowance? 🙏', tone: 'ask-money' },
+      { id: 'ask-phone', label: 'Can I get a new phone? 📱', tone: 'ask-phone' },
+      { id: 'love-parent', label: 'Love you! ❤️', tone: 'bold' },
+    ]
+  }
+  if (role === 'enemy') {
+    return [
+      { id: 'insult', label: 'You’re the actual worst. 😒', tone: 'rude' },
+      { id: 'threat', label: 'This isn’t over.', tone: 'rude' },
+      { id: 'truce', label: 'Can we just call a truce?', tone: 'truce' },
+    ]
+  }
+  if (romance) {
+    return [
+      { id: 'flirt', label: 'Thinking about you 😘', tone: 'flirt' },
+      { id: 'date', label: 'Wanna go out this weekend?', tone: 'warm' },
+      { id: 'love-romance', label: 'You mean everything to me ❤️', tone: 'bold' },
+    ]
+  }
+  // Adult family & friends.
+  return [
+    { id: 'checkin', label: 'Hey, how have you been? 😊', tone: 'casual' },
+    { id: 'hangout', label: 'We should hang out soon!', tone: 'warm' },
+    { id: 'love', label: 'You mean a lot to me ❤️', tone: 'bold' },
+  ]
+}
 
 export interface TextReply {
   text: string
-  /** Bond change applied (only the first text per person each year counts). */
   bond: number
   happiness: number
+  /** Base dollars a parent hands over (country-scaled in the store). */
+  money?: number
+  /** A parent agreed to buy you a phone. */
+  grantsPhone?: boolean
 }
 
 type Bucket = 'family' | 'romance' | 'friend' | 'enemy'
@@ -42,12 +83,12 @@ function tierFor(bond: number): Tier {
 
 const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
 
-// [bucket][tone][tier] → a pool of replies.
-const REPLIES: Record<Bucket, Record<TextOption['tone'], Record<Tier, string[]>>> = {
+// General replies for the everyday tones, keyed by relationship bucket.
+const REPLIES: Record<Bucket, Partial<Record<TextTone, Record<Tier, string[]>>>> = {
   family: {
     casual: {
-      high: ['So good to hear from you! ❤️ All well here.', 'Aw, was just thinking about you! Doing great.'],
-      mid: ['Hey! Been alright, you know how it is.', 'Oh hi! Not bad, keeping busy.'],
+      high: ['So good to hear from you! ❤️ All well here.', 'Aw, was just thinking about you!'],
+      mid: ['Hey! Been alright, you know how it is.', 'Oh hi! Keeping busy.'],
       low: ['Oh. Hi. Been a while.', 'Everything okay? You never text.'],
     },
     warm: {
@@ -58,14 +99,14 @@ const REPLIES: Record<Bucket, Record<TextOption['tone'], Record<Tier, string[]>>
     bold: {
       high: ['Love you too, always. 🥹', 'You’re going to make me cry. Love you.'],
       mid: ['Aw. Love you too, kiddo.', 'That’s sweet. Love you.'],
-      low: ['...I know things are hard. That means something.', 'That’s unexpected. But thank you.'],
+      low: ['...That means something. Thank you.', 'That’s unexpected. But thank you.'],
     },
   },
   romance: {
-    casual: {
-      high: ['Hey you 😍 was hoping you’d text.', 'Missing you already, honestly.'],
-      mid: ['Hey! Nice to hear from you.', 'Oh hey, been thinking about you a little.'],
-      low: ['Oh. Hi. Wasn’t expecting that.', 'Um, hey. What’s up?'],
+    flirt: {
+      high: ['Come over and tell me in person 😏', 'Stop it, you’re making me blush 😘'],
+      mid: ['Oh yeah? 😊 Tell me more.', 'Smooth. I’m listening.'],
+      low: ['Um. That’s forward.', 'Oh. Hi. Wasn’t expecting that.'],
     },
     warm: {
       high: ['Yes! Pick me up at 8? 💕', 'Absolutely, I’ll clear my whole night.'],
@@ -75,7 +116,7 @@ const REPLIES: Record<Bucket, Record<TextOption['tone'], Record<Tier, string[]>>
     bold: {
       high: ['You mean everything to me too. 💖', 'Stop it, you’re perfect. I adore you.'],
       mid: ['That’s really sweet of you. 😊', 'Aw. That caught me off guard, in a good way.'],
-      low: ['That’s... a lot. We’re not really there.', 'I don’t know what to say to that, honestly.'],
+      low: ['That’s... a lot. We’re not really there.', 'I don’t know what to say to that.'],
     },
   },
   friend: {
@@ -91,43 +132,58 @@ const REPLIES: Record<Bucket, Record<TextOption['tone'], Record<Tier, string[]>>
     },
     bold: {
       high: ['Bro. You’re the best. Right back at you 🤝', 'Awww okay I’m not crying you are.'],
-      mid: ['Haha that’s sweet man, appreciate you.', 'You good? But yeah, likewise 😄'],
+      mid: ['Haha that’s sweet, appreciate you.', 'You good? But yeah, likewise 😄'],
       low: ['That’s... random, but okay, thanks?', 'Uh. Sure. Thanks, I guess.'],
     },
   },
   enemy: {
-    casual: {
-      high: ['...Truce still holding, I see. What do you want?', 'Huh. Didn’t expect civility from you.'],
-      mid: ['Lose my number.', 'What could you possibly want?'],
-      low: ['Bold of you to text me. Blocked.', 'Ha. No. Never.'],
+    rude: {
+      high: ['...Wow. And here I thought we’d moved on.', 'Charming as ever. Goodbye.'],
+      mid: ['The feeling is entirely mutual.', 'Lose my number.'],
+      low: ['Blocked. Again.', 'You’re not worth the reply. (But here it is.)'],
     },
-    warm: {
-      high: ['I... suppose we could be civil. Once.', 'Fine. One coffee. Don’t make it weird.'],
-      mid: ['Absolutely not.', 'Hang out? With you? That’s a hard no.'],
-      low: ['Delete this chat and my number.', 'I’d rather eat glass. 🙂'],
-    },
-    bold: {
-      high: ['Don’t push it. But... the feud’s exhausting, agreed.', 'Careful. You almost sound sincere.'],
-      mid: ['This is a joke, right?', 'Nice try. I don’t buy it.'],
-      low: ['Gross. Blocked and reported.', 'Is this a prank? Pathetic.'],
+    truce: {
+      high: ['Fine. A truce. Don’t make me regret it.', 'I... suppose the feud is exhausting. Deal.'],
+      mid: ['A truce? I’ll think about it.', 'Hah. We’re not there yet.'],
+      low: ['Absolutely not.', 'You have got to be joking.'],
     },
   },
 }
 
-/** How a contact answers your text — reply line plus the bond/mood nudge. */
-export function textReply(role: PersonRole, bond: number, tone: TextOption['tone']): TextReply {
-  const bucket = bucketFor(role)
+/** How a contact answers your text — reply line plus any effects. */
+export function textReply(role: PersonRole, bond: number, tone: TextTone): TextReply {
   const tier = tierFor(bond)
-  const text = pick(REPLIES[bucket][tone][tier])
+  const yes = tier === 'high' || (tier === 'mid' && Math.random() < 0.6)
 
-  // Warmer texts move the needle more; enemies invert; bold texts to a weak
-  // bond land awkwardly.
-  const toneWeight = tone === 'bold' ? 3 : tone === 'warm' ? 2 : 1
+  // Children asking a parent for things.
+  if (tone === 'ask-money') {
+    if (yes) {
+      const amount = tier === 'high' ? 120 : 60
+      return { text: pick(['Of course, sending it now 💸', 'Sure, don’t spend it all at once!']), bond: 1, happiness: 2, money: amount }
+    }
+    return { text: pick(['Money doesn’t grow on trees. Not this week.', 'Ask me again after you tidy your room.']), bond: -1, happiness: -1 }
+  }
+  if (tone === 'ask-phone') {
+    if (tier === 'high') {
+      return { text: pick(['You’ve earned it — go pick one out 📱', 'Alright, a new phone it is. Look after it!']), bond: 1, happiness: 4, grantsPhone: true }
+    }
+    if (tier === 'mid' && Math.random() < 0.5) {
+      return { text: 'Fine, but just a basic one, okay?', bond: 1, happiness: 3, grantsPhone: true }
+    }
+    return { text: pick(['Your old phone works fine.', 'Maybe for your birthday. We’ll see.']), bond: 0, happiness: -1 }
+  }
+
+  const bucket = bucketFor(role)
+  const pool = REPLIES[bucket][tone] ?? REPLIES[bucket].casual ?? REPLIES.friend.casual!
+  const text = pick(pool[tier])
+
+  // Warmer texts move the needle more; enemies invert; bold-to-a-weak-bond flops.
+  const toneWeight = tone === 'bold' ? 3 : tone === 'warm' || tone === 'flirt' ? 2 : 1
   let bondDelta: number
   if (bucket === 'enemy') {
-    bondDelta = tier === 'high' ? toneWeight : -toneWeight
+    bondDelta = tone === 'truce' ? (tier === 'high' ? 4 : tier === 'mid' ? 1 : -1) : -2
   } else if (tier === 'low' && tone === 'bold') {
-    bondDelta = -1 // too much, too soon
+    bondDelta = -1
   } else {
     bondDelta = toneWeight + (tier === 'high' ? 1 : tier === 'low' ? -1 : 0)
   }

@@ -312,19 +312,25 @@ const TEMPLATES: RelTemplate[] = [
 ]
 
 /** Build a relationship event for a specific person, or null if none fits. */
-export function buildRelationshipEvent(person: Person, age: number): GameEvent | null {
+export function buildRelationshipEvent(
+  person: Person,
+  age: number,
+  usedIds: string[] = [],
+): GameEvent | null {
   const eligible = TEMPLATES.filter(
     (t) =>
       t.roles.includes(person.role) &&
       (t.minAge === undefined || age >= t.minAge) &&
       (t.maxAge === undefined || age <= t.maxAge) &&
       (t.personMinAge === undefined || person.age >= t.personMinAge) &&
-      (t.personMaxAge === undefined || person.age <= t.personMaxAge),
+      (t.personMaxAge === undefined || person.age <= t.personMaxAge) &&
+      // Never the same scenario twice with the same person in one life.
+      !usedIds.includes(`rel-${t.id}-${person.id}`),
   )
   if (eligible.length === 0) return null
   const t = eligible[Math.floor(Math.random() * eligible.length)]
   return {
-    id: `rel-${t.id}`,
+    id: `rel-${t.id}-${person.id}`,
     emoji: t.emoji,
     title: t.title(person.name),
     description: t.description(person.name),

@@ -10,6 +10,7 @@ import type {
   ActivePursuit,
   ActivityCategory,
   DeepLink,
+  EventFlag,
   GameEvent,
   Gender,
   Job,
@@ -23,11 +24,12 @@ import type {
   SportState,
   Stats,
 } from '../types'
-import { PET_NAMES, getPetOption } from '../data/pets'
+import { PET_NAMES, getPetOption, randomPetOfSpecies } from '../data/pets'
 import { makeNpcLife, randomHobby } from '../data/npc'
 import { LEAGUES, getTeam, jobSport, leaguesForSport, teamName } from '../data/leagues'
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, homeRent, resaleValue } from '../data/assets'
+import { phonesForYear } from '../data/phones'
 import { getIllness, pickIllness } from '../data/illnesses'
 import {
   INVESTMENTS,
@@ -622,10 +624,14 @@ interface GameState {
 
   /**
    * Send a contact a text from the Messages app. The reply is worked out in
-   * the UI; this applies the bond/mood nudge, and only your first text to
-   * each person each year moves the needle (so you can't farm bond by spam).
+   * the UI; this applies its bond/mood nudge (and any money or phone a parent
+   * hands over). Only your first text to each person each year counts, so you
+   * can't farm bond or allowance by spamming.
    */
-  sendText: (personId: string, bondDelta: number, happinessDelta: number) => void
+  sendText: (
+    personId: string,
+    payload: { bond: number; happiness: number; money?: number; grantsPhone?: boolean },
+  ) => void
 
   /** Pay to treat an active illness — may cure it (see data/illnesses.ts). */
   treatIllness: (id: string) => void
@@ -760,7 +766,7 @@ function drawEvent(
   age: number,
   usedIds: string[],
   inSchool: boolean,
-  hasPartner: boolean,
+  flags: Record<EventFlag, boolean>,
 ): GameEvent | null {
   const fresh = EVENTS.filter(
     (e) =>
@@ -768,7 +774,9 @@ function drawEvent(
       age <= e.maxAge &&
       !usedIds.includes(e.id) &&
       (inSchool || !SCHOOL_ONLY_EVENTS.has(e.id)) &&
-      (!hasPartner || !SINGLE_ONLY_EVENTS.has(e.id)),
+      (!flags.hasPartner || !SINGLE_ONLY_EVENTS.has(e.id)) &&
+      // Every required life-situation flag must hold (no baby events if childless).
+      (!e.requires || e.requires.every((r) => flags[r])),
   )
   return fresh.length > 0 ? pick(fresh) : null
 }
@@ -1722,14 +1730,28 @@ export const useGameStore = create<GameState>()(
             relationships.some((p) => p.role === 'father' && p.alive)
           const divorceRolls =
             age >= 5 && age <= 16 && !s.parentsDivorced && parentsAlive && Math.random() < 0.03
+          // Life-situation flags: events can require these before they fire, so
+          // (say) baby-at-the-park events never appear if you're childless.
+          const hasPartnerFlag = relationships.some((p) => p.id === 'partner' && p.alive)
+          const eventFlags: Record<EventFlag, boolean> = {
+            hasKids: relationships.some((p) => p.role === 'child' && p.alive),
+            hasPartner: hasPartnerFlag,
+            single: !hasPartnerFlag,
+            married: partnerStatus === 'married',
+            hasJob: jobIdNext !== null,
+            noJob: jobIdNext === null,
+            hasPet: pets.some((p) => p.alive),
+            inSchool: isInSchool(age) || inUniversity,
+          }
           // A relationship event (involving a specific person) sometimes
-          // fires instead of a generic one.
+          // fires instead of a generic one — and never the same scenario twice
+          // with the same person in one life.
           const relCandidates = relationships.filter(
             (p) => p.alive && REL_EVENT_ROLES.includes(p.role),
           )
           const relEvent =
             relCandidates.length > 0 && Math.random() < 0.4
-              ? buildRelationshipEvent(pick(relCandidates), age)
+              ? buildRelationshipEvent(pick(relCandidates), age, s.usedEventIds)
               : null
           // Released this year → a release popup. Still inside → only prison
           // events fire (normal life is on hold). Otherwise the usual chain.
@@ -1753,7 +1775,7 @@ export const useGameStore = create<GameState>()(
                             age,
                             s.usedEventIds,
                             isInSchool(age) || inUniversity,
-                            relationships.some((p) => p.id === 'partner' && p.alive),
+                            eventFlags,
                           )
           set({
             age,
@@ -1781,8 +1803,12 @@ export const useGameStore = create<GameState>()(
             pets,
             prison,
             currentEvent: event,
+            // Remember every event fired this life (generic, and each
+            // relationship scenario keyed by person) so nothing repeats. The
+            // "special-" scripted popups (funerals, prison, graduation…) are
+            // the only ones allowed to recur.
             usedEventIds:
-              event && !event.id.startsWith('special-') && !event.id.startsWith('rel-')
+              event && !event.id.startsWith('special-')
                 ? [...s.usedEventIds, event.id]
                 : s.usedEventIds,
             usedActions: [],
@@ -1845,6 +1871,30 @@ export const useGameStore = create<GameState>()(
 
           if (!died && choice.action === 'enrollUniversity' && canApplyToUniversity()) {
             set({ applyingToUniversity: true })
+          }
+          // "Let the cat in" / "Keep the dog" etc. — you actually get the pet.
+          if (!died && choice.grantsPet) {
+            const opt = randomPetOfSpecies(choice.grantsPet)
+            if (opt) {
+              const cur = get()
+              const pet: Pet = {
+                id: `pet-${cur.nextPetId}`,
+                optionId: opt.id,
+                name: pick(PET_NAMES),
+                emoji: opt.emoji,
+                breed: opt.breed,
+                age: 0,
+                alive: true,
+                happiness: randomInt(75, 95),
+                bond: randomInt(55, 75),
+              }
+              set({
+                pets: [...cur.pets, pet],
+                nextPetId: cur.nextPetId + 1,
+                stats: { ...cur.stats, happiness: clampStat(cur.stats.happiness + opt.joy) },
+              })
+              addLog([{ text: `${pet.name} the ${opt.breed} ${opt.emoji} is yours now!`, kind: 'relationship' }])
+            }
           }
           if (!died && choice.action === 'parentsDivorce') {
             set({
@@ -2328,20 +2378,32 @@ export const useGameStore = create<GameState>()(
           addLog(logs)
         },
 
-        sendText: (personId: string, bondDelta: number, happinessDelta: number) => {
+        sendText: (personId, payload) => {
           const s = get()
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive) return
-          // Only your first text to each person each year moves the bond.
+          // Only your first text to each person each year moves the needle.
           if (!useYearlyAction(`text-${personId}`)) return
           updatePerson(personId, {
-            relationship: clampRelationship(person.relationship + bondDelta),
+            relationship: clampRelationship(person.relationship + payload.bond),
           })
-          if (happinessDelta) {
-            set({
-              stats: { ...get().stats, happiness: clampStat(get().stats.happiness + happinessDelta) },
-            })
+          const cur = get()
+          const patch: Partial<GameState> = {
+            stats: { ...cur.stats, happiness: clampStat(cur.stats.happiness + payload.happiness) },
           }
+          // A parent handing over allowance.
+          if (payload.money) patch.money = cur.money + scaleByCountry(payload.money, cur.countryCode)
+          // A parent buying you a phone — the cheapest current model, if you
+          // don't already own one.
+          if (payload.grantsPhone && !cur.ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')) {
+            const phones = phonesForYear(cur.year)
+            const cheapest = phones[phones.length - 1]
+            if (cheapest) {
+              patch.ownedAssetIds = [...cur.ownedAssetIds, cheapest.id]
+              addLog([{ text: `${person.name} bought you a ${cheapest.name}! 📱`, kind: 'relationship' }])
+            }
+          }
+          set(patch)
         },
 
         treatIllness: (id: string) => {

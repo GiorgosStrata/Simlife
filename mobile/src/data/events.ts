@@ -19,8 +19,9 @@ export const EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Adopt it',
-        outcome: 'You adopted the stray dog and named it Biscuit. Walks are expensive but joyful.',
-        effects: { happiness: 12, money: -300 },
+        outcome: 'You adopted the stray dog. Walks are expensive but joyful.',
+        effects: { happiness: 10 },
+        grantsPet: 'Dog',
       },
       {
         label: 'Shoo it away',
@@ -381,6 +382,7 @@ export const EVENTS: GameEvent[] = [
       'Things are hectic at work and you’re asked to put in serious overtime this month. It would not go unnoticed.',
     minAge: 20,
     maxAge: 60,
+    requires: ['hasJob'],
     choices: [
       {
         label: 'Work the overtime',
@@ -1085,7 +1087,7 @@ export const EVENTS: GameEvent[] = [
 
   // ---------------- Teen ----------------
   {
-    id: 'first-crush',
+    id: 'first-crush-2',
     emoji: '💌',
     title: 'A First Crush',
     description: 'There is someone in your class you cannot stop thinking about.',
@@ -1159,7 +1161,7 @@ export const EVENTS: GameEvent[] = [
 
   // ---------------- Adult ----------------
   {
-    id: 'lottery-ticket',
+    id: 'lottery-ticket-2',
     emoji: '🎰',
     title: 'A Lottery Ticket',
     description: 'On a whim, you buy a scratch-off lottery ticket at the gas station.',
@@ -1195,7 +1197,7 @@ export const EVENTS: GameEvent[] = [
     ],
   },
   {
-    id: 'neighbor-dispute',
+    id: 'neighbor-dispute-2',
     emoji: '🌳',
     title: 'The Neighbor’s Tree',
     description: 'Your neighbor’s giant tree keeps dropping branches into your yard.',
@@ -1279,7 +1281,7 @@ export const EVENTS: GameEvent[] = [
     ],
   },
   {
-    id: 'found-wallet',
+    id: 'found-wallet-2',
     emoji: '👛',
     title: 'A Lost Wallet',
     description: 'You find a fat wallet on the sidewalk, stuffed with cash and an ID.',
@@ -1422,8 +1424,8 @@ export const EVENTS: GameEvent[] = [
     minAge: 5,
     maxAge: 12,
     choices: [
-      { label: 'Love it forever', outcome: 'Bubbles lived a long, well-fed life. A true friend.', effects: { happiness: 5 } },
-      { label: 'Forget to feed it', outcome: 'A solemn toilet funeral was held. Lessons were learned.', effects: { happiness: -3 } },
+      { label: 'Take it home', outcome: 'You brought the little fish home. A true (if quiet) friend.', effects: { happiness: 5 }, grantsPet: 'Fish' },
+      { label: 'Give it to a friend', outcome: 'You passed the fish to a friend. Bubbles found a good home.', effects: { happiness: 2 } },
     ],
   },
   {
@@ -1715,6 +1717,7 @@ export const EVENTS: GameEvent[] = [
     description: 'You just replied-all to the entire company. With a meme.',
     minAge: 20,
     maxAge: 65,
+    requires: ['hasJob'],
     choices: [
       { label: 'Own it', outcome: 'The CEO replied with a better meme. Crisis averted.', effects: { happiness: 3 } },
       { label: 'Recall frantically', outcome: 'Recall failed. You are the meme now.', effects: { happiness: -3, stress: 4 } },
@@ -2092,7 +2095,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 16,
     maxAge: 95,
     choices: [
-      { label: 'Let it in', outcome: 'You didn’t choose the cat. The cat chose you.', effects: { happiness: 6, money: -100 } },
+      { label: 'Let it in', outcome: 'You didn’t choose the cat. The cat chose you.', effects: { happiness: 6 }, grantsPet: 'Cat' },
       { label: 'Stay firm', outcome: 'The cat moved next door and judges you through the fence.', effects: { happiness: -2 } },
     ],
   },
@@ -2100,7 +2103,7 @@ export const EVENTS: GameEvent[] = [
     id: 'balloon-release',
     emoji: '🎈',
     title: 'The Escaped Balloon',
-    description: 'A child’s balloon slips away at the park. Everyone watches it rise.',
+    description: 'A stranger’s toddler lets go of their balloon at the park. Everyone watches it rise.',
     minAge: 5,
     maxAge: 95,
     choices: [

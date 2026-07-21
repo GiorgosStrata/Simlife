@@ -51,6 +51,12 @@ export function getPetOption(id: string): PetOption | undefined {
   return PET_CATALOG.find((p) => p.id === id)
 }
 
+/** A random pet option of a species ("Cat", "Dog", "Fish"…), for free adoptions. */
+export function randomPetOfSpecies(species: string): PetOption | undefined {
+  const pool = PET_CATALOG.filter((p) => p.species === species)
+  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : undefined
+}
+
 /** Cute names for a freshly adopted pet. */
 export const PET_NAMES = [
   'Buddy', 'Luna', 'Max', 'Bella', 'Charlie', 'Milo', 'Lucy', 'Rocky', 'Daisy', 'Coco',

@@ -28,6 +28,17 @@ export interface Effects extends Partial<Stats> {
 /** App areas an event choice can jump straight into. */
 export type DeepLink = 'investing' | 'health' | 'shop' | 'jobs'
 
+/** Life-situation flags an event can require before it's allowed to fire. */
+export type EventFlag =
+  | 'hasKids'
+  | 'hasPartner'
+  | 'single'
+  | 'married'
+  | 'hasJob'
+  | 'noJob'
+  | 'hasPet'
+  | 'inSchool'
+
 export interface EventChoice {
   label: string
   /** Line written to the life log after picking this choice. */
@@ -35,6 +46,8 @@ export interface EventChoice {
   effects: Effects
   /** Open this app area right after the event resolves ("Invest" → Vestr). */
   opens?: DeepLink
+  /** Actually take in the animal — a free pet of this species ("Cat", "Dog"…). */
+  grantsPet?: string
   /** Optional game action triggered on top of the stat effects. */
   action?: 'enrollUniversity' | 'parentsDivorce' | 'makeEnemy' | 'reconcile'
   /** Bond change applied to the person this event involves (see GameEvent.personId). */
@@ -54,6 +67,8 @@ export interface GameEvent {
   /** Inclusive age range in which this event can fire. */
   minAge: number
   maxAge: number
+  /** Life-situation flags that must ALL hold for this event to fire. */
+  requires?: EventFlag[]
   choices: EventChoice[]
   /** For relationship events: the id of the person involved (bond target). */
   personId?: string
