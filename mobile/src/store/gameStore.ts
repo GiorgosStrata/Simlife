@@ -25,6 +25,7 @@ import type {
   Stats,
 } from '../types'
 import { PET_NAMES, getPetOption, randomPetOfSpecies } from '../data/pets'
+import { ACHIEVEMENTS_BY_ID } from '../data/achievements'
 import { makeNpcLife, randomHobby } from '../data/npc'
 import { LEAGUES, getTeam, jobSport, leaguesForSport, teamName } from '../data/leagues'
 import { LANGUAGES, getActivity, getCrime } from '../data/activities'
@@ -558,6 +559,15 @@ interface GameState {
   /** Set while incarcerated; null when free. */
   prison: PrisonState | null
 
+  /** Achievements earned across every life (account-wide; never reset). */
+  unlockedAchievements: string[]
+  /** People killed this life (for the serial-killer achievement). */
+  runMurders: number
+  /** Children born this life (for the big-family achievements). */
+  runChildren: number
+  /** Languages learned this life (for the polyglot achievement). */
+  runLanguages: number
+
   setSfxVolume: (volume: number) => void
   setTheme: (theme: ThemeName) => void
 
@@ -722,6 +732,11 @@ interface GameState {
   propose: () => void
   marry: () => void
   breakUp: () => void
+
+  /** Unlock an achievement by id (no-op if already earned). Used by the UI. */
+  unlockAchievement: (id: string) => void
+  /** Re-evaluate all threshold achievements (money, stats, followers…). */
+  checkAchievements: () => void
 }
 
 function newLifeState() {
@@ -784,6 +799,10 @@ function newLifeState() {
     criminalRecord: false,
     timesArrested: 0,
     prison: null as PrisonState | null,
+    // Per-life achievement counters (account-wide unlocks live outside this).
+    runMurders: 0,
+    runChildren: 0,
+    runLanguages: 0,
   }
 }
 
@@ -1052,6 +1071,59 @@ export const useGameStore = create<GameState>()(
         return true
       }
 
+      /** Earn an achievement once. No-op if already unlocked. */
+      const unlock = (id: string): void => {
+        const s = get()
+        if (s.unlockedAchievements.includes(id)) return
+        set({ unlockedAchievements: [...s.unlockedAchievements, id] })
+        const a = ACHIEVEMENTS_BY_ID[id]
+        if (a) {
+          addLog([{ text: `🏆 Achievement unlocked: ${a.title}! ${a.emoji}`, kind: 'info' }])
+          playSfx('levelup')
+        }
+      }
+
+      /** Re-check every threshold achievement against current state. */
+      const checkMilestones = (): void => {
+        const s = get()
+        const m = s.money
+        if (m >= 1_000_000_000) unlock('money-1b')
+        if (m >= 100_000_000) unlock('money-100m')
+        if (m >= 10_000_000) unlock('money-10m')
+        if (m >= 1_000_000) unlock('money-1m')
+        if (m >= 100_000) unlock('money-100k')
+        if (m < 0) unlock('debt-first')
+        if (m <= -100_000) unlock('debt-100k')
+
+        const realEstate = s.homes.reduce((t, h) => t + h.price, 0)
+        if (realEstate >= 100_000_000) unlock('realestate-100m')
+        if (realEstate >= 10_000_000) unlock('realestate-10m')
+        if (realEstate >= 1_000_000) unlock('realestate-1m')
+
+        if (s.followers.rizzgram >= 100_000) unlock('followers-rizzgram')
+        if (s.followers.flicktok >= 100_000) unlock('followers-flicktok')
+        if (s.followers.youtube >= 100_000) unlock('followers-youtube')
+        if (s.followers.onlystans >= 100_000) unlock('followers-onlystans')
+
+        const { smarts, happiness, looks, health } = s.stats
+        if (smarts >= NATURAL_STAT_CAP) unlock('max-smarts')
+        if (happiness >= NATURAL_STAT_CAP) unlock('max-happiness')
+        if (looks >= NATURAL_STAT_CAP) unlock('max-looks')
+        if (health >= NATURAL_STAT_CAP) unlock('max-health')
+        if (
+          smarts >= NATURAL_STAT_CAP &&
+          happiness >= NATURAL_STAT_CAP &&
+          looks >= NATURAL_STAT_CAP &&
+          health >= NATURAL_STAT_CAP
+        ) {
+          unlock('max-all')
+        }
+
+        if (s.age >= 90) unlock('live-90')
+        if (s.age >= 100) unlock('live-100')
+        if (s.age >= 110) unlock('live-110')
+      }
+
       /** New friend near the player's age, usually the same gender. */
       const rollNewFriend = (ageOffset: number): Person => {
         const s = get()
@@ -1081,6 +1153,8 @@ export const useGameStore = create<GameState>()(
         theme: 'dark' as ThemeName,
         modalNonce: 0,
         deepLink: null as DeepLink | null,
+        // Account-wide: earned once, kept forever (not reset by a new life).
+        unlockedAchievements: [] as string[],
 
         setSfxVolume: (volume: number) => {
           set({ sfxVolume: Math.max(0, Math.min(1, volume)) })
@@ -1088,6 +1162,13 @@ export const useGameStore = create<GameState>()(
 
         setTheme: (theme: ThemeName) => {
           set({ theme })
+        },
+
+        unlockAchievement: (id: string) => {
+          unlock(id)
+        },
+        checkAchievements: () => {
+          checkMilestones()
         },
 
         rerollStats: () => {
@@ -1509,6 +1590,7 @@ export const useGameStore = create<GameState>()(
           // ----- Ongoing pursuits: apply their yearly effects + hidden cost -----
           const pursuits: Record<ActivityCategory, ActivePursuit | null> = { ...s.pursuits }
           let pursuitPopEvent: GameEvent | null = null
+          let languagesLearnedThisYear = 0
           for (const category of ['sport', 'mind', 'hobby'] as ActivityCategory[]) {
             const active = pursuits[category]
             if (!active) continue
@@ -1534,6 +1616,7 @@ export const useGameStore = create<GameState>()(
             // Timed pursuit (language) completes and pops a notification.
             if (activity.durationYears && years >= activity.durationYears) {
               pursuits[category] = null
+              languagesLearnedThisYear += 1
               if (!pursuitPopEvent) {
                 pursuitPopEvent = languageCompleteEvent(active.label ?? 'a new language')
               }
@@ -1847,6 +1930,16 @@ export const useGameStore = create<GameState>()(
             log: [...s.log, ...entries],
             nextLogId: logId,
           })
+
+          // Languages learned this year count toward the polyglot achievements.
+          if (languagesLearnedThisYear > 0) {
+            const total = get().runLanguages + languagesLearnedThisYear
+            set({ runLanguages: total })
+            unlock('language-1')
+            if (total >= 5) unlock('language-5')
+          }
+          // Age, stats, money and any passive income may have crossed a line.
+          checkMilestones()
         },
 
         chooseOption: (choiceIndex: number) => {
@@ -1953,6 +2046,13 @@ export const useGameStore = create<GameState>()(
               ),
             })
           }
+          // Some choices earn an achievement (trying drugs, winning the lottery).
+          if (!died && choice.unlocks) {
+            const ids = Array.isArray(choice.unlocks) ? choice.unlocks : [choice.unlocks]
+            for (const id of ids) unlock(id)
+          }
+          // An event payout (or debt) may cross a wealth milestone.
+          if (!died) checkMilestones()
 
           // Relationship events touch a specific person: bond delta + turning
           // them into an enemy or making peace.
@@ -2259,6 +2359,9 @@ export const useGameStore = create<GameState>()(
               kind: 'money',
             },
           ])
+          // Doubling your money on a position (proceeds ≥ 2× what you put in).
+          if (costSold > 0 && proceeds >= costSold * 2) unlock('invest-2x')
+          checkMilestones()
         },
 
         oneNightStand: () => {
@@ -2320,6 +2423,7 @@ export const useGameStore = create<GameState>()(
               addLog([
                 { text: `You caught ${std.name} from a hookup. ${std.emoji} Get it treated at the clinic.`, kind: 'event' },
               ])
+              unlock('std')
             } else {
               stats.health = clampStat(stats.health - randomInt(3, 7))
               stats.happiness = clampStat(stats.happiness - randomInt(3, 7))
@@ -2423,6 +2527,9 @@ export const useGameStore = create<GameState>()(
           set({ relationships, stats, conditions, nextFriendId, partnerStatus })
           playSfx(sfx)
           addLog(logs)
+          // Hooking up while you have a partner is cheating, caught or not.
+          if (partner) unlock('cheat')
+          if (conditions.length > (s.conditions ?? []).length) unlock('std')
         },
 
         sendText: (personId, payload) => {
@@ -2483,6 +2590,7 @@ export const useGameStore = create<GameState>()(
             })
             playSfx('success')
             addLog([{ text: `You beat ${ill.name} — the treatment worked! 🎉`, kind: 'event' }])
+            if (id.includes('cancer') || id === 'leukemia') unlock('survive-cancer')
           } else {
             set({
               money: s.money - cost,
@@ -2501,6 +2609,14 @@ export const useGameStore = create<GameState>()(
           const crime = getCrime(crimeId)
           if (!crime || !s.alive || s.age < crime.minAge) return
           if (!useYearlyAction(`crime-${crimeId}`)) return
+
+          // Murder means a life taken, whether or not you're ever caught.
+          if (crimeId === 'murder') {
+            const kills = s.runMurders + 1
+            set({ runMurders: kills })
+            unlock('kill-1')
+            if (kills >= 5) unlock('kill-5')
+          }
 
           const stats = { ...s.stats }
           let money = s.money
@@ -2549,6 +2665,7 @@ export const useGameStore = create<GameState>()(
             addLog([
               { text: `You were convicted of ${crime.name.toLowerCase()} and sentenced to ${sentence} year${sentence === 1 ? '' : 's'} in prison. 🚔`, kind: 'death' },
             ])
+            unlock('jail')
           } else {
             const payout = crime.reward > 0 ? randomInt(Math.round(crime.reward * 0.5), Math.round(crime.reward * 1.5)) : 0
             money += payout
@@ -2645,6 +2762,7 @@ export const useGameStore = create<GameState>()(
           const cost = scaleByCountry(5000, s.countryCode)
           if (s.money < cost) return
           if (!useYearlyAction('bribe')) return
+          unlock('bribe')
           if (Math.random() < 0.6) {
             const off = randomInt(1, Math.min(3, s.prison.yearsLeft))
             set({
@@ -2678,6 +2796,9 @@ export const useGameStore = create<GameState>()(
           addLog([
             { text: `You bought a ${asset.name} ${asset.emoji} for $${asset.price.toLocaleString()}!`, kind: 'event' },
           ])
+          if (asset.category === 'phone') unlock('buy-phone')
+          else if (asset.category === 'car') unlock('buy-car')
+          else if (asset.category === 'luxury') unlock('buy-luxury')
         },
 
         sellAsset: (assetId: string) => {
@@ -2720,6 +2841,8 @@ export const useGameStore = create<GameState>()(
               kind: 'money',
             },
           ])
+          unlock('buy-apartment')
+          checkMilestones()
         },
 
         sellHome: (homeId: string) => {
@@ -3265,6 +3388,9 @@ export const useGameStore = create<GameState>()(
               kind: 'career',
             },
           ])
+          // Retiring from a degree-gated career earns that career's badge.
+          if (job.requiresDegree || job.requiredMajor) unlock(`career-${job.id}`)
+          checkMilestones()
         },
 
         // ----- Pro sports -----
@@ -3612,6 +3738,7 @@ export const useGameStore = create<GameState>()(
               kind: 'relationship',
             },
           ])
+          checkMilestones()
         },
 
         monetizeSocial: (app: SocialApp) => {
@@ -3642,6 +3769,7 @@ export const useGameStore = create<GameState>()(
               kind: 'money',
             },
           ])
+          checkMilestones()
         },
 
         socialEngage: (app: SocialApp) => {
@@ -3665,6 +3793,7 @@ export const useGameStore = create<GameState>()(
               kind: 'relationship',
             },
           ])
+          checkMilestones()
         },
 
         socialCollab: (app: SocialApp) => {
@@ -3706,6 +3835,7 @@ export const useGameStore = create<GameState>()(
               kind: 'relationship',
             },
           ])
+          checkMilestones()
         },
 
         socialBuyFollowers: (app: SocialApp) => {
@@ -3748,6 +3878,7 @@ export const useGameStore = create<GameState>()(
               kind: 'relationship',
             },
           ])
+          checkMilestones()
         },
 
         propose: () => {
@@ -3784,6 +3915,7 @@ export const useGameStore = create<GameState>()(
           })
           playSfx('wedding')
           addLog([{ text: `You married ${partner.name}! 💒`, kind: 'relationship' }])
+          unlock('married')
         },
 
         breakUp: () => {
@@ -3810,6 +3942,8 @@ export const useGameStore = create<GameState>()(
               ? { text: `You divorced ${partner.name}. They took half of everything.`, kind: 'relationship' }
               : { text: `You broke up with ${partner.name}.`, kind: 'relationship' },
           ])
+          if (divorced) unlock('divorce')
+          checkMilestones()
         },
 
         tryForBaby: () => {
@@ -3821,32 +3955,52 @@ export const useGameStore = create<GameState>()(
           const womanAge = s.gender === 'female' ? s.age : partner.gender === 'female' ? partner.age : null
           if (womanAge === null || womanAge > 55) return
           const kids = s.relationships.filter((p) => p.role === 'child')
-          if (kids.length >= 8) return
+          if (kids.length >= 99) return
           if (!useYearlyAction('try-baby')) return
           const chance = s.partnerStatus === 'married' ? 0.65 : 0.4
           if (Math.random() < chance) {
-            const gender = randomGender()
+            // Usually one, but sometimes twins (or, rarely, triplets).
+            const litter = Math.random() < 0.04 ? 3 : Math.random() < 0.15 ? 2 : 1
             const lastName = s.name.split(' ').slice(-1)[0] ?? ''
-            const baby: Person = {
-              id: `child-${s.nextFriendId}`,
-              role: 'child',
-              gender,
-              name: `${randomFirstName(s.countryCode, gender)} ${lastName}`.trim(),
-              age: 0,
-              alive: true,
-              relationship: randomInt(80, 100),
-              // The career they'll grow into, revealed once they're an adult.
-              ...makeNpcLife(),
+            let nextFriendId = s.nextFriendId
+            const babies: Person[] = []
+            for (let i = 0; i < litter; i++) {
+              const gender = randomGender()
+              babies.push({
+                id: `child-${nextFriendId}`,
+                role: 'child',
+                gender,
+                name: `${randomFirstName(s.countryCode, gender)} ${lastName}`.trim(),
+                age: 0,
+                alive: true,
+                relationship: randomInt(80, 100),
+                // The career they'll grow into, revealed once they're an adult.
+                ...makeNpcLife(),
+              })
+              nextFriendId += 1
             }
+            const total = s.runChildren + litter
             set({
-              relationships: [...s.relationships, baby],
-              nextFriendId: s.nextFriendId + 1,
+              relationships: [...s.relationships, ...babies],
+              nextFriendId,
+              runChildren: total,
               stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 8) },
             })
             playSfx('baby')
+            const names = babies.map((b) => b.name).join(' & ')
             addLog([
-              { text: `You had a baby${partner ? ` with ${partner.name}` : ''}! Welcome ${baby.name}. 👶`, kind: 'relationship' },
+              {
+                text:
+                  litter > 1
+                    ? `You had ${litter === 3 ? 'triplets' : 'twins'}${partner ? ` with ${partner.name}` : ''}! Welcome ${names}. 👶`
+                    : `You had a baby${partner ? ` with ${partner.name}` : ''}! Welcome ${names}. 👶`,
+                kind: 'relationship',
+              },
             ])
+            unlock('first-child')
+            if (total >= 3) unlock('children-3')
+            if (total >= 10) unlock('children-10')
+            if (total >= 50) unlock('children-50')
           } else {
             playSfx('fail')
             addLog([{ text: 'You tried for a baby this year, but it wasn’t meant to be.', kind: 'relationship' }])
@@ -4055,7 +4209,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 33,
+      version: 34,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({
         hasHydrated: _hasHydrated,
@@ -4309,6 +4463,14 @@ export const useGameStore = create<GameState>()(
         // v32 saves predate the consumable Messages catalogue.
         if (version < 33) {
           state.usedTexts = []
+        }
+        // v33 saves predate the achievements system.
+        if (version < 34) {
+          state.unlockedAchievements = []
+          state.runMurders = 0
+          // Count children already born this life so progress isn't lost.
+          state.runChildren = (state.relationships ?? []).filter((p) => p.role === 'child').length
+          state.runLanguages = 0
         }
         return state as GameState
       },

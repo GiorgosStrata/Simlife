@@ -80,6 +80,8 @@ export function DatingModal({ onClose }: DatingModalProps) {
   }
 
   const like = () => {
+    // First right-swipe ever earns a badge.
+    useGameStore.getState().unlockAchievement('swipe-right')
     // Mutual-match chance rises with both people's looks.
     const chance = 0.25 + (playerLooks + profile.looks) / 400
     if (Math.random() < chance) {

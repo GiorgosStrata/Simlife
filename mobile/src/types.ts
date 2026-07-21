@@ -52,6 +52,8 @@ export interface EventChoice {
   startsActivity?: string
   /** Actually make a new friend — a real NPC added to your social circle. */
   grantsFriend?: boolean
+  /** Achievement id(s) this choice unlocks (e.g. trying drugs, winning the lottery). */
+  unlocks?: string | string[]
   /** Optional game action triggered on top of the stat effects. */
   action?: 'enrollUniversity' | 'parentsDivorce' | 'makeEnemy' | 'reconcile'
   /** Bond change applied to the person this event involves (see GameEvent.personId). */

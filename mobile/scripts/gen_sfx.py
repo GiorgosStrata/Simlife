@@ -312,24 +312,26 @@ def build_death():
 
 
 def build_dice():
-    # Dice rattling in a cup then settling: a cluster of short, dry wooden
-    # "tak" clicks at randomish offsets, tumbling closer together, then two
-    # final settle taps as they land.
-    def tak(f, vol=0.5):
-        # Very short click: quick noise transient + a tight mid-pitch blip.
+    # A soft, warm shake-and-settle: a few muffled wooden tumbles (low, heavily
+    # lowpassed so they're rounded, not clicky) that settle, then a short bright
+    # bell "ding" so the roll resolves on a pleasant, rewarding note.
+    def knock(f, vol=0.5):
+        # A rounded wooden bump: gentle low blip under a soft muffled noise.
         return mix(
-            (0.0, noise(0.03, vol=vol * 0.7, a=0.0004, d=0.028, lowpass=0.5)),
-            (0.0, tone(f, 0.045, 'tri', vol=vol * 0.5, a=0.001, d=0.03, s=0.0,
-                       r=0.012, harmonics=[(2.0, 0.15)])),
+            (0.0, noise(0.05, vol=vol * 0.35, a=0.003, d=0.05, lowpass=0.12)),
+            (0.0, tone(f, 0.07, 'sine', vol=vol * 0.5, a=0.004, d=0.05, s=0.0,
+                       r=0.02, glide_to=f * 0.85)),
         )
-    # Tumbling: accelerating clicks (gaps shrink) with wandering pitch.
-    offsets = [0.00, 0.075, 0.14, 0.195, 0.24, 0.275]
-    pitches = [520, 610, 470, 660, 500, 580]
-    segs = [(o, tak(p, vol=0.42 + 0.03 * i)) for i, (o, p) in enumerate(zip(offsets, pitches))]
-    # Two settle taps as the dice come to rest.
-    segs.append((0.33, tak(430, vol=0.6)))
-    segs.append((0.40, tak(390, vol=0.5)))
-    return mix(*segs)
+    return mix(
+        (0.00, knock(240, vol=0.5)),
+        (0.08, knock(300, vol=0.45)),
+        (0.15, knock(260, vol=0.5)),
+        (0.22, knock(320, vol=0.4)),
+        # Settle + a friendly resolving chime.
+        (0.30, knock(220, vol=0.5)),
+        (0.34, bell(N['E5'], 0.28, 0.4)),
+        (0.40, bell(N['A5'], 0.34, 0.5)),
+    )
 
 
 SOUNDS = {

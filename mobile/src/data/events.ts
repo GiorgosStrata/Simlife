@@ -175,6 +175,7 @@ export const EVENTS: GameEvent[] = [
         label: 'Buy one ticket',
         outcome: 'You won a small prize! Not the jackpot, but drinks are on you.',
         effects: { money: 150, happiness: 5 },
+        unlocks: 'lottery-win',
       },
       {
         label: 'Buy ten tickets',
@@ -828,6 +829,7 @@ export const EVENTS: GameEvent[] = [
         label: 'Take it',
         outcome: 'You took the baggie. The high was brief; the regret, less so.',
         effects: { happiness: 5, health: -12, smarts: -4 },
+        unlocks: 'try-drugs',
       },
       {
         label: 'Report him to the cops',
@@ -1179,7 +1181,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 18,
     maxAge: 90,
     choices: [
-      { label: 'Scratch it now', outcome: 'Three matching symbols — a small win! Not retirement money, but a nice surprise.', effects: { happiness: 6, money: 500 }, sfx: 'cash' },
+      { label: 'Scratch it now', outcome: 'Three matching symbols — a small win! Not retirement money, but a nice surprise.', effects: { happiness: 6, money: 500 }, sfx: 'cash', unlocks: 'lottery-win' },
       { label: 'Save it for later', outcome: 'You tucked it in a drawer and forgot about it. It was a loser anyway.', effects: {} },
     ],
   },

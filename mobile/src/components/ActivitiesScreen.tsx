@@ -5,6 +5,8 @@ import { getActivity } from '../data/activities'
 import { getAsset } from '../data/assets'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
+import { AchievementsModal } from './AchievementsModal'
+import { ACHIEVEMENTS } from '../data/achievements'
 import { ActivitiesModal } from './ActivitiesModal'
 import { BelongingsModal } from './BelongingsModal'
 import { CrimeModal } from './CrimeModal'
@@ -19,12 +21,14 @@ export function ActivitiesScreen() {
   const pursuits = useGameStore((s) => s.pursuits)
   const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
   const homes = useGameStore((s) => s.homes)
+  const unlockedCount = useGameStore((s) => s.unlockedAchievements.length)
   const [activities, setActivities] = useState(false)
   const [crime, setCrime] = useState(false)
   const [wellness, setWellness] = useState(false)
   const [shopping, setShopping] = useState(false)
   const [phoneOpen, setPhoneOpen] = useState(false)
   const [belongings, setBelongings] = useState(false)
+  const [achievements, setAchievements] = useState(false)
 
   const hasPhone = ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')
   const itemCount = ownedAssetIds.length + homes.length
@@ -100,7 +104,17 @@ export function ActivitiesScreen() {
         chevron
       />
 
+      <SectionHeading color={colors.amber400}>MILESTONES</SectionHeading>
+      <Row
+        emoji="🏆"
+        title="Achievements"
+        subtitle={`${unlockedCount} of ${ACHIEVEMENTS.length} unlocked`}
+        onPress={tap(() => setAchievements(true))}
+        chevron
+      />
+
       {activities && <ActivitiesModal onClose={() => setActivities(false)} />}
+      {achievements && <AchievementsModal onClose={() => setAchievements(false)} />}
       {crime && <CrimeModal onClose={() => setCrime(false)} />}
       {wellness && <MindBodyModal onClose={() => setWellness(false)} />}
       {shopping && <StoreModal onClose={() => setShopping(false)} />}
