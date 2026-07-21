@@ -12,8 +12,12 @@ import { EventModal } from './src/components/EventModal'
 import { Flag } from './src/components/Flag'
 import { GRADIENTS, GradientFill } from './src/components/Gradient'
 import { GameOverModal } from './src/components/GameOverModal'
+import { InvestingModal } from './src/components/InvestingModal'
+import { JobListingsModal } from './src/components/JobListingsModal'
 import { LifeLog } from './src/components/LifeLog'
 import { MajorPickerModal } from './src/components/MajorPickerModal'
+import { MindBodyModal } from './src/components/MindBodyModal'
+import { StoreModal } from './src/components/StoreModal'
 import { RelationshipsScreen } from './src/components/RelationshipsScreen'
 import { SettingsModal } from './src/components/SettingsModal'
 import { StatsPanel } from './src/components/StatsPanel'
@@ -56,6 +60,8 @@ function Game() {
   const prison = useGameStore((s) => s.prison)
   const theme = useGameStore((s) => s.theme)
   const modalNonce = useGameStore((s) => s.modalNonce)
+  const deepLink = useGameStore((s) => s.deepLink)
+  const clearDeepLink = useGameStore((s) => s.clearDeepLink)
 
   // Apply the light/dark theme on web whenever it changes.
   useEffect(() => {
@@ -208,6 +214,12 @@ function Game() {
       <GameOverModal />
       {applyingToUniversity && <MajorPickerModal />}
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+
+      {/* Event choices can jump straight into an app area ("Invest" → Vestr). */}
+      {deepLink === 'investing' && <InvestingModal onClose={clearDeepLink} />}
+      {deepLink === 'health' && <MindBodyModal onClose={clearDeepLink} />}
+      {deepLink === 'shop' && <StoreModal onClose={clearDeepLink} />}
+      {deepLink === 'jobs' && <JobListingsModal onClose={clearDeepLink} />}
     </SafeAreaView>
   )
 }

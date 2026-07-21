@@ -9,6 +9,7 @@ import type {
   Ancestor,
   ActivePursuit,
   ActivityCategory,
+  DeepLink,
   GameEvent,
   Gender,
   Job,
@@ -463,6 +464,8 @@ interface GameState {
   toast: { text: string } | null
   /** Bumped to ask every open action sheet to close (back to main). Not persisted. */
   modalNonce: number
+  /** An app area an event choice asked to open ("Invest" → Vestr). Not persisted. */
+  deepLink: DeepLink | null
   /** Events already shown this life, so the pool doesn't repeat early. */
   usedEventIds: string[]
   nextLogId: number
@@ -562,6 +565,8 @@ interface GameState {
   dismissToast: () => void
   /** Close all open action sheets, returning to the main screen. */
   closeModals: () => void
+  /** Dismiss an event-choice deep link once its screen has been closed. */
+  clearDeepLink: () => void
 
   // School (once per year each)
   studyHarder: () => void
@@ -614,6 +619,13 @@ interface GameState {
 
   /** Hook up again with an existing fling or ex (once a year each). */
   hookUp: (personId: string) => void
+
+  /**
+   * Send a contact a text from the Messages app. The reply is worked out in
+   * the UI; this applies the bond/mood nudge, and only your first text to
+   * each person each year moves the needle (so you can't farm bond by spam).
+   */
+  sendText: (personId: string, bondDelta: number, happinessDelta: number) => void
 
   /** Pay to treat an active illness — may cure it (see data/illnesses.ts). */
   treatIllness: (id: string) => void
@@ -1030,6 +1042,7 @@ export const useGameStore = create<GameState>()(
         sfxVolume: 1,
         theme: 'dark' as ThemeName,
         modalNonce: 0,
+        deepLink: null as DeepLink | null,
 
         setSfxVolume: (volume: number) => {
           set({ sfxVolume: Math.max(0, Math.min(1, volume)) })
@@ -1816,6 +1829,8 @@ export const useGameStore = create<GameState>()(
             money,
             alive: !died,
             currentEvent: null,
+            // Some choices jump straight into an app area ("Invest" → Vestr).
+            deepLink: !died && choice.opens ? choice.opens : null,
             log: [...s.log, ...entries],
             nextLogId: logId,
           })
@@ -1878,6 +1893,7 @@ export const useGameStore = create<GameState>()(
 
         showToast: (text: string) => set({ toast: { text } }),
         dismissToast: () => set({ toast: null }),
+        clearDeepLink: () => set({ deepLink: null }),
         closeModals: () => set((st) => ({ modalNonce: st.modalNonce + 1 })),
 
         // ----- School -----
@@ -2310,6 +2326,22 @@ export const useGameStore = create<GameState>()(
           set({ relationships, stats, conditions, nextFriendId, partnerStatus })
           playSfx(sfx)
           addLog(logs)
+        },
+
+        sendText: (personId: string, bondDelta: number, happinessDelta: number) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive) return
+          // Only your first text to each person each year moves the bond.
+          if (!useYearlyAction(`text-${personId}`)) return
+          updatePerson(personId, {
+            relationship: clampRelationship(person.relationship + bondDelta),
+          })
+          if (happinessDelta) {
+            set({
+              stats: { ...get().stats, happiness: clampStat(get().stats.happiness + happinessDelta) },
+            })
+          }
         },
 
         treatIllness: (id: string) => {
@@ -3768,7 +3800,13 @@ export const useGameStore = create<GameState>()(
       name: 'simlife-save',
       version: 32,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ hasHydrated: _hasHydrated, toast: _toast, modalNonce: _modalNonce, ...rest }) =>
+      partialize: ({
+        hasHydrated: _hasHydrated,
+        toast: _toast,
+        modalNonce: _modalNonce,
+        deepLink: _deepLink,
+        ...rest
+      }) =>
         rest,
       onRehydrateStorage: () => () => {
         useGameStore.setState({ hasHydrated: true })

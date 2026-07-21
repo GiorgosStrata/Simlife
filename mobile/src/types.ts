@@ -25,11 +25,16 @@ export interface Effects extends Partial<Stats> {
   money?: number
 }
 
+/** App areas an event choice can jump straight into. */
+export type DeepLink = 'investing' | 'health' | 'shop' | 'jobs'
+
 export interface EventChoice {
   label: string
   /** Line written to the life log after picking this choice. */
   outcome: string
   effects: Effects
+  /** Open this app area right after the event resolves ("Invest" → Vestr). */
+  opens?: DeepLink
   /** Optional game action triggered on top of the stat effects. */
   action?: 'enrollUniversity' | 'parentsDivorce' | 'makeEnemy' | 'reconcile'
   /** Bond change applied to the person this event involves (see GameEvent.personId). */
