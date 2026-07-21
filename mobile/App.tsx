@@ -23,6 +23,7 @@ import { RelationshipsScreen } from './src/components/RelationshipsScreen'
 import { SettingsModal } from './src/components/SettingsModal'
 import { StatsPanel } from './src/components/StatsPanel'
 import { TabBar, type TabKey } from './src/components/TabBar'
+import { AchievementToast } from './src/components/AchievementToast'
 import { Toast } from './src/components/Toast'
 import { getMajor } from './src/data/majors'
 import { getJob, isInSchool, jobTitle, useGameStore } from './src/store/gameStore'
@@ -222,6 +223,8 @@ function Game() {
       {deepLink === 'shop' && <StoreModal onClose={clearDeepLink} />}
       {deepLink === 'jobs' && <JobListingsModal onClose={clearDeepLink} />}
       {deepLink === 'social' && <SocialModal app="flicktok" onClose={clearDeepLink} />}
+
+      <AchievementToast />
     </SafeAreaView>
   )
 }

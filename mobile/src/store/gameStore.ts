@@ -472,6 +472,8 @@ interface GameState {
   currentEvent: GameEvent | null
   /** Transient confirmation bubble shown after a user action; not persisted. */
   toast: { text: string } | null
+  /** Queue of just-earned achievement ids to pop as banners; not persisted. */
+  achievementQueue: string[]
   /** Bumped to ask every open action sheet to close (back to main). Not persisted. */
   modalNonce: number
   /** An app area an event choice asked to open ("Invest" → Vestr). Not persisted. */
@@ -588,6 +590,8 @@ interface GameState {
   // Transient confirmation bubble
   showToast: (text: string) => void
   dismissToast: () => void
+  /** Remove the front achievement banner once it's been shown. */
+  dismissAchievement: () => void
   /** Close all open action sheets, returning to the main screen. */
   closeModals: () => void
   /** Dismiss an event-choice deep link once its screen has been closed. */
@@ -758,6 +762,7 @@ function newLifeState() {
     investments: {} as Record<string, { units: number; invested: number }>,
     currentEvent: null,
     toast: null as { text: string } | null,
+    achievementQueue: [] as string[],
     usedEventIds: [] as string[],
     nextLogId: 1,
     log: [] as LogEntry[],
@@ -1075,7 +1080,13 @@ export const useGameStore = create<GameState>()(
       const unlock = (id: string): void => {
         const s = get()
         if (s.unlockedAchievements.includes(id)) return
-        set({ unlockedAchievements: [...s.unlockedAchievements, id] })
+        set({
+          unlockedAchievements: [...s.unlockedAchievements, id],
+          // Queue a banner (only for real catalogue entries).
+          achievementQueue: ACHIEVEMENTS_BY_ID[id]
+            ? [...s.achievementQueue, id]
+            : s.achievementQueue,
+        })
         const a = ACHIEVEMENTS_BY_ID[id]
         if (a) {
           addLog([{ text: `🏆 Achievement unlocked: ${a.title}! ${a.emoji}`, kind: 'info' }])
@@ -2090,6 +2101,7 @@ export const useGameStore = create<GameState>()(
 
         showToast: (text: string) => set({ toast: { text } }),
         dismissToast: () => set({ toast: null }),
+        dismissAchievement: () => set({ achievementQueue: get().achievementQueue.slice(1) }),
         clearDeepLink: () => set({ deepLink: null }),
         closeModals: () => set((st) => ({ modalNonce: st.modalNonce + 1 })),
 
@@ -4214,6 +4226,7 @@ export const useGameStore = create<GameState>()(
       partialize: ({
         hasHydrated: _hasHydrated,
         toast: _toast,
+        achievementQueue: _achievementQueue,
         modalNonce: _modalNonce,
         deepLink: _deepLink,
         ...rest
