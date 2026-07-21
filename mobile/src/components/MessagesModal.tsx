@@ -15,6 +15,9 @@ const TEXTABLE: PersonRole[] = [
   'partner', 'ex', 'fling', 'mother', 'father', 'sibling', 'child', 'friend', 'enemy',
 ]
 
+/** Kids this young don't have a phone yet, so you can't text them. */
+const PHONE_AGE = 12
+
 interface Bubble {
   from: 'me' | 'them'
   text: string
@@ -29,6 +32,9 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
   const relationships = useGameStore((s) => s.relationships)
   const partnerStatus = useGameStore((s) => s.partnerStatus)
   const age = useGameStore((s) => s.age)
+  const year = useGameStore((s) => s.year)
+  const usedTexts = useGameStore((s) => s.usedTexts)
+  const usedActions = useGameStore((s) => s.usedActions)
   const sendText = useGameStore((s) => s.sendText)
   const [openId, setOpenId] = useState<string | null>(null)
   const [thread, setThread] = useState<Bubble[]>([])
@@ -39,7 +45,9 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
   }, [])
   useCloseOnAction(onClose)
 
-  const contacts = relationships.filter((p) => p.alive && TEXTABLE.includes(p.role))
+  const contacts = relationships.filter(
+    (p) => p.alive && TEXTABLE.includes(p.role) && p.age >= PHONE_AGE,
+  )
   const open = openId ? relationships.find((p) => p.id === openId) : null
 
   const openChat = (person: Person) => {
@@ -48,20 +56,27 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
     setOpenId(person.id)
   }
 
-  const options = open ? textOptionsFor(open.role, age) : []
+  const options = open
+    ? textOptionsFor(open.role, age, open.relationship, open.id, year, usedTexts)
+    : []
+  // One text per contact per year — after that, the options rest until next year.
+  const textedThisYear = open ? usedActions.includes(`text-${open.id}`) : false
 
   const send = (toneIndex: number) => {
-    if (!open) return
+    if (!open || textedThisYear) return
     const opt = options[toneIndex]
     const reply: TextReply = textReply(open.role, open.relationship, opt.tone)
     setThread((t) => [...t, { from: 'me', text: opt.label }])
     playSfx('click')
-    // Apply the reply's effects (gated to your first text per person per year).
+    // Apply the reply's effects (gated to your first text per person per year),
+    // and spend this line for the rest of the life unless it's a utility ask.
     sendText(open.id, {
       bond: reply.bond,
       happiness: reply.happiness,
       money: reply.money,
       grantsPhone: reply.grantsPhone,
+      messageId: opt.id,
+      consumable: opt.consumable !== false,
     })
     // Their reply lands a beat later.
     setTimeout(() => {
@@ -132,16 +147,26 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
               </ScrollView>
 
               <View style={styles.options}>
-                {options.map((opt, i) => (
-                  <Pressable
-                    key={opt.id}
-                    accessibilityRole="button"
-                    onPress={() => send(i)}
-                    style={({ pressed }) => [styles.optBtn, pressed && styles.optBtnPressed]}
-                  >
-                    <Text style={styles.optText}>{opt.label}</Text>
-                  </Pressable>
-                ))}
+                {textedThisYear ? (
+                  <Text style={styles.sentNote}>
+                    You’ve already reached out this year 💬 Come back next year.
+                  </Text>
+                ) : options.length === 0 ? (
+                  <Text style={styles.sentNote}>
+                    You’ve said it all to {open.name.split(' ')[0]} — nothing new to add right now.
+                  </Text>
+                ) : (
+                  options.map((opt, i) => (
+                    <Pressable
+                      key={opt.id}
+                      accessibilityRole="button"
+                      onPress={() => send(i)}
+                      style={({ pressed }) => [styles.optBtn, pressed && styles.optBtnPressed]}
+                    >
+                      <Text style={styles.optText}>{opt.label}</Text>
+                    </Pressable>
+                  ))
+                )}
               </View>
 
               <Pressable accessibilityRole="button" onPress={onClose} style={styles.cancel}>
@@ -195,6 +220,13 @@ const styles = StyleSheet.create({
   },
   optBtnPressed: { backgroundColor: colors.cyan50 },
   optText: { fontSize: 14, fontWeight: '600', color: colors.slate800 },
+  sentNote: {
+    fontSize: 13,
+    color: colors.slate500,
+    textAlign: 'center',
+    paddingVertical: 14,
+    fontStyle: 'italic',
+  },
   cancel: { marginTop: 10, alignItems: 'center', paddingVertical: 8 },
   cancelText: { fontSize: 14, fontWeight: '700', color: colors.slate500 },
 })

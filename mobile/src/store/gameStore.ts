@@ -475,6 +475,12 @@ interface GameState {
   hasHydrated: boolean
   /** Once-per-year action keys, cleared on every Age Up. */
   usedActions: string[]
+  /**
+   * Conversational texts already sent this life, keyed `${personId}:${msgId}`.
+   * Unlike usedActions this is NOT cleared yearly — once you've said something
+   * to someone, that exact line is off the menu for good.
+   */
+  usedTexts: string[]
 
   // Settings (survive new lives)
   sfxVolume: number
@@ -630,7 +636,15 @@ interface GameState {
    */
   sendText: (
     personId: string,
-    payload: { bond: number; happiness: number; money?: number; grantsPhone?: boolean },
+    payload: {
+      bond: number
+      happiness: number
+      money?: number
+      grantsPhone?: boolean
+      /** The message id sent, and whether it's consumed for the rest of this life. */
+      messageId?: string
+      consumable?: boolean
+    },
   ) => void
 
   /** Pay to treat an active illness — may cure it (see data/illnesses.ts). */
@@ -720,6 +734,7 @@ function newLifeState() {
     nextLogId: 1,
     log: [] as LogEntry[],
     usedActions: [] as string[],
+    usedTexts: [] as string[],
     jobId: null,
     jobTier: 0,
     yearsInJob: 0,
@@ -2403,6 +2418,10 @@ export const useGameStore = create<GameState>()(
           if (!person?.alive || !s.alive) return
           // Only your first text to each person each year moves the needle.
           if (!useYearlyAction(`text-${personId}`)) return
+          // A conversational line is spent for the rest of this life.
+          if (payload.consumable && payload.messageId) {
+            set({ usedTexts: [...s.usedTexts, `${personId}:${payload.messageId}`] })
+          }
           updatePerson(personId, {
             relationship: clampRelationship(person.relationship + payload.bond),
           })
@@ -3912,7 +3931,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 32,
+      version: 33,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({
         hasHydrated: _hasHydrated,
@@ -4162,6 +4181,10 @@ export const useGameStore = create<GameState>()(
             onlystans: 0,
             ...(state.followers ?? {}),
           } as Record<SocialApp, number>
+        }
+        // v32 saves predate the consumable Messages catalogue.
+        if (version < 33) {
+          state.usedTexts = []
         }
         return state as GameState
       },

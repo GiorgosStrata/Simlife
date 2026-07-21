@@ -18,6 +18,9 @@ interface PhoneModalProps {
 
 type OpenApp = SocialApp | 'cinder' | 'vestr' | 'prowl' | 'messages' | null
 
+/** Adults-only apps: dating, hookups, and adult content are all gated to 18+. */
+const ADULT_APPS: string[] = ['cinder', 'prowl', 'onlystans']
+
 type Launch = { kind: 'app'; app: OpenApp } | { kind: 'soon'; name: string }
 
 interface AppTile {
@@ -65,9 +68,9 @@ export function PhoneModal({ onClose }: PhoneModalProps) {
       setNotice({ title: tile.launch.name, body: 'This app is coming soon. 🚧' })
       return
     }
-    // Cinder is dating — strictly 18+.
-    if (tile.launch.app === 'cinder' && age < 18) {
-      setNotice({ title: 'Cinder', body: 'You must be 18 to use Cinder. 🔞' })
+    // Cinder, Prowl and OnlyStans are adults-only — strictly 18+.
+    if (age < 18 && ADULT_APPS.includes(tile.launch.app as string)) {
+      setNotice({ title: tile.name, body: `You must be 18 to use ${tile.name}. 🔞` })
       return
     }
     setOpen(tile.launch.app)
