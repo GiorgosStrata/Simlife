@@ -12,6 +12,7 @@ import {
   WEDDING_COST,
   useGameStore,
 } from '../store/gameStore'
+import { getAsset } from '../data/assets'
 import { describeOccupation } from '../data/npc'
 import { colors } from '../theme'
 import type { PartnerStatus, Person } from '../types'
@@ -78,6 +79,9 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const age = useGameStore((s) => s.age)
   const playerGender = useGameStore((s) => s.gender)
   const money = useGameStore((s) => s.money)
+  const ownsPhone = useGameStore((s) =>
+    s.ownedAssetIds.some((id) => getAsset(id)?.category === 'phone'),
+  )
   const usedActions = useGameStore((s) => s.usedActions)
   const partnerStatus = useGameStore((s) => s.partnerStatus)
   const relationships = useGameStore((s) => s.relationships)
@@ -86,6 +90,7 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const compliment = useGameStore((s) => s.compliment)
   const insult = useGameStore((s) => s.insult)
   const askForMoney = useGameStore((s) => s.askForMoney)
+  const askForPhone = useGameStore((s) => s.askForPhone)
   const askForAdvice = useGameStore((s) => s.askForAdvice)
   const prankSibling = useGameStore((s) => s.prankSibling)
   const watchMovie = useGameStore((s) => s.watchMovie)
@@ -215,6 +220,22 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
                   subtitle={used(`ask-money-${person.id}`) ? 'Done this year' : 'Works better with a good bond'}
                   onPress={act(() => askForMoney(person.id))}
                   disabled={used(`ask-money-${person.id}`)}
+                  chevron
+                />
+              )}
+              {isParent && age < 18 && !ownsPhone && (
+                <Row
+                  emoji="📱"
+                  title="Ask for a phone"
+                  subtitle={
+                    used(`ask-phone-${person.id}`)
+                      ? 'You asked this year'
+                      : age < 10
+                        ? 'They’ll say you’re too young'
+                        : 'They might cave if your bond is strong'
+                  }
+                  onPress={act(() => askForPhone(person.id))}
+                  disabled={used(`ask-phone-${person.id}`)}
                   chevron
                 />
               )}

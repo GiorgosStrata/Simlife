@@ -31,7 +31,7 @@ export function textOptionsFor(role: PersonRole, age: number): TextOption[] {
   if (isParent && age < 18) {
     return [
       { id: 'ask-money', label: 'Can I have some allowance? 🙏', tone: 'ask-money' },
-      { id: 'ask-phone', label: 'Can I get a new phone? 📱', tone: 'ask-phone' },
+      { id: 'checkin', label: 'Can you pick me up later? 🚗', tone: 'casual' },
       { id: 'love-parent', label: 'Love you! ❤️', tone: 'bold' },
     ]
   }

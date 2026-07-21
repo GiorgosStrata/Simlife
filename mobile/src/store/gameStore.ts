@@ -679,6 +679,8 @@ interface GameState {
   spendTime: (personId: string) => void
   giveGift: (personId: string) => void
   askForMoney: (personId: string) => void
+  /** A child asks a parent to buy them a phone (needs a decent bond). */
+  askForPhone: (personId: string) => void
   goOnDate: () => void
   makeFriend: () => void
   beginRelationship: (name: string, gender: Gender, age: number) => void
@@ -3401,17 +3403,50 @@ export const useGameStore = create<GameState>()(
           if (s.age >= 18) return
           if (!useYearlyAction(`ask-money-${personId}`)) return
           if (person.relationship >= 40) {
-            const amount = randomInt(20, 100)
+            const amount = scaleByCountry(randomInt(20, 100), s.countryCode)
             set({ money: s.money + amount })
             playSfx('cash')
             addLog([
-              { text: `You asked ${person.name} for pocket money and got $${amount}.`, kind: 'relationship' },
+              { text: `You asked ${person.name} for pocket money and got $${amount.toLocaleString()}.`, kind: 'relationship' },
             ])
           } else {
             addLog([
               { text: `${person.name} said money doesn't grow on trees. Request denied.`, kind: 'relationship' },
             ])
           }
+        },
+
+        askForPhone: (personId: string) => {
+          const s = get()
+          const person = s.relationships.find((p) => p.id === personId)
+          if (!person?.alive || !s.alive) return
+          if (person.role !== 'mother' && person.role !== 'father') return
+          if (s.age >= 18) return
+          if (s.ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')) return
+          if (!useYearlyAction(`ask-phone-${personId}`)) return
+          // A good bond and being at least a pre-teen wins them over.
+          if (person.relationship >= 55 && s.age >= 10) {
+            const phones = phonesForYear(s.year)
+            const phone = phones[phones.length - 1]
+            if (phone) {
+              set({ ownedAssetIds: [...s.ownedAssetIds, phone.id] })
+              playSfx('success')
+              addLog([
+                { text: `${person.name} caved and bought you a ${phone.name}! 📱`, kind: 'relationship' },
+              ])
+              return
+            }
+          }
+          playSfx('fail')
+          addLog([
+            {
+              text:
+                s.age < 10
+                  ? `${person.name} said you're too young for a phone. Maybe later.`
+                  : `${person.name} said not yet — earn it first.`,
+              kind: 'relationship',
+            },
+          ])
         },
 
         goOnDate: () => {
