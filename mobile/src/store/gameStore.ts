@@ -340,9 +340,9 @@ export function isInSchool(age: number): boolean {
   return age >= 6 && age < 18
 }
 
-const CLASSMATE_COUNT = 4
-const TEACHER_COUNT = 2
-const COWORKER_COUNT = 3
+const CLASSMATE_COUNT = 12
+const TEACHER_COUNT = 4
+const COWORKER_COUNT = 8
 export const MAX_RAISE_PERCENT = 50
 export const MOVIE_COST = 20
 export const LUNCH_COST = 15
@@ -1873,6 +1873,10 @@ export const useGameStore = create<GameState>()(
 
           if (!died && choice.action === 'enrollUniversity' && canApplyToUniversity()) {
             set({ applyingToUniversity: true })
+          }
+          // "Start jogging" / "Join the gym" — you actually take up the activity.
+          if (!died && choice.startsActivity) {
+            get().startPursuit(choice.startsActivity)
           }
           // "Let the cat in" / "Keep the dog" etc. — you actually get the pet.
           if (!died && choice.grantsPet) {

@@ -31,8 +31,9 @@ interface AppTile {
 /** The character's phone home screen — a real-looking device full of apps. */
 export function PhoneModal({ onClose }: PhoneModalProps) {
   const followers = useGameStore((s) => s.followers)
+  const age = useGameStore((s) => s.age)
   const [open, setOpen] = useState<OpenApp>(null)
-  const [soon, setSoon] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ title: string; body: string } | null>(null)
   useCloseOnAction(onClose)
 
   useEffect(() => {
@@ -60,8 +61,16 @@ export function PhoneModal({ onClose }: PhoneModalProps) {
 
   const press = (tile: AppTile) => () => {
     playSfx('click')
-    if (tile.launch.kind === 'soon') setSoon(tile.launch.name)
-    else setOpen(tile.launch.app)
+    if (tile.launch.kind === 'soon') {
+      setNotice({ title: tile.launch.name, body: 'This app is coming soon. 🚧' })
+      return
+    }
+    // Cinder is dating — strictly 18+.
+    if (tile.launch.app === 'cinder' && age < 18) {
+      setNotice({ title: 'Cinder', body: 'You must be 18 to use Cinder. 🔞' })
+      return
+    }
+    setOpen(tile.launch.app)
   }
 
   const followerLabel = (key: string): string | null => {
@@ -136,15 +145,15 @@ export function PhoneModal({ onClose }: PhoneModalProps) {
       {open === 'messages' && <MessagesModal onClose={() => setOpen(null)} />}
       {open === 'vestr' && <InvestingModal onClose={() => setOpen(null)} />}
 
-      {soon && (
-        <Modal visible transparent animationType="fade" onRequestClose={() => setSoon(null)}>
-          <Pressable style={styles.soonBackdrop} onPress={() => setSoon(null)}>
+      {notice && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setNotice(null)}>
+          <Pressable style={styles.soonBackdrop} onPress={() => setNotice(null)}>
             <View style={styles.soonCard}>
-              <Text style={styles.soonTitle}>{soon}</Text>
-              <Text style={styles.soonBody}>This app is coming soon. 🚧</Text>
+              <Text style={styles.soonTitle}>{notice.title}</Text>
+              <Text style={styles.soonBody}>{notice.body}</Text>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setSoon(null)}
+                onPress={() => setNotice(null)}
                 style={styles.soonButton}
               >
                 <Text style={styles.soonButtonText}>OK</Text>

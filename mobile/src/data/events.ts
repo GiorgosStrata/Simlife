@@ -99,12 +99,14 @@ export const EVENTS: GameEvent[] = [
       {
         label: 'Sign up and commit',
         outcome: 'You actually went. Three times a week. You feel unstoppable.',
-        effects: { health: 12, looks: 8, money: -400, happiness: 3 },
+        effects: { health: 6, looks: 4, money: -400, happiness: 3 },
+        startsActivity: 'gym',
       },
       {
         label: 'Jog outside for free',
         outcome: 'You started jogging in the park. Free, fresh air, occasional rain.',
-        effects: { health: 7, happiness: 4 },
+        effects: { health: 4, happiness: 4 },
+        startsActivity: 'running',
       },
       {
         label: 'Skip it',
@@ -338,8 +340,9 @@ export const EVENTS: GameEvent[] = [
     choices: [
       {
         label: 'Join on guitar',
-        outcome: 'The band is terrible and it is the best thing in your life right now.',
-        effects: { happiness: 10, money: -200 },
+        outcome: 'The band is terrible and it is the best thing in your life right now. You’re a guitarist now.',
+        effects: { happiness: 8, money: -200 },
+        startsActivity: 'guitar',
       },
       {
         label: 'Offer to be the manager',
@@ -481,17 +484,20 @@ export const EVENTS: GameEvent[] = [
       {
         label: 'Competitive gardening',
         outcome: 'Your tomatoes took second place at the county fair. Next year, gold.',
-        effects: { happiness: 8, health: 3 },
+        effects: { happiness: 5 },
+        startsActivity: 'gardening',
       },
       {
-        label: 'Learn the piano',
-        outcome: 'Your rendition of Für Elise is now only mostly wrong. Progress.',
-        effects: { smarts: 6, happiness: 5, money: -200 },
+        label: 'Take up painting',
+        outcome: 'You’re no Picasso, but the canvas is patient and so are you.',
+        effects: { happiness: 4, money: -200 },
+        startsActivity: 'painting',
       },
       {
         label: 'Master chess at the park',
         outcome: 'The park regulars stopped going easy on you. You consider this a great honor.',
-        effects: { smarts: 8, happiness: 4 },
+        effects: { smarts: 4, happiness: 4 },
+        startsActivity: 'chess',
       },
     ],
   },
@@ -1326,7 +1332,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 55,
     maxAge: 95,
     choices: [
-      { label: 'Grow a vegetable patch', outcome: 'Your tomatoes became the envy of the neighborhood. Peaceful days.', effects: { happiness: 6, health: 3 } },
+      { label: 'Grow a vegetable patch', outcome: 'Your tomatoes became the envy of the neighborhood. Peaceful days.', effects: { happiness: 4 }, startsActivity: 'gardening' },
       { label: 'Prefer the couch', outcome: 'You decided the couch was garden enough. The remote is a fine tool.', effects: { happiness: 1, health: -2 } },
     ],
   },
@@ -1572,7 +1578,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 18,
     maxAge: 70,
     choices: [
-      { label: 'Actually keep going', outcome: 'By March the crowd thinned. You stayed. It shows.', effects: { health: 5, looks: 2 } },
+      { label: 'Actually keep going', outcome: 'By March the crowd thinned. You stayed. It shows.', effects: { health: 3, looks: 1 }, startsActivity: 'gym' },
       { label: 'Quit by February', outcome: 'The membership fee became a monthly donation.', effects: { money: -300, happiness: -2 } },
     ],
   },
@@ -1755,7 +1761,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 25,
     maxAge: 80,
     choices: [
-      { label: 'Pick it back up', outcome: 'Like riding a bike. Rusty, joyful, yours.', effects: { happiness: 6, stress: -2 } },
+      { label: 'Pick it back up', outcome: 'Like riding a bike. Rusty, joyful, yours. Painting again.', effects: { happiness: 4, stress: -2 }, startsActivity: 'painting' },
       { label: 'Box it back up', outcome: 'Some day. The box waits patiently.', effects: { happiness: -1 } },
     ],
   },
@@ -1851,7 +1857,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 18,
     maxAge: 60,
     choices: [
-      { label: 'Sign up and train', outcome: 'You crossed the line upright. The medal is everything.', effects: { health: 5, happiness: 5, stress: 2 } },
+      { label: 'Sign up and train', outcome: 'You crossed the line upright. The medal is everything — and you kept running.', effects: { health: 3, happiness: 4, stress: 2 }, startsActivity: 'running' },
       { label: 'Decline the bait', outcome: 'You jogged to the fridge instead. A personal best.', effects: { happiness: 1 } },
     ],
   },
@@ -1875,7 +1881,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 18,
     maxAge: 90,
     choices: [
-      { label: 'Adopt another', outcome: 'Meet Fernando. He makes the jungle complete.', effects: { happiness: 4, money: -40 } },
+      { label: 'Adopt another', outcome: 'Meet Fernando. He makes the jungle complete. Gardening it is.', effects: { happiness: 3, money: -40 }, startsActivity: 'gardening' },
       { label: 'Show restraint', outcome: 'The jungle respected your discipline. Fernando waits.', effects: { smarts: 1 } },
     ],
   },
@@ -2143,7 +2149,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 20,
     maxAge: 95,
     choices: [
-      { label: 'Take the plot', outcome: 'Tomatoes, sunflowers, and one suspiciously fat pigeon.', effects: { happiness: 5, health: 2, stress: -2 } },
+      { label: 'Take the plot', outcome: 'Tomatoes, sunflowers, and one suspiciously fat pigeon.', effects: { happiness: 3, stress: -2 }, startsActivity: 'gardening' },
       { label: 'Pass it on', outcome: 'You gifted the plot to a neighbor. Their zucchini thanks you.', effects: { happiness: 3 } },
     ],
   },
@@ -2167,7 +2173,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 20,
     maxAge: 85,
     choices: [
-      { label: 'Embrace the silence', outcome: 'Two days of quiet. Your thoughts finally sat down.', effects: { happiness: 4, stress: -6 } },
+      { label: 'Embrace the silence', outcome: 'Two days of quiet. Your thoughts finally sat down. You kept up the practice.', effects: { happiness: 3, stress: -6 }, startsActivity: 'meditation' },
       { label: 'Noisily decline', outcome: 'You celebrated your freedom of speech extensively.', effects: { happiness: 2 } },
     ],
   },
@@ -2251,7 +2257,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 18,
     maxAge: 85,
     choices: [
-      { label: 'Accept the starter', outcome: 'Meet Doughnald. You feed him daily. The bread is incredible.', effects: { happiness: 5, health: 1 } },
+      { label: 'Accept the starter', outcome: 'Meet Doughnald. You feed him daily. The bread is incredible.', effects: { happiness: 3 }, startsActivity: 'cooking' },
       { label: 'Buy bread like normal', outcome: 'The bakery does it better and doesn’t need feeding.', effects: { happiness: 1, money: -20 } },
     ],
   },

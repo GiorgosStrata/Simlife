@@ -48,6 +48,8 @@ export interface EventChoice {
   opens?: DeepLink
   /** Actually take in the animal — a free pet of this species ("Cat", "Dog"…). */
   grantsPet?: string
+  /** Actually take up this ongoing activity (an id from data/activities). */
+  startsActivity?: string
   /** Optional game action triggered on top of the stat effects. */
   action?: 'enrollUniversity' | 'parentsDivorce' | 'makeEnemy' | 'reconcile'
   /** Bond change applied to the person this event involves (see GameEvent.personId). */
