@@ -17,6 +17,7 @@ import { JobListingsModal } from './src/components/JobListingsModal'
 import { LifeLog } from './src/components/LifeLog'
 import { MajorPickerModal } from './src/components/MajorPickerModal'
 import { MindBodyModal } from './src/components/MindBodyModal'
+import { SocialModal } from './src/components/SocialModal'
 import { StoreModal } from './src/components/StoreModal'
 import { RelationshipsScreen } from './src/components/RelationshipsScreen'
 import { SettingsModal } from './src/components/SettingsModal'
@@ -220,6 +221,7 @@ function Game() {
       {deepLink === 'health' && <MindBodyModal onClose={clearDeepLink} />}
       {deepLink === 'shop' && <StoreModal onClose={clearDeepLink} />}
       {deepLink === 'jobs' && <JobListingsModal onClose={clearDeepLink} />}
+      {deepLink === 'social' && <SocialModal app="flicktok" onClose={clearDeepLink} />}
     </SafeAreaView>
   )
 }

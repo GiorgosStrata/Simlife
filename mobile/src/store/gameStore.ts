@@ -1902,6 +1902,19 @@ export const useGameStore = create<GameState>()(
               addLog([{ text: `${pet.name} the ${opt.breed} ${opt.emoji} is yours now!`, kind: 'relationship' }])
             }
           }
+          // "Sit with the new kid" / "Hit it off" — you actually make a friend.
+          if (!died && choice.grantsFriend) {
+            const cur = get()
+            const friends = cur.relationships.filter((p) => p.role === 'friend' && p.alive)
+            if (friends.length < MAX_FRIENDS) {
+              const friend = rollNewFriend(randomInt(-3, 3))
+              set({
+                relationships: [...cur.relationships, friend],
+                nextFriendId: cur.nextFriendId + 1,
+              })
+              addLog([{ text: `You made a new friend: ${friend.name}! 🤝`, kind: 'relationship' }])
+            }
+          }
           if (!died && choice.action === 'parentsDivorce') {
             set({
               parentsDivorced: true,

@@ -26,7 +26,7 @@ export interface Effects extends Partial<Stats> {
 }
 
 /** App areas an event choice can jump straight into. */
-export type DeepLink = 'investing' | 'health' | 'shop' | 'jobs'
+export type DeepLink = 'investing' | 'health' | 'shop' | 'jobs' | 'social'
 
 /** Life-situation flags an event can require before it's allowed to fire. */
 export type EventFlag =
@@ -50,6 +50,8 @@ export interface EventChoice {
   grantsPet?: string
   /** Actually take up this ongoing activity (an id from data/activities). */
   startsActivity?: string
+  /** Actually make a new friend — a real NPC added to your social circle. */
+  grantsFriend?: boolean
   /** Optional game action triggered on top of the stat effects. */
   action?: 'enrollUniversity' | 'parentsDivorce' | 'makeEnemy' | 'reconcile'
   /** Bond change applied to the person this event involves (see GameEvent.personId). */

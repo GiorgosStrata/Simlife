@@ -201,6 +201,7 @@ export const EVENTS: GameEvent[] = [
         label: 'Meet for coffee',
         outcome: 'You talked for hours. It felt like no time had passed at all.',
         effects: { happiness: 10 },
+        grantsFriend: true,
       },
       {
         label: 'Politely decline',
@@ -343,6 +344,7 @@ export const EVENTS: GameEvent[] = [
         outcome: 'The band is terrible and it is the best thing in your life right now. You’re a guitarist now.',
         effects: { happiness: 8, money: -200 },
         startsActivity: 'guitar',
+        grantsFriend: true,
       },
       {
         label: 'Offer to be the manager',
@@ -540,6 +542,7 @@ export const EVENTS: GameEvent[] = [
         label: 'Sit with them',
         outcome: 'You sat down and said hi. Turns out you like all the same things. Instant friend.',
         effects: { happiness: 8 },
+        grantsFriend: true,
       },
       {
         label: 'Wave from across the room',
@@ -743,6 +746,7 @@ export const EVENTS: GameEvent[] = [
         label: 'Attend and mingle',
         outcome: 'Old jokes, older stories, and one teacher who still remembers your name.',
         effects: { happiness: 9, money: -50 },
+        grantsFriend: true,
       },
       {
         label: 'Attend, but hover by the snacks',
@@ -892,6 +896,7 @@ export const EVENTS: GameEvent[] = [
         label: 'Lean into the fame',
         outcome: 'You posted a follow-up and gained a following. Brand deals, baby.',
         effects: { happiness: 10, looks: 4, money: 500 },
+        opens: 'social',
       },
       {
         label: 'Delete everything',
@@ -1148,7 +1153,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 13,
     maxAge: 20,
     choices: [
-      { label: 'Do it for the clout', outcome: 'It went viral! Fifteen minutes of fame — and a mild concussion.', effects: { happiness: 6, health: -6, looks: 1 } },
+      { label: 'Do it for the clout', outcome: 'It went viral! Fifteen minutes of fame — and a mild concussion.', effects: { happiness: 6, health: -6, looks: 1 }, opens: 'social' },
       { label: 'Refuse', outcome: 'You sat this one out. Sensible, if a little boring.', effects: { smarts: 2 } },
     ],
   },
@@ -1320,7 +1325,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 28,
     maxAge: 65,
     choices: [
-      { label: 'Go and reconnect', outcome: 'You reconnected with old friends and laughed until your face hurt.', effects: { happiness: 7 } },
+      { label: 'Go and reconnect', outcome: 'You reconnected with old friends and laughed until your face hurt.', effects: { happiness: 7 }, grantsFriend: true },
       { label: 'Skip it', outcome: 'You stayed home. Later you wondered who showed up.', effects: { happiness: -2 } },
     ],
   },
@@ -1893,7 +1898,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 18,
     maxAge: 85,
     choices: [
-      { label: 'Make airport friends', outcome: 'You swapped life stories with a retired magician. Worth it.', effects: { happiness: 4 } },
+      { label: 'Make airport friends', outcome: 'You swapped life stories with a retired magician. Worth it.', effects: { happiness: 4 }, grantsFriend: true },
       { label: 'Guard the outlet', outcome: 'Full battery, empty soul.', effects: { stress: 3, happiness: -2 } },
     ],
   },
@@ -2065,7 +2070,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 14,
     maxAge: 90,
     choices: [
-      { label: 'Keep chatting', outcome: 'Three years later you still swap memes with a stranger named Pat.', effects: { happiness: 4 } },
+      { label: 'Keep chatting', outcome: 'Three years later you still swap memes with a stranger named Pat.', effects: { happiness: 4 }, grantsFriend: true },
       { label: 'Politely end it', outcome: '"Sorry, wrong number." Some doors close quietly.', effects: {} },
     ],
   },
