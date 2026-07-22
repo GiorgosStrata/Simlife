@@ -110,6 +110,11 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const breakUp = useGameStore((s) => s.breakUp)
   const tryForBaby = useGameStore((s) => s.tryForBaby)
   const makePeace = useGameStore((s) => s.makePeace)
+  // NB: every hook must run before the `!person` early-return below — an action
+  // like "Ask them out" re-ids the person (friend → partner), so `person` can
+  // become undefined on the next render. A hook called after the return would
+  // change the hook count and crash the app (React error #300).
+  const premium = usePremiumStore((s) => s.premium)
 
   useEffect(() => {
     playSfx('pop')
@@ -131,7 +136,6 @@ export function PersonModal({ personId, onClose }: PersonModalProps) {
   const isWorkPerson = person.role === 'coworker' || person.role === 'boss'
   const isEnemy = person.role === 'enemy'
   const isChild = person.role === 'child'
-  const premium = usePremiumStore((s) => s.premium)
   const livingFriends = relationships.filter((p) => p.role === 'friend' && p.alive).length
   const canPropose =
     isPartner && partnerStatus === 'dating' && person.relationship >= PROPOSAL_MIN_RELATIONSHIP
