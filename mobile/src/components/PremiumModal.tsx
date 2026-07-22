@@ -19,6 +19,7 @@ const PERKS: { emoji: string; title: string; sub: string }[] = [
   { emoji: '👶', title: 'Switch to your kids anytime', sub: 'Hand over the story while you’re still alive.' },
   { emoji: '♾️', title: 'Unlimited generations', sub: 'Continue the family line forever.' },
   { emoji: '🎚️', title: 'Edit stats before birth', sub: 'Shape your character’s starting stats.' },
+  { emoji: '🎁', title: 'All future DLC included', sub: 'Every upcoming expansion, unlocked forever.' },
 ]
 
 /** One-time purchase paywall for GitLife Premium. */

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -56,12 +57,24 @@ export function AuthScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.brand}>
-          <Text style={styles.logo}>🌱</Text>
-          <Text style={styles.title}>GitLife</Text>
+          <View style={styles.logoTile}>
+            <Image
+              source={require('../../assets/logo-mark.png')}
+              style={styles.logoImg}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.title}>
+            <Text style={styles.titleGit}>Git</Text>
+            <Text style={styles.titleLife}>Life</Text>
+          </Text>
           <Text style={styles.tagline}>A life, one year at a time.</Text>
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.heading}>
+            {mode === 'signup' ? 'Create your account' : 'Welcome back'}
+          </Text>
           <View style={styles.tabs}>
             <Pressable
               accessibilityRole="button"
@@ -172,9 +185,26 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 22,
   },
-  brand: { alignItems: 'center', gap: 4 },
-  logo: { fontSize: 52 },
-  title: { fontSize: 34, fontWeight: '900', color: '#ffffff', letterSpacing: 0.5 },
+  brand: { alignItems: 'center', gap: 6 },
+  logoTile: {
+    width: 104,
+    height: 104,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  logoImg: { width: 84, height: 84 },
+  title: { fontSize: 36, fontWeight: '900', letterSpacing: 0.5 },
+  titleGit: { color: '#ffffff' },
+  titleLife: { color: '#efc9f4' },
   tagline: { fontSize: 14, color: 'rgba(255,255,255,0.75)' },
   card: {
     backgroundColor: colors.white,
@@ -187,6 +217,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 12,
   },
+  heading: { fontSize: 18, fontWeight: '800', color: colors.slate800, textAlign: 'center' },
   tabs: {
     flexDirection: 'row',
     backgroundColor: colors.slate100,
