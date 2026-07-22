@@ -1,6 +1,5 @@
-import { createAvatar } from '@dicebear/core'
-import { avataaars } from '@dicebear/collection'
 import type { Gender } from '../types'
+import { faceSvg } from './faceAvatar'
 
 /**
  * Avatars use the open-source DiceBear "avataaars" style (the friendly
@@ -44,14 +43,6 @@ export const EYEBROWS = [
 export const FACIAL_HAIR = ['', 'beardLight', 'beardMedium', 'beardMajestic', 'moustacheFancy', 'moustacheMagnum']
 /** '' = no glasses; the rest are DiceBear accessory ids. */
 export const GLASSES = ['', 'round', 'prescription01', 'prescription02', 'wayfarers', 'sunglasses']
-
-// Friendly-only expressions so nobody looks unsettling.
-const EYES = ['default', 'happy', 'wink', 'squint', 'side']
-const MOUTHS = ['smile', 'default', 'twinkle']
-const CLOTHING = [
-  'shirtCrewNeck', 'shirtScoopNeck', 'shirtVNeck', 'hoodie', 'collarAndSweater',
-  'blazerAndSweater', 'graphicShirt',
-]
 
 /** The player's chosen look (edited on the creation screen). */
 export interface AvatarConfig {
@@ -150,100 +141,53 @@ export function retargetGender(config: AvatarConfig, gender: Gender): AvatarConf
   }
 }
 
-// DiceBear's exported option types don't surface the avataaars-specific
-// keys (top, facialHair, …), so we build a plain object and cast once.
-type AvataaarsOptions = Parameters<typeof createAvatar<typeof avataaars>>[1]
+/** Hairstyles that read as long/voluminous in the flat portrait. */
+const LONG_TOPS = new Set([
+  'bob', 'bun', 'curly', 'curvy', 'dreads', 'frida', 'fro', 'froBand', 'longButNotTooLong',
+  'miaWallace', 'straight01', 'straight02', 'straightAndStrand', 'bigHair', 'shaggy',
+  'shaggyMullet', 'dreads01', 'dreads02',
+])
 
-function build(opts: Record<string, unknown>): string {
-  return createAvatar(avataaars, opts as AvataaarsOptions).toString()
-}
+/** A soft shirt palette; a character keeps the same shirt as they age. */
+const SHIRTS = ['6d8cf0', '5bb59b', 'e08a5b', 'b06fd6', '5b90c9', 'd98aa8', '7b7fd6', '5aa06a']
 
-/** Darken a 6-hex colour (no #) toward black by a factor — for brows/shadow. */
-function darken(hex: string, factor = 0.68): string {
-  const n = parseInt(hex, 16)
-  if (Number.isNaN(n)) return '2a1e18'
-  const r = Math.round(((n >> 16) & 255) * factor)
-  const g = Math.round(((n >> 8) & 255) * factor)
-  const b = Math.round((n & 255) * factor)
-  return ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
-}
-
-/**
- * Avataaars draws eyebrows as a fixed 60%-black shape, so they never match the
- * hair. We repaint them to a slightly-darkened hair colour after rendering.
- */
-function recolorEyebrows(svg: string, hexNoHash: string): string {
-  return svg.replace(/fill="#000" fill-opacity="\.6"/g, `fill="#${hexNoHash}" fill-opacity=".92"`)
-}
-
-/** Exact DiceBear options for the player's picked config, aged to `stage`. */
-function configToOptions(c: AvatarConfig, stage: AgeStage, hair: string): Record<string, unknown> {
-  const baby = stage === 'baby'
-  // Facial hair only once it could grow in; babies/kids never wear glasses.
-  const showBeard = !!c.facialHair && c.gender === 'male' && (stage === 'young' || stage === 'adult' || stage === 'senior')
-  const showGlasses = !!c.glasses && !baby
-  return {
-    seed: 'player',
-    top: [c.top],
-    // Babies keep their hair too, so growing from baby → kid is seamless
-    // (no jarring bald-then-hair jump).
-    topProbability: 100,
-    hairColor: [hair],
-    skinColor: [c.skinColor],
-    eyebrows: c.eyebrows ? [c.eyebrows] : EYEBROWS,
-    facialHair: c.facialHair ? [c.facialHair] : [],
-    facialHairProbability: showBeard ? 100 : 0,
-    accessories: c.glasses ? [c.glasses] : [],
-    accessoriesProbability: showGlasses ? 100 : 0,
-    eyes: ['default'],
-    mouth: ['smile'],
-    clothing: CLOTHING,
-    backgroundColor: BG_COLORS,
-    backgroundType: ['solid'],
+function hashStr(str: string): number {
+  let h = 2166136261
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i)
+    h = Math.imul(h, 16777619)
   }
+  return h >>> 0
 }
 
-/** Deterministic gendered options for an NPC from a stable seed. */
-function seedToOptions(seed: string, gender: Gender, age: number): Record<string, unknown> {
-  const male = gender === 'male'
-  const stage = ageStage(age)
-  const baby = stage === 'baby'
-  // Hair colour pool ages: naturals when young, salt & pepper at 40+, silver at 62+.
-  const hairColor =
-    stage === 'senior'
-      ? ['b7b7b7', 'e8e1e1', 'd8d8d8']
-      : stage === 'adult'
-        ? ['b7b7b7', 'a55728', '724133', 'b58143', 'd6b370']
-        : NATURAL_HAIR
-  return {
-    seed,
-    top: male ? MALE_TOPS : FEMALE_TOPS,
-    topProbability: 100, // hair from birth — seamless baby → kid
-    hairColor,
-    skinColor: SKIN_TONES,
-    eyebrows: EYEBROWS,
-    facialHair: FACIAL_HAIR.slice(1),
-    facialHairProbability: male && (stage === 'young' || stage === 'adult' || stage === 'senior') ? 35 : 0,
-    accessories: GLASSES.slice(1),
-    accessoriesProbability: baby || stage === 'child' ? 0 : stage === 'senior' ? 24 : 12,
-    eyes: EYES,
-    mouth: MOUTHS,
-    clothing: CLOTHING,
-    backgroundColor: BG_COLORS,
-    backgroundType: ['solid'],
-  }
-}
-
-/** Build the avatar SVG string for a player config, aged to `age`. */
+/** The player's portrait, drawn for their current life stage. */
 export function configAvatarSvg(config: AvatarConfig, age = 25): string {
   const stage = ageStage(age)
-  const hair = agedHair(config.hairColor, stage, age)
-  // Match brows to hair (a touch darker); old white brows are gone.
-  return recolorEyebrows(build(configToOptions(config, stage, hair)), darken(hair))
+  return faceSvg({
+    skin: config.skinColor,
+    hair: agedHair(config.hairColor, stage, age),
+    shirt: SHIRTS[hashStr(config.skinColor + config.hairColor) % SHIRTS.length],
+    gender: config.gender,
+    stage,
+    hairLong: LONG_TOPS.has(config.top),
+    glasses: !!config.glasses,
+    beard: !!config.facialHair,
+  })
 }
 
-/** Build the avatar SVG string for an NPC from a seed. */
+/** An NPC's portrait, derived deterministically from their seed + age. */
 export function seedAvatarSvg(seed: string, gender: Gender, age: number): string {
-  const grey = age >= 62
-  return recolorEyebrows(build(seedToOptions(seed, gender, age)), grey ? '8a8a8a' : '2a1e18')
+  const h = hashStr(seed)
+  const stage = ageStage(age)
+  const baseHair = NATURAL_HAIR[(h >> 3) % NATURAL_HAIR.length]
+  return faceSvg({
+    skin: SKIN_TONES[h % SKIN_TONES.length],
+    hair: agedHair(baseHair, stage, age),
+    shirt: SHIRTS[(h >> 6) % SHIRTS.length],
+    gender,
+    stage,
+    hairLong: gender === 'female' ? (h >> 9) % 5 !== 0 : (h >> 9) % 6 === 0,
+    glasses: (h >> 12) % 5 === 0 && stage !== 'baby' && stage !== 'child',
+    beard: gender === 'male' && (h >> 14) % 3 === 0,
+  })
 }
