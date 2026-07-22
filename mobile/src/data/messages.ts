@@ -1,14 +1,21 @@
-import type { PersonRole } from '../types'
+import type { PartnerStatus, PersonRole } from '../types'
 
 /**
- * The Messages app. Every relationship has a deep catalogue of things you
- * might text (40+ lines each). Each year a fresh handful is offered, drawn
- * from the lines that suit how close you are. You can text a contact as many
- * times as you like — you just can't send the same line twice in a life, so
- * the conversation always moves forward. Replies are chosen by what you
- * actually said (a question gets an answer, "I love you" gets one back) and
- * coloured by how strong your bond is. Kids can still ask a parent for
- * allowance any year (a utility line that never runs out, capped once a year).
+ * The Messages app. What you can text someone depends on two things, exactly
+ * like real life: WHO they are to you (a parent, a sibling, a new crush, a
+ * spouse, an ex, a bitter enemy…) and HOW CLOSE you are right now (the bond).
+ *
+ * Every line is tagged with the bond band(s) it belongs to:
+ *   • distant (bond < 40): tentative, practical, reconnecting — you're not
+ *     close, so you can't gush. Warm lines simply aren't offered.
+ *   • friendly (40–69): everyday chatter, plans, small favours, light warmth.
+ *   • close (70+): affection, "I love you", vulnerable and deep lines,
+ *     inside jokes, big favours.
+ *
+ * So as a bond grows, brand-new texts unlock — investing in someone visibly
+ * changes what you can say to them. Each line can only be sent once per life,
+ * so conversations always move forward. Replies are chosen by what you said
+ * and coloured by how close you are.
  */
 
 /** What a message is *doing*, so the reply can actually fit it. */
@@ -35,27 +42,35 @@ export interface TextOption {
   /** The message you send. */
   label: string
   tone: TextTone
-  /**
-   * Bond tiers this line is appropriate for. Omitted means "any bond" — the
-   * warmest, most affectionate lines are gated to closer relationships, and
-   * reconnecting lines only show up when you've drifted apart.
-   */
+  /** Bond tiers this line is appropriate for. */
   tiers?: Tier[]
-  /**
-   * Whether sending this line spends it for the rest of the life. Utility
-   * lines (asking a parent for allowance) are never consumed.
-   */
+  /** Utility lines (asking a parent for allowance) are never consumed. */
   consumable?: boolean
 }
 
-type MsgGroup = 'parent' | 'sibling' | 'friend' | 'partner' | 'flingex' | 'enemy' | 'child'
+/**
+ * Message pools are keyed by *what the relationship is* — and a partner splits
+ * into `dating` vs `spouse`, an ex and a fling get their own voices, so the
+ * relationship type genuinely changes what's on offer.
+ */
+type MsgGroup =
+  | 'parent'
+  | 'sibling'
+  | 'child'
+  | 'friend'
+  | 'dating'
+  | 'spouse'
+  | 'ex'
+  | 'fling'
+  | 'enemy'
 
-function groupFor(role: PersonRole): MsgGroup {
+function groupFor(role: PersonRole, partnerStatus?: PartnerStatus | null): MsgGroup {
   if (role === 'mother' || role === 'father') return 'parent'
   if (role === 'sibling') return 'sibling'
   if (role === 'child') return 'child'
-  if (role === 'partner') return 'partner'
-  if (role === 'ex' || role === 'fling') return 'flingex'
+  if (role === 'partner') return partnerStatus === 'dating' ? 'dating' : 'spouse'
+  if (role === 'ex') return 'ex'
+  if (role === 'fling') return 'fling'
   if (role === 'enemy') return 'enemy'
   return 'friend'
 }
@@ -64,15 +79,14 @@ function tierFor(bond: number): Tier {
   return bond >= 70 ? 'high' : bond >= 40 ? 'mid' : 'low'
 }
 
+const LOW: Tier[] = ['low']
 const MID_HIGH: Tier[] = ['mid', 'high']
 const HIGH: Tier[] = ['high']
-const LOW_MID: Tier[] = ['low', 'mid']
-const LOW: Tier[] = ['low']
 
 const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
 
-// Small deterministic RNG so a contact's offered texts stay stable within a
-// year (they don't reshuffle on every render) but refresh the next year.
+// Deterministic RNG so a contact's offered texts stay stable within a year
+// (they don't reshuffle on every render) but refresh the next year.
 function hashStr(s: string): number {
   let h = 2166136261
   for (let i = 0; i < s.length; i++) {
@@ -101,289 +115,291 @@ function seededShuffle<T>(arr: T[], rng: () => number): T[] {
 }
 
 let _uid = 0
-const opt = (tone: TextTone, label: string, tiers?: Tier[]): TextOption => ({
-  id: `m${_uid++}`,
-  label,
-  tone,
-  tiers,
-})
-// Intent-tagged builders: g greet, q ask/question, pl plan/invite, lv love,
-// fl flirt, th thanks/compliment, rc reconnect, nw news, fv favor.
-const g = (label: string, tiers?: Tier[]) => opt('greet', label, tiers)
-const q = (label: string, tiers?: Tier[]) => opt('ask', label, tiers)
-const pl = (label: string, tiers: Tier[] = MID_HIGH) => opt('plan', label, tiers)
-const lv = (label: string, tiers: Tier[] = MID_HIGH) => opt('love', label, tiers)
-const fl = (label: string, tiers?: Tier[]) => opt('flirt', label, tiers)
-const th = (label: string, tiers: Tier[] = MID_HIGH) => opt('thanks', label, tiers)
-const rc = (label: string, tiers: Tier[] = LOW_MID) => opt('reconnect', label, tiers)
-const nw = (label: string, tiers?: Tier[]) => opt('news', label, tiers)
-const fv = (label: string, tiers?: Tier[]) => opt('favor', label, tiers)
-// fy: light banter or a heads-up that just wants an acknowledging reply.
-const fy = (label: string, tiers?: Tier[]) => opt('fyi', label, tiers)
-
-const MESSAGE_POOL: Record<MsgGroup, TextOption[]> = {
-  parent: [
-    g('Hey, how have you been? 😊'),
-    q('What’s for dinner? 👀'),
-    fv('Can you pick me up later? 🚗'),
-    g('Just checking in. All good?'),
-    nw('Guess what happened today!'),
-    q('Are we still on for the weekend?'),
-    q('Do we have any of the good snacks left?'),
-    fy('Running a bit late, don’t wait up.'),
-    q('Random question — what was I like as a baby?'),
-    q('Can you remind me of that recipe?'),
-    q('Is it okay if I bring a friend over?'),
-    q('Did you see the news today?'),
-    q('What time should I be home?'),
-    q('Can we talk later? Nothing bad!'),
-    g('Ugh, long day. How was yours?'),
-    q('Any advice? I’ve got a big decision.'),
-    nw('I found an old photo of us, so cute 📷'),
-    q('Do you need anything from the store?'),
-    fv('Reminder to take your meds! 💊'),
-    q('Call you tonight?'),
-    th('Thanks for always having my back. 🙏'),
-    pl('We should do a family dinner soon.'),
-    th('I really appreciate everything you do.'),
-    th('Miss your cooking. And you.'),
-    pl('Let’s plan a trip together sometime.'),
-    th('You always know what to say. Thank you.'),
-    th('Proud to be your kid, you know that?'),
-    pl('Can I come by this weekend? Miss home.'),
-    th('You raised me right. Just wanted to say it.'),
-    pl('Let’s grab coffee, just the two of us.'),
-    lv('Sending you a big hug today. 🤗'),
-    th('Thinking of you and everything you sacrificed.'),
-    lv('Love you! ❤️', MID_HIGH),
-    lv('You’re my hero, always have been.', MID_HIGH),
-    lv('I don’t say it enough — I love you so much.', HIGH),
-    lv('You mean the world to me. ❤️', HIGH),
-    lv('Couldn’t ask for a better parent. 🥹', HIGH),
-    lv('Whatever happens, I’ll always be here for you.', HIGH),
-    lv('You’re the strongest person I know.', MID_HIGH),
-    lv('Home isn’t a place, it’s you. 🏡', HIGH),
-    rc('Sorry I’ve been distant lately.'),
-    rc('I know we don’t talk much, but hi.', LOW),
-    rc('Been meaning to reach out. How are you?'),
-  ],
-  sibling: [
-    g('Yo, you around? 👀'),
-    fy('Mom’s looking for you btw.'),
-    fy('Did you take my charger AGAIN?'),
-    pl('Wanna play something later?'),
-    nw('You will not believe what just happened.'),
-    fv('Cover for me tonight? 🙏'),
-    nw('Remember that thing from when we were kids? 😂'),
-    q('Who’s picking up the parents this year?'),
-    fy('I’m telling. (jk. maybe.)'),
-    fv('Can I borrow like 20 bucks?'),
-    pl('Movie night at yours?'),
-    fv('Send me that photo from the trip lol'),
-    q('What are you getting mom for her birthday?'),
-    fy('You’re still the annoying one, just so we’re clear.'),
-    fy('Race you to the fridge (metaphorically).'),
-    nw('Big news, call me when you can!'),
-    fy('Did you eat the last slice?? 🍕'),
-    nw('Family group chat is chaos today lol'),
-    fy('Remember you owe me forever for that one time.'),
-    pl('Come out this weekend, it’ll be fun.'),
-    th('You’re actually the best, don’t tell anyone.'),
-    th('Thanks for having my back earlier.'),
-    pl('We should hang out more, for real.'),
-    th('Glad we’re close, even when we fight.'),
-    th('You always get me. Appreciate you.'),
-    pl('Let’s take a trip, just siblings.'),
-    th('Proud of you, seriously.'),
-    th('You’re gonna crush it, I believe in you.'),
-    th('Thanks for the advice. You were right.'),
-    th('Missing our late-night talks.'),
-    th('Team us, always. 🤝'),
-    th('You’re the only one who understands the family 😂'),
-    lv('Love you, weirdo. ❤️', MID_HIGH),
-    lv('You’re my best friend, honestly.', HIGH),
-    lv('I’d do anything for you, you know that.', HIGH),
-    lv('So lucky you’re my sibling. 🥹', HIGH),
-    lv('Ride or die, forever. 🤞', HIGH),
-    lv('No one’s got me like you do.', HIGH),
-    lv('You’re half of my best memories.', MID_HIGH),
-    lv('Through everything, it’s us. ❤️', HIGH),
-    rc('We should talk more. It’s been weird lately.'),
-    rc('Truce? I hate fighting with you.'),
-    rc('I know things are tense. Still love ya though.', LOW),
-  ],
-  friend: [
-    g('Yooo what’s up? 😄'),
-    q('We still on for this weekend?'),
-    nw('You’ll never guess what I just saw lol'),
-    nw('Bro. BRO. Check your phone.'),
-    pl('Free later? Coffee?'),
-    fv('Send memes, I’m bored 😩'),
-    q('How’d that thing go?'),
-    g('Long time no talk! What’s new?'),
-    g('You up? Can’t sleep.'),
-    g('Random but I miss the old days.'),
-    pl('Come to the thing on Friday, pls.'),
-    q('Rate my terrible idea real quick.'),
-    nw('Guess who’s in your neighborhood 👀'),
-    q('Did you watch the game?? 🏀'),
-    q('I need your opinion on something.'),
-    pl('Lunch tomorrow? My treat.'),
-    q('You free for a call? Need to vent lol'),
-    nw('Throwback to that trip, best times 📸'),
-    pl('New spot opened up, wanna try it?'),
-    fv('Save me a seat, running late.'),
-    th('Grateful for you, honestly.'),
-    th('You always show up when it counts. Thanks.'),
-    pl('We should hang out way more.'),
-    th('Good talk earlier, needed that.'),
-    th('You’re one of the real ones. 🙌'),
-    pl('Let’s make plans that we actually keep this time.'),
-    th('Proud of how far you’ve come.'),
-    th('Thanks for listening the other night.'),
-    th('You make everything more fun, you know?'),
-    pl('Been too long. Let’s fix that.'),
-    th('Cheering you on always, you got this.'),
-    th('Glad the universe put you in my life.'),
-    lv('You’re the best, I mean it. 🤝', MID_HIGH),
-    lv('Love ya, man. Right back at you always.', MID_HIGH),
-    lv('Best friend a person could ask for. 🥹', HIGH),
-    lv('I’d drop everything for you, you know that.', HIGH),
-    lv('Decades from now it’ll still be us. 🍻', HIGH),
-    lv('You’re family at this point. ❤️', HIGH),
-    lv('Couldn’t have gotten through it without you.', HIGH),
-    lv('My person. That’s it, that’s the text.', HIGH),
-    rc('Hey stranger. Been way too long.'),
-    rc('I know we drifted. Thinking of you though.', LOW),
-    rc('No pressure, but we should reconnect.'),
-  ],
-  partner: [
-    g('Morning ☀️ Sleep okay?'),
-    q('What do you want for dinner tonight?'),
-    g('On my way home 🚗'),
-    g('How’s your day going, love?'),
-    q('Don’t forget we have plans tonight 😊'),
-    lv('Miss you already and it’s been an hour lol', MID_HIGH),
-    fv('Can you grab milk on the way back?'),
-    lv('Thinking about our weekend 🥰', MID_HIGH),
-    q('Text me when you’re free?'),
-    nw('Guess who’s cooking tonight. (It’s me.)'),
-    g('Home soon, save me some 😅'),
-    th('Random check-in: you’re cute.'),
-    q('What movie tonight? You pick.'),
-    g('Call you on my break 💛'),
-    pl('Ready for date night? 🌹'),
-    th('So grateful to have you.'),
-    th('You make ordinary days feel special.'),
-    pl('Let’s run away together for a weekend.'),
-    th('I appreciate you more than I say.'),
-    th('You’re my favorite part of every day.'),
-    th('Proud to be yours. 🥰'),
-    lv('Can’t wait to grow old with you.', MID_HIGH),
-    th('Thank you for being my calm.'),
-    th('Every day with you is a good one.'),
-    lv('You feel like home to me. 🏡', MID_HIGH),
-    fl('Thinking about you 😘'),
-    fl('Wish you were here right now 😏'),
-    fl('You looked incredible today, just saying.'),
-    fl('Come here, I miss you 💋'),
-    fl('Counting the minutes till I see you 😍'),
-    fl('You’re dangerously attractive, you know that?'),
-    fl('Can’t stop smiling thinking about you 🙈'),
-    fl('Hurry home, I have plans for us 😉'),
-    lv('I love you, endlessly. ❤️', MID_HIGH),
-    lv('You’re the love of my life. 💖', HIGH),
-    lv('Forever you and me. 💍', HIGH),
-    lv('I’d choose you in every lifetime.', HIGH),
-    lv('You mean everything to me. ❤️', MID_HIGH),
-    lv('My whole heart, that’s you. 🥹', HIGH),
-    lv('Marrying you was my best decision.', HIGH),
-    lv('Still can’t believe you’re mine. 💕', HIGH),
-    rc('Can we talk tonight? Feels like we’ve drifted.'),
-    rc('I miss us. Let’s reconnect.'),
-  ],
-  flingex: [
-    g('Hey, been a while 👀'),
-    g('You popped into my head today lol'),
-    fy('Still have my hoodie btw 😂'),
-    g('How’ve you been, honestly?'),
-    g('Weird running into your name online.'),
-    g('No agenda, just saying hi.'),
-    nw('Heard your song came on, thought of you.'),
-    q('Are you around this weekend?'),
-    g('So… how’s life treating you?'),
-    g('Can’t believe it’s been this long.'),
-    q('You still doing the thing you loved?'),
-    nw('Saw a movie you’d hate. Thought of you 😏'),
-    g('This is random, I know. Hi.'),
-    g('Long time no talk, stranger.'),
-    g('You crossed my mind, so, hey.'),
-    th('Hope you’re doing really well, I mean it.'),
-    th('No hard feelings, just wanted to check in.'),
-    th('You deserve all the good stuff, truly.'),
-    th('Glad we can still be cool with each other.'),
-    th('Whatever we were, I’m grateful for it.'),
-    pl('Coffee sometime? Just to catch up.'),
-    th('Proud of where you’ve ended up.'),
-    th('You always were one of a kind.'),
-    fl('Not gonna lie, I still think about you 😅'),
-    fl('You looked good in that last post 🔥'),
-    fl('Remember that night? I do 😏'),
-    fl('Tell me you don’t miss this a little 😘'),
-    fl('We were kind of electric, weren’t we?'),
-    pl('One drink, for old times’ sake? 🍷'),
-    fl('Still got that effect on me, apparently.'),
-    fl('Come over? No strings 😉', MID_HIGH),
-    fl('I’ve been thinking about us lately 🙈', MID_HIGH),
-    lv('I still care about you, I always will.', MID_HIGH),
-    lv('Part of me never really let go. ❤️', HIGH),
-    lv('You were the one that got away, weren’t you.', HIGH),
-    lv('Maybe we gave up too easily.', MID_HIGH),
-    lv('I regret how we ended. Truly.', MID_HIGH),
-    lv('If timing were different… you and me.', HIGH),
-    rc('I know it ended badly. Hope you’re okay though.', LOW),
-    rc('No drama, promise. Just wishing you well.'),
-    rc('We don’t have to talk. But I’m here if you want.', LOW),
-    rc('Clean slate? I’d like us to be okay.'),
-  ],
-  enemy: [
-    opt('rude', 'You’re the actual worst. 😒'),
-    opt('rude', 'This isn’t over.'),
-    opt('rude', 'Everyone agrees with me, by the way.'),
-    opt('rude', 'Lose my number. Permanently.'),
-    opt('rude', 'Funny how things worked out for me, not you. 😏'),
-    opt('rude', 'I’m so done with you it’s not even anger anymore.'),
-    opt('truce', 'Can we just call a truce?'),
-    opt('truce', 'This feud is exhausting. Peace?'),
-    opt('truce', 'Maybe we were both wrong. Start over?', MID_HIGH),
-  ],
-  child: [
-    q('How was school today? 😊'),
-    q('Did you eat something good?'),
-    fv('Be home before dark, okay?'),
-    th('Proud of you, kiddo.'),
-    q('Need anything from the store?'),
-    fv('Text me when you get there safe.'),
-    q('How are your friends doing?'),
-    q('Want me to pick you up?'),
-    fv('Don’t stay up too late! 😴'),
-    g('Call me if you need anything, ever.'),
-    nw('Guess what, made your favorite for dinner 🍝'),
-    q('How’d the test go? You studied so hard.'),
-    th('You know I’m always in your corner, right?'),
-    th('So proud of the person you’re becoming.'),
-    th('You can tell me anything. Always.'),
-    pl('Let’s do something fun this weekend.'),
-    th('Thinking of you today. 🤗'),
-    th('You make me proud every single day.'),
-    lv('Love you to the moon and back. 🌙', MID_HIGH),
-    lv('You’re the best thing I ever did. ❤️', MID_HIGH),
-    lv('I’ll love you no matter what, forever.', HIGH),
-    lv('My whole world, that’s you. 🥹', HIGH),
-    rc('I know things have been hard between us.'),
-    rc('Door’s always open when you’re ready to talk.', LOW),
-  ],
+type Line = [TextTone, string]
+interface TierLines {
+  /** Distant lines — shown only at low bond. */
+  low: Line[]
+  /** Everyday lines — shown at mid and high bond. */
+  mid: Line[]
+  /** Close/affectionate lines — shown only at high bond. */
+  high: Line[]
 }
+
+function buildPool(t: TierLines): TextOption[] {
+  const make = (lines: Line[], tiers: Tier[]): TextOption[] =>
+    lines.map(([tone, label]) => ({ id: `m${_uid++}`, label, tone, tiers }))
+  return [...make(t.low, LOW), ...make(t.mid, MID_HIGH), ...make(t.high, HIGH)]
+}
+
+// ------------------------------------------------------------------ content
+// low = distant/tentative · mid = everyday/friendly · high = close/affectionate
+
+const GROUPS: Record<MsgGroup, TierLines> = {
+  parent: {
+    low: [
+      ['reconnect', 'Hey… it’s been a while. How are you?'],
+      ['reconnect', 'I know we don’t talk much, but hi.'],
+      ['reconnect', 'Sorry I’ve been distant lately.'],
+      ['reconnect', 'Been meaning to reach out. How are you?'],
+      ['ask', 'Quick question — you around this week?'],
+      ['fyi', 'Just letting you know I’m okay.'],
+    ],
+    mid: [
+      ['greet', 'Hey, how have you been? 😊'],
+      ['ask', 'What’s for dinner? 👀'],
+      ['favor', 'Can you pick me up later? 🚗'],
+      ['greet', 'Just checking in. All good?'],
+      ['news', 'Guess what happened today!'],
+      ['ask', 'Any advice? I’ve got a big decision.'],
+      ['plan', 'We should do a family dinner soon.'],
+      ['ask', 'Do you need anything from the store?'],
+      ['fyi', 'Running a bit late, don’t wait up.'],
+      ['ask', 'Call you tonight?'],
+      ['news', 'Found an old photo of us, so cute 📷'],
+      ['favor', 'Reminder to take your meds! 💊'],
+    ],
+    high: [
+      ['love', 'Love you! ❤️'],
+      ['love', 'I don’t say it enough — I love you so much.'],
+      ['love', 'You’re my hero, always have been.'],
+      ['thanks', 'You raised me right. Just wanted to say it.'],
+      ['love', 'Home isn’t a place, it’s you. 🏡'],
+      ['thanks', 'Thinking of everything you sacrificed for me.'],
+      ['plan', 'Can I come by this weekend? Miss home.'],
+      ['love', 'Whatever happens, I’ll always be here for you.'],
+      ['thanks', 'Proud to be your kid. You know that?'],
+      ['love', 'Couldn’t ask for a better parent. 🥹'],
+    ],
+  },
+  sibling: {
+    low: [
+      ['reconnect', 'We should talk more. It’s been weird lately.'],
+      ['reconnect', 'Truce? I hate fighting with you.'],
+      ['reconnect', 'I know things are tense. Still love ya though.'],
+      ['fyi', 'Mom’s looking for you btw.'],
+      ['ask', 'Who’s handling the parents this year?'],
+    ],
+    mid: [
+      ['greet', 'Yo, you around? 👀'],
+      ['fyi', 'Did you take my charger AGAIN?'],
+      ['plan', 'Wanna play something later?'],
+      ['news', 'You will not believe what just happened.'],
+      ['favor', 'Cover for me tonight? 🙏'],
+      ['news', 'Remember that thing from when we were kids? 😂'],
+      ['favor', 'Can I borrow like 20 bucks?'],
+      ['plan', 'Movie night at yours?'],
+      ['ask', 'What are you getting mom for her birthday?'],
+      ['fyi', 'Did you eat the last slice?? 🍕'],
+      ['plan', 'Come out this weekend, it’ll be fun.'],
+    ],
+    high: [
+      ['thanks', 'You’re actually the best, don’t tell anyone.'],
+      ['thanks', 'Glad we’re close, even when we fight.'],
+      ['plan', 'Let’s take a trip, just siblings.'],
+      ['thanks', 'You’re the only one who gets the family 😂'],
+      ['love', 'Love you, weirdo. ❤️'],
+      ['love', 'You’re my best friend, honestly.'],
+      ['love', 'Ride or die, forever. 🤞'],
+      ['love', 'So lucky you’re my sibling. 🥹'],
+      ['love', 'Through everything, it’s us. ❤️'],
+    ],
+  },
+  child: {
+    low: [
+      ['reconnect', 'I know things have been hard between us.'],
+      ['reconnect', 'Door’s always open when you’re ready to talk.'],
+      ['ask', 'Just checking you’re okay. Are you?'],
+      ['fyi', 'Thinking of you today, no pressure to reply.'],
+    ],
+    mid: [
+      ['ask', 'How was school today? 😊'],
+      ['ask', 'Did you eat something good?'],
+      ['favor', 'Be home before dark, okay?'],
+      ['ask', 'Need anything from the store?'],
+      ['favor', 'Text me when you get there safe.'],
+      ['ask', 'How are your friends doing?'],
+      ['ask', 'Want me to pick you up?'],
+      ['news', 'Made your favorite for dinner 🍝'],
+      ['ask', 'How’d the test go? You studied so hard.'],
+      ['plan', 'Let’s do something fun this weekend.'],
+    ],
+    high: [
+      ['thanks', 'Proud of you, kiddo.'],
+      ['thanks', 'You know I’m always in your corner, right?'],
+      ['thanks', 'So proud of the person you’re becoming.'],
+      ['thanks', 'You can tell me anything. Always.'],
+      ['love', 'Love you to the moon and back. 🌙'],
+      ['love', 'You’re the best thing I ever did. ❤️'],
+      ['love', 'I’ll love you no matter what, forever.'],
+      ['love', 'My whole world, that’s you. 🥹'],
+    ],
+  },
+  friend: {
+    low: [
+      ['reconnect', 'Hey stranger. Been way too long.'],
+      ['reconnect', 'I know we drifted. Thinking of you though.'],
+      ['reconnect', 'No pressure, but we should reconnect.'],
+      ['greet', 'Long time no talk! What’s new?'],
+      ['ask', 'This is random — how’ve you been, honestly?'],
+    ],
+    mid: [
+      ['greet', 'Yooo what’s up? 😄'],
+      ['ask', 'We still on for this weekend?'],
+      ['news', 'You’ll never guess what I just saw lol'],
+      ['plan', 'Free later? Coffee?'],
+      ['favor', 'Send memes, I’m bored 😩'],
+      ['ask', 'How’d that thing go?'],
+      ['plan', 'Come to the thing on Friday, pls.'],
+      ['ask', 'Did you watch the game?? 🏀'],
+      ['plan', 'Lunch tomorrow? My treat.'],
+      ['ask', 'You free for a call? Need to vent lol'],
+      ['favor', 'Save me a seat, running late.'],
+    ],
+    high: [
+      ['thanks', 'Grateful for you, honestly.'],
+      ['thanks', 'You always show up when it counts. Thanks.'],
+      ['thanks', 'You’re one of the real ones. 🙌'],
+      ['thanks', 'Cheering you on always, you got this.'],
+      ['love', 'Best friend a person could ask for. 🥹'],
+      ['love', 'I’d drop everything for you, you know that.'],
+      ['love', 'Decades from now it’ll still be us. 🍻'],
+      ['love', 'You’re family at this point. ❤️'],
+      ['love', 'My person. That’s it, that’s the text.'],
+    ],
+  },
+  // A NEW relationship — butterflies, getting to know each other, flirting.
+  dating: {
+    low: [
+      ['greet', 'Hey, this is a little forward but… hi 😊'],
+      ['ask', 'So tell me — what are you into?'],
+      ['reconnect', 'Was great meeting you. Free sometime?'],
+      ['ask', 'Is it too soon to say I like talking to you?'],
+    ],
+    mid: [
+      ['greet', 'Morning ☀️ How’d you sleep?'],
+      ['plan', 'Dinner Friday? I know a spot 🍷'],
+      ['ask', 'What are you up to this weekend?'],
+      ['news', 'Heard a song and thought of you 🎶'],
+      ['ask', 'Can I call you later? I like your voice 😊'],
+      ['greet', 'Thinking about our last date 🥰'],
+      ['plan', 'Wanna get out of town for a day?'],
+      ['flirt', 'You’ve been on my mind all day, ngl.'],
+    ],
+    high: [
+      ['flirt', 'You looked incredible last night 😘'],
+      ['flirt', 'Come over? I miss you 💋'],
+      ['flirt', 'You’re dangerously cute, you know that?'],
+      ['love', 'I think I’m falling for you… 🙈'],
+      ['love', 'Is it crazy that this already feels right?'],
+      ['love', 'I don’t want to date anyone but you.'],
+      ['plan', 'Be my plus-one to everything? 💕'],
+    ],
+  },
+  // A COMMITTED partner (engaged/married) — settled, domestic, deep.
+  spouse: {
+    low: [
+      ['reconnect', 'Can we talk tonight? Feels like we’ve drifted.'],
+      ['reconnect', 'I miss us. Let’s reconnect.'],
+      ['ask', 'Are we okay? Been quiet lately.'],
+      ['fyi', 'On my way home. We should talk.'],
+    ],
+    mid: [
+      ['greet', 'Morning ☀️ Sleep okay?'],
+      ['ask', 'What do you want for dinner tonight?'],
+      ['greet', 'On my way home 🚗'],
+      ['favor', 'Can you grab milk on the way back?'],
+      ['ask', 'Don’t forget we have plans tonight 😊'],
+      ['news', 'Guess who’s cooking tonight. (It’s me.)'],
+      ['ask', 'What movie tonight? You pick.'],
+      ['plan', 'Ready for date night? 🌹'],
+      ['thanks', 'Random check-in: you’re cute.'],
+    ],
+    high: [
+      ['thanks', 'You make ordinary days feel special.'],
+      ['thanks', 'You’re my favorite part of every day.'],
+      ['flirt', 'Hurry home, I have plans for us 😉'],
+      ['love', 'Can’t wait to grow old with you.'],
+      ['love', 'You feel like home to me. 🏡'],
+      ['love', 'You’re the love of my life. 💖'],
+      ['love', 'I’d choose you in every lifetime.'],
+      ['love', 'Marrying you was my best decision.'],
+      ['love', 'Still can’t believe you’re mine. 💕'],
+    ],
+  },
+  // An EX — history, awkwardness, closure, the occasional pang of regret.
+  ex: {
+    low: [
+      ['reconnect', 'I know it ended badly. Hope you’re okay though.'],
+      ['reconnect', 'No drama, promise. Just wishing you well.'],
+      ['reconnect', 'We don’t have to talk. But I’m here if you want.'],
+      ['reconnect', 'Clean slate? I’d like us to be okay.'],
+      ['greet', 'Weird seeing your name pop up. Hi.'],
+    ],
+    mid: [
+      ['greet', 'Hey, been a while 👀'],
+      ['news', 'Heard your song came on, thought of you.'],
+      ['ask', 'You still doing the thing you loved?'],
+      ['thanks', 'Hope you’re doing really well, I mean it.'],
+      ['thanks', 'Glad we can still be cool with each other.'],
+      ['plan', 'Coffee sometime? Just to catch up.'],
+      ['thanks', 'Whatever we were, I’m grateful for it.'],
+    ],
+    high: [
+      ['flirt', 'Not gonna lie, I still think about you 😅'],
+      ['flirt', 'Remember that night? I do 😏'],
+      ['flirt', 'We were kind of electric, weren’t we?'],
+      ['love', 'Part of me never really let go. ❤️'],
+      ['love', 'You were the one that got away, weren’t you.'],
+      ['love', 'If timing were different… you and me.'],
+      ['plan', 'One drink, for old times’ sake? 🍷'],
+    ],
+  },
+  // A FLING — casual, low-stakes, all spark and no strings.
+  fling: {
+    low: [
+      ['greet', 'Hey you 👀 this a good number still?'],
+      ['greet', 'Random hi. No agenda.'],
+      ['fyi', 'Still have my hoodie btw 😂'],
+      ['ask', 'You around at all this week?'],
+    ],
+    mid: [
+      ['greet', 'Long time. What are you up to? 😏'],
+      ['flirt', 'You popped into my head today 🙈'],
+      ['plan', 'Drinks later? No plans, just vibes.'],
+      ['flirt', 'You looked good in that last post 🔥'],
+      ['ask', 'Free tonight? 👀'],
+    ],
+    high: [
+      ['flirt', 'Come over? No strings 😉'],
+      ['flirt', 'I’ve been thinking about us lately 🙈'],
+      ['flirt', 'Still got that effect on me, apparently.'],
+      ['flirt', 'Tell me you don’t miss this a little 😘'],
+      ['plan', 'My place, tonight? 🌙'],
+    ],
+  },
+  enemy: {
+    low: [
+      ['rude', 'You’re the actual worst. 😒'],
+      ['rude', 'This isn’t over.'],
+      ['rude', 'Lose my number. Permanently.'],
+      ['rude', 'Everyone agrees with me, by the way.'],
+      ['rude', 'Funny how things worked out for me, not you. 😏'],
+    ],
+    mid: [
+      ['rude', 'I’m so done with you it’s not even anger anymore.'],
+      ['truce', 'Can we just call a truce?'],
+      ['truce', 'This feud is exhausting. Peace?'],
+    ],
+    high: [
+      ['truce', 'Maybe we were both wrong. Start over?'],
+      ['truce', 'Life’s too short for this. Friends?'],
+    ],
+  },
+}
+
+const MESSAGE_POOL: Record<MsgGroup, TextOption[]> = Object.fromEntries(
+  (Object.keys(GROUPS) as MsgGroup[]).map((k) => [k, buildPool(GROUPS[k])]),
+) as Record<MsgGroup, TextOption[]>
 
 /** Kid-only utility line for parents — asking for allowance, never used up. */
 const ASK_ALLOWANCE: TextOption = {
@@ -393,12 +409,23 @@ const ASK_ALLOWANCE: TextOption = {
   consumable: false,
 }
 
-const OPTIONS_PER_YEAR = 4
+/** How many fresh lines are offered — you have more to say to closer people. */
+function optionsPerYear(tier: Tier): number {
+  return tier === 'high' ? 5 : tier === 'mid' ? 4 : 3
+}
+
+/** A short, human label for a bond tier — shown in the UI so the player sees
+ * why the options differ. */
+export function bondWarmth(role: PersonRole, bond: number): string {
+  const tier = tierFor(bond)
+  if (role === 'enemy') return tier === 'high' ? 'Thawing' : tier === 'mid' ? 'Cold' : 'Hostile'
+  return tier === 'high' ? 'Close' : tier === 'mid' ? 'Friendly' : 'Distant'
+}
 
 /**
  * The texts on offer for a contact this year: a small random set drawn from
- * the lines that fit your bond and haven't been sent yet this life. Stable
- * within a year, refreshed each year.
+ * the lines that fit BOTH who they are and how close you are, minus anything
+ * you've already said this life. Stable within a year, refreshed each year.
  */
 export function textOptionsFor(
   role: PersonRole,
@@ -407,8 +434,9 @@ export function textOptionsFor(
   personId: string,
   year: number,
   usedTexts: string[],
+  partnerStatus?: PartnerStatus | null,
 ): TextOption[] {
-  const group = groupFor(role)
+  const group = groupFor(role, partnerStatus)
   const tier = tierFor(bond)
   const used = new Set(usedTexts)
 
@@ -416,7 +444,7 @@ export function textOptionsFor(
     (o) => (!o.tiers || o.tiers.includes(tier)) && !used.has(`${personId}:${o.id}`),
   )
   const rng = mulberry32(hashStr(`${personId}:${year}`))
-  const picks = seededShuffle(eligible, rng).slice(0, OPTIONS_PER_YEAR)
+  const picks = seededShuffle(eligible, rng).slice(0, optionsPerYear(tier))
 
   // A kid can always ask a parent for allowance, on top of the chit-chat.
   if (group === 'parent' && age < 18) return [ASK_ALLOWANCE, ...picks]
@@ -537,8 +565,8 @@ const ENEMY_REPLIES: Record<'rude' | 'truce', Record<Tier, string[]>> = {
     low: ['Blocked. Again.', 'You’re not worth the reply. (But here it is.)'],
   },
   truce: {
-    high: ['Fine. A truce. Don’t make me regret it.', 'I… suppose the feud is exhausting. Deal.'],
-    mid: ['A truce? I’ll think about it.', 'Hah. We’re not there yet.'],
+    high: ['Okay. Truce. I’d actually like that.', 'Yeah… I’m tired of the feud too. Deal.'],
+    mid: ['A truce? I’ll think about it.', 'Hah. We’re not there yet — but maybe.'],
     low: ['Absolutely not.', 'You have got to be joking.'],
   },
 }
@@ -583,7 +611,7 @@ export function textReply(role: PersonRole, bond: number, tone: TextTone): TextR
   // Enemies only ever get rude or truce lines.
   if (tone === 'rude' || tone === 'truce') {
     const text = pick(ENEMY_REPLIES[tone][tier])
-    const bondDelta = tone === 'truce' ? (tier === 'high' ? 4 : tier === 'mid' ? 1 : -1) : -2
+    const bondDelta = tone === 'truce' ? (tier === 'high' ? 5 : tier === 'mid' ? 2 : -1) : -2
     return { text, bond: bondDelta, happiness: bondDelta > 0 ? 1 : -1 }
   }
 

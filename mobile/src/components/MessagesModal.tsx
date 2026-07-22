@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
-import { textOptionsFor, textReply, type TextReply } from '../data/messages'
+import { bondWarmth, textOptionsFor, textReply, type TextReply } from '../data/messages'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Person, PersonRole } from '../types'
@@ -60,9 +60,11 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
   // you send), then we simply drop any line you've already used this life.
   const slate = useMemo(
     () =>
-      open ? textOptionsFor(open.role, age, open.relationship, open.id, year, usedTexts) : [],
+      open
+        ? textOptionsFor(open.role, age, open.relationship, open.id, year, usedTexts, partnerStatus)
+        : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [open?.id, year],
+    [open?.id, year, partnerStatus],
   )
   const options = open
     ? slate.filter((o) => o.consumable === false || !usedTexts.includes(`${open.id}:${o.id}`))
@@ -112,7 +114,7 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
                     avatar={<PersonAvatar person={person} />}
                     emoji="🙂"
                     title={person.name}
-                    subtitle={`${roleLabel(person, partnerStatus)} · Bond ${person.relationship}`}
+                    subtitle={`${roleLabel(person, partnerStatus)} · ${bondWarmth(person.role, person.relationship)} · Bond ${person.relationship}`}
                     onPress={() => openChat(person)}
                     chevron
                   />
@@ -128,9 +130,14 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
                 <Pressable accessibilityRole="button" onPress={() => setOpenId(null)}>
                   <Text style={styles.back}>‹ Contacts</Text>
                 </Pressable>
-                <Text style={styles.chatName} numberOfLines={1}>
-                  {open.name}
-                </Text>
+                <View style={styles.chatTitleWrap}>
+                  <Text style={styles.chatName} numberOfLines={1}>
+                    {open.name}
+                  </Text>
+                  <Text style={styles.chatSub} numberOfLines={1}>
+                    {roleLabel(open, partnerStatus)} · {bondWarmth(open.role, open.relationship)}
+                  </Text>
+                </View>
                 <View style={{ width: 60 }} />
               </View>
 
@@ -215,7 +222,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   back: { fontSize: 15, fontWeight: '700', color: colors.cyan500, width: 80 },
-  chatName: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '800', color: colors.slate800 },
+  chatTitleWrap: { flex: 1, alignItems: 'center' },
+  chatName: { textAlign: 'center', fontSize: 17, fontWeight: '800', color: colors.slate800 },
+  chatSub: { textAlign: 'center', fontSize: 12, fontWeight: '600', color: colors.slate400, marginTop: 1 },
   thread: { flex: 1, backgroundColor: colors.white, borderRadius: 16, padding: 12 },
   threadContent: { gap: 8, paddingBottom: 4 },
   hint: { textAlign: 'center', color: colors.slate400, fontSize: 13, marginTop: 20 },
