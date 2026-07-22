@@ -100,10 +100,27 @@ function blendHex(hex: string, target: string, t: number): string {
   return ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1)
 }
 
-/** How hair colour shifts with age: greying at 40+, silver at 62+. */
-function agedHair(hairColor: string, stage: AgeStage): string {
-  if (stage === 'senior') return blendHex(hairColor, 'd8d8d8', 0.82) // silver
-  if (stage === 'adult') return blendHex(hairColor, 'b7b7b7', 0.45) // salt & pepper
+/**
+ * How hair colour shifts with age. We blend hard toward a neutral grey so the
+ * change is obvious for *every* base colour (blonde greys just as clearly as
+ * black): a hint of grey in the 30s, salt-and-pepper at 40, and near-white
+ * silver by the 60s.
+ */
+function agedHair(hairColor: string, stage: AgeStage, age: number): string {
+  if (stage === 'senior') {
+    // 62 → clearly grey, ramping to full silver by the late 70s.
+    const t = Math.min(0.9, 0.7 + (age - 62) * 0.02)
+    return blendHex(hairColor, 'e4e4e4', t)
+  }
+  if (stage === 'adult') {
+    // 40 → light peppering, 55 → heavy salt-and-pepper.
+    const t = Math.min(0.62, 0.28 + (age - 40) * 0.02)
+    return blendHex(hairColor, '9a9a9a', t)
+  }
+  if (stage === 'young' && age >= 35) {
+    // A few greys start creeping in mid-30s.
+    return blendHex(hairColor, '9a9a9a', 0.16)
+  }
   return hairColor
 }
 
@@ -220,7 +237,7 @@ function seedToOptions(seed: string, gender: Gender, age: number): Record<string
 /** Build the avatar SVG string for a player config, aged to `age`. */
 export function configAvatarSvg(config: AvatarConfig, age = 25): string {
   const stage = ageStage(age)
-  const hair = agedHair(config.hairColor, stage)
+  const hair = agedHair(config.hairColor, stage, age)
   // Match brows to hair (a touch darker); old white brows are gone.
   return recolorEyebrows(build(configToOptions(config, stage, hair)), darken(hair))
 }
