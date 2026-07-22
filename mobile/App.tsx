@@ -166,7 +166,7 @@ function Game() {
         {/* Flat character summary bar */}
         <View style={styles.topBar}>
           <View style={styles.avatar}>
-            <Avatar config={avatarConfig} alive={alive} size={44} />
+            <Avatar config={avatarConfig} age={age} alive={alive} size={44} />
           </View>
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>

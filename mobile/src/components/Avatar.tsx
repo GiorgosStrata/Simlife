@@ -18,7 +18,7 @@ interface AvatarProps {
 /** A friendly DiceBear (avataaars) avatar, clipped into a circle. */
 export function Avatar({ config, seed, gender = 'male', age = 25, size = 44, alive = true }: AvatarProps) {
   const xml = useMemo(() => {
-    if (config) return configAvatarSvg(config)
+    if (config) return configAvatarSvg(config, age)
     return seedAvatarSvg(seed ?? 'anon', gender, age)
   }, [config, seed, gender, age])
 

@@ -56,7 +56,7 @@ export function FamilyTreeModal({ onClose }: FamilyTreeModalProps) {
               emoji="🙂"
               avatar={
                 <View style={styles.you}>
-                  <Avatar config={avatarConfig} size={44} />
+                  <Avatar config={avatarConfig} age={age} size={44} />
                 </View>
               }
               title={`${name} (you)`}

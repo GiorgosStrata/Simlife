@@ -71,6 +71,42 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
+/** Life stages that visibly change the avatar. */
+export type AgeStage = 'baby' | 'child' | 'teen' | 'young' | 'adult' | 'senior'
+
+/** Map an age to its look stage: <3, 3–11, 12–19, 19–40, 40–62, 62+. */
+export function ageStage(age: number): AgeStage {
+  if (age < 3) return 'baby'
+  if (age <= 11) return 'child'
+  if (age <= 18) return 'teen'
+  if (age < 40) return 'young'
+  if (age < 62) return 'adult'
+  return 'senior'
+}
+
+/** Blend a 6-hex colour toward a target hex by t (0..1). */
+function blendHex(hex: string, target: string, t: number): string {
+  const a = parseInt(hex, 16)
+  const b = parseInt(target, 16)
+  if (Number.isNaN(a) || Number.isNaN(b)) return hex
+  const mix = (sh: number) => {
+    const ca = (a >> sh) & 255
+    const cb = (b >> sh) & 255
+    return Math.round(ca + (cb - ca) * t)
+  }
+  const r = mix(16)
+  const g = mix(8)
+  const bl = mix(0)
+  return ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1)
+}
+
+/** How hair colour shifts with age: greying at 40+, silver at 62+. */
+function agedHair(hairColor: string, stage: AgeStage): string {
+  if (stage === 'senior') return blendHex(hairColor, 'd8d8d8', 0.82) // silver
+  if (stage === 'adult') return blendHex(hairColor, 'b7b7b7', 0.45) // salt & pepper
+  return hairColor
+}
+
 /** A fresh random look for a gender (used to seed the creation screen). */
 export function randomAvatarConfig(gender: Gender): AvatarConfig {
   const male = gender === 'male'
@@ -123,19 +159,23 @@ function recolorEyebrows(svg: string, hexNoHash: string): string {
   return svg.replace(/fill="#000" fill-opacity="\.6"/g, `fill="#${hexNoHash}" fill-opacity=".92"`)
 }
 
-/** Exact DiceBear options for the player's picked config. */
-function configToOptions(c: AvatarConfig): Record<string, unknown> {
+/** Exact DiceBear options for the player's picked config, aged to `stage`. */
+function configToOptions(c: AvatarConfig, stage: AgeStage, hair: string): Record<string, unknown> {
+  const baby = stage === 'baby'
+  // Facial hair only once it could grow in; babies/kids never wear glasses.
+  const showBeard = !!c.facialHair && c.gender === 'male' && (stage === 'young' || stage === 'adult' || stage === 'senior')
+  const showGlasses = !!c.glasses && !baby
   return {
     seed: 'player',
     top: [c.top],
-    topProbability: 100,
-    hairColor: [c.hairColor],
+    topProbability: baby ? 0 : 100, // babies are bald
+    hairColor: [hair],
     skinColor: [c.skinColor],
     eyebrows: c.eyebrows ? [c.eyebrows] : EYEBROWS,
     facialHair: c.facialHair ? [c.facialHair] : [],
-    facialHairProbability: c.facialHair ? 100 : 0,
+    facialHairProbability: showBeard ? 100 : 0,
     accessories: c.glasses ? [c.glasses] : [],
-    accessoriesProbability: c.glasses ? 100 : 0,
+    accessoriesProbability: showGlasses ? 100 : 0,
     eyes: ['default'],
     mouth: ['smile'],
     clothing: CLOTHING,
@@ -147,18 +187,26 @@ function configToOptions(c: AvatarConfig): Record<string, unknown> {
 /** Deterministic gendered options for an NPC from a stable seed. */
 function seedToOptions(seed: string, gender: Gender, age: number): Record<string, unknown> {
   const male = gender === 'male'
-  const old = age >= 60
+  const stage = ageStage(age)
+  const baby = stage === 'baby'
+  // Hair colour pool ages: naturals when young, salt & pepper at 40+, silver at 62+.
+  const hairColor =
+    stage === 'senior'
+      ? ['b7b7b7', 'e8e1e1', 'd8d8d8']
+      : stage === 'adult'
+        ? ['b7b7b7', 'a55728', '724133', 'b58143', 'd6b370']
+        : NATURAL_HAIR
   return {
     seed,
     top: male ? MALE_TOPS : FEMALE_TOPS,
-    topProbability: 100,
-    hairColor: old ? ['b7b7b7', 'e8e1e1'] : NATURAL_HAIR,
+    topProbability: baby ? 0 : 100, // babies are bald
+    hairColor,
     skinColor: SKIN_TONES,
     eyebrows: EYEBROWS,
     facialHair: FACIAL_HAIR.slice(1),
-    facialHairProbability: male && age >= 18 ? 35 : 0,
+    facialHairProbability: male && (stage === 'young' || stage === 'adult' || stage === 'senior') ? 35 : 0,
     accessories: GLASSES.slice(1),
-    accessoriesProbability: age >= 10 ? 12 : 0,
+    accessoriesProbability: baby || stage === 'child' ? 0 : stage === 'senior' ? 24 : 12,
     eyes: EYES,
     mouth: MOUTHS,
     clothing: CLOTHING,
@@ -167,14 +215,16 @@ function seedToOptions(seed: string, gender: Gender, age: number): Record<string
   }
 }
 
-/** Build the avatar SVG string for a player config. */
-export function configAvatarSvg(config: AvatarConfig): string {
+/** Build the avatar SVG string for a player config, aged to `age`. */
+export function configAvatarSvg(config: AvatarConfig, age = 25): string {
+  const stage = ageStage(age)
+  const hair = agedHair(config.hairColor, stage)
   // Match brows to hair (a touch darker); old white brows are gone.
-  return recolorEyebrows(build(configToOptions(config)), darken(config.hairColor))
+  return recolorEyebrows(build(configToOptions(config, stage, hair)), darken(hair))
 }
 
 /** Build the avatar SVG string for an NPC from a seed. */
 export function seedAvatarSvg(seed: string, gender: Gender, age: number): string {
-  const grey = age >= 60
+  const grey = age >= 62
   return recolorEyebrows(build(seedToOptions(seed, gender, age)), grey ? '8a8a8a' : '2a1e18')
 }
