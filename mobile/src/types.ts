@@ -227,6 +227,14 @@ export interface CrimeAction {
   caught: Effects
   /** Maximum prison sentence (years) if convicted. */
   maxSentence: number
+  /**
+   * Physical goods a successful job can net you — a stolen car you can drive
+   * or sell, or valuables (phones, jewelry, handbags) you can pawn. Added
+   * straight to your belongings.
+   */
+  loot?: { kind: 'car' | 'valuables'; chance: number }
+  /** True for crimes that let you pick a specific victim (murder). */
+  pickTarget?: boolean
 }
 
 /** Live state while the character is incarcerated. */

@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
 import { CRIMES } from '../data/activities'
-import { useGameStore } from '../store/gameStore'
+import type { CrimeAction } from '../types'
+import { relationLabel, useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import { Row } from './Row'
 import { useCloseOnAction } from './useCloseOnAction'
@@ -15,7 +16,11 @@ interface CrimeModalProps {
 export function CrimeModal({ onClose }: CrimeModalProps) {
   const age = useGameStore((s) => s.age)
   const usedActions = useGameStore((s) => s.usedActions)
+  const relationships = useGameStore((s) => s.relationships)
+  const partnerStatus = useGameStore((s) => s.partnerStatus)
   const commitCrime = useGameStore((s) => s.commitCrime)
+  // When a crime lets you choose a victim (murder), we swap to a target list.
+  const [picking, setPicking] = useState<CrimeAction | null>(null)
   useCloseOnAction(onClose)
 
   useEffect(() => {
@@ -24,15 +29,72 @@ export function CrimeModal({ onClose }: CrimeModalProps) {
 
   // Pull the job, then return to the main screen. If it triggered an arrest
   // (an event pops), let that speak; otherwise show the outcome bubble.
-  const doCrime = (id: string) => () => {
+  const run = (id: string, targetId?: string) => {
     playSfx('crime')
     const before = useGameStore.getState().log.length
-    commitCrime(id)
+    commitCrime(id, targetId)
     const st = useGameStore.getState()
     if (!st.currentEvent && st.log.length > before) {
       st.showToast(st.log[st.log.length - 1].text)
     }
     st.closeModals()
+  }
+
+  const doCrime = (crime: CrimeAction) => () => {
+    if (crime.pickTarget) {
+      playSfx('click')
+      setPicking(crime)
+      return
+    }
+    run(crime.id)
+  }
+
+  // People you could target for murder — anyone still alive that you know.
+  const targets = relationships.filter((p) => p.alive)
+
+  if (picking) {
+    return (
+      <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+        <View style={styles.backdrop}>
+          <View style={styles.card}>
+            <Text style={styles.title}>🔪 {picking.name}</Text>
+            <Text style={styles.subtitle}>Choose your victim. There's no undoing this.</Text>
+
+            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+              <Row
+                emoji="🕶️"
+                title="A random stranger"
+                subtitle="Someone you've never met. Harder to trace back to you."
+                onPress={() => run(picking.id)}
+                right={
+                  <View style={styles.pill}>
+                    <Text style={styles.pillText}>Do it</Text>
+                  </View>
+                }
+              />
+              {targets.map((person) => (
+                <Row
+                  key={person.id}
+                  emoji="🎯"
+                  title={person.name}
+                  subtitle={`Your ${relationLabel(person.role, person.gender, partnerStatus)} · age ${person.age}`}
+                  onPress={() => run(picking.id, person.id)}
+                  right={
+                    <View style={styles.pill}>
+                      <Text style={styles.pillText}>Kill</Text>
+                    </View>
+                  }
+                />
+              ))}
+            </ScrollView>
+
+            <Pressable accessibilityRole="button" onPress={() => setPicking(null)} style={styles.cancel}>
+              <Text style={styles.cancelText}>Back</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    )
   }
 
   return (
@@ -62,11 +124,13 @@ export function CrimeModal({ onClose }: CrimeModalProps) {
                         ? 'Already tried this year'
                         : `${risk} · ${crime.description}`
                   }
-                  onPress={doCrime(crime.id)}
+                  onPress={doCrime(crime)}
                   disabled={tooYoung || doneThisYear}
                   right={
                     <View style={[styles.pill, (tooYoung || doneThisYear) && styles.pillOff]}>
-                      <Text style={styles.pillText}>{tooYoung ? '🔒' : 'Do it'}</Text>
+                      <Text style={styles.pillText}>
+                        {tooYoung ? '🔒' : crime.pickTarget ? 'Choose' : 'Do it'}
+                      </Text>
                     </View>
                   }
                 />

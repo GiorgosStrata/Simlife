@@ -44,6 +44,8 @@ import { rollHomeListings, type HomeListing, type OwnedHome } from '../data/home
 import {
   rollCarListings,
   rollJewelryListings,
+  rollStolenCar,
+  rollStolenGoods,
   type MarketItem,
   type OwnedItem,
 } from '../data/market'
@@ -645,7 +647,7 @@ interface GameState {
   // Activities & belongings
   startPursuit: (activityId: string) => void
   stopPursuit: (category: ActivityCategory) => void
-  commitCrime: (crimeId: string) => void
+  commitCrime: (crimeId: string, targetId?: string) => void
 
   // Mind & Body (once per year each) — medical / self-care only, so it
   // doesn't overlap the ongoing gym/meditation pursuits in Activities.
@@ -2654,20 +2656,12 @@ export const useGameStore = create<GameState>()(
           }
         },
 
-        commitCrime: (crimeId: string) => {
+        commitCrime: (crimeId: string, targetId?: string) => {
           const s = get()
           if (s.prison) return
           const crime = getCrime(crimeId)
           if (!crime || !s.alive || s.age < crime.minAge) return
           if (!useYearlyAction(`crime-${crimeId}`)) return
-
-          // Murder means a life taken, whether or not you're ever caught.
-          if (crimeId === 'murder') {
-            const kills = s.runMurders + 1
-            set({ runMurders: kills })
-            unlock('kill-1')
-            if (kills >= 5) unlock('kill-5')
-          }
 
           const stats = { ...s.stats }
           let money = s.money
@@ -2677,6 +2671,48 @@ export const useGameStore = create<GameState>()(
               stats[key] = gainStat(stats[key], statDeltas[key] ?? 0)
             }
             money += m
+          }
+
+          // Murder means a life taken, whether or not you're ever caught. If a
+          // specific victim was chosen, they die now — the deed is done. Killing
+          // a parent or spouse still leaves you their inheritance; killing an
+          // enemy is a grim relief, killing loved ones eats at you.
+          let relationships = s.relationships
+          let partnerStatus = s.partnerStatus
+          const deedLog: string[] = []
+          if (crimeId === 'murder') {
+            const kills = s.runMurders + 1
+            set({ runMurders: kills })
+            unlock('kill-1')
+            if (kills >= 5) unlock('kill-5')
+
+            const victim = targetId
+              ? s.relationships.find((p) => p.id === targetId && p.alive)
+              : undefined
+            if (victim) {
+              const label = relationLabel(victim.role, victim.gender, s.partnerStatus)
+              const inheritRole =
+                victim.role === 'mother' || victim.role === 'father' || victim.role === 'partner'
+              if (inheritRole) {
+                const floor = scaleByCountry(8000, s.countryCode)
+                const inheritance = Math.max(floor, Math.round(victim.wealth ?? 0))
+                money += inheritance
+                deedLog.push(`You inherited $${inheritance.toLocaleString()} from ${victim.name}. 💰`)
+              }
+              if (victim.role === 'partner') partnerStatus = null
+              const loved = ['mother', 'father', 'sibling', 'child', 'partner', 'friend'].includes(
+                victim.role,
+              )
+              stats.happiness = clampStat(
+                stats.happiness + (victim.role === 'enemy' ? 8 : loved ? -25 : -6),
+              )
+              relationships = s.relationships.map((p) =>
+                p.id === victim.id
+                  ? { ...p, id: p.role === 'partner' ? `late-partner-${s.year}` : p.id, alive: false }
+                  : p,
+              )
+              deedLog.unshift(`You murdered ${victim.name}, your ${label}. 🔪`)
+            }
           }
 
           const caught = Math.random() < crime.catchChance
@@ -2689,9 +2725,10 @@ export const useGameStore = create<GameState>()(
               ? Math.min(0.5, 0.25 + s.stats.smarts / 400)
               : Math.min(0.2, s.stats.smarts / 700)
             if (Math.random() < acquitChance) {
-              set({ money, stats, criminalRecord: true, timesArrested })
+              set({ money, stats, criminalRecord: true, timesArrested, relationships, partnerStatus })
               playSfx('police')
               addLog([
+                ...deedLog.map((text) => ({ text, kind: 'death' as const })),
                 { text: `You were caught trying to ${crime.name.toLowerCase()}, but a slick defense got you off with probation.`, kind: 'death' },
               ])
               return
@@ -2703,17 +2740,19 @@ export const useGameStore = create<GameState>()(
               stats,
               criminalRecord: true,
               timesArrested,
+              partnerStatus,
               prison: { crime: crime.name, sentence, yearsLeft: sentence, behavior: 50 },
               jobId: null,
               jobTier: 0,
               yearsInJob: 0,
               raisePercent: 0,
               sport: null,
-              relationships: withoutWorkPeople(s.relationships),
+              relationships: withoutWorkPeople(relationships),
               currentEvent: arrestEvent(crime.name, sentence),
             })
             playSfx('police')
             addLog([
+              ...deedLog.map((text) => ({ text, kind: 'death' as const })),
               { text: `You were convicted of ${crime.name.toLowerCase()} and sentenced to ${sentence} year${sentence === 1 ? '' : 's'} in prison. 🚔`, kind: 'death' },
             ])
             unlock('jail')
@@ -2721,9 +2760,24 @@ export const useGameStore = create<GameState>()(
             const payout = crime.reward > 0 ? randomInt(Math.round(crime.reward * 0.5), Math.round(crime.reward * 1.5)) : 0
             money += payout
             apply(crime.success)
-            set({ money, stats })
-            if (payout > 0) playSfx('cash')
+            // A successful job may hand you an actual belonging — a stolen car
+            // to drive or sell, or valuables to pawn.
+            let ownedItems = s.ownedItems
+            const lootLog: string[] = []
+            if (crime.loot && Math.random() < crime.loot.chance) {
+              const item =
+                crime.loot.kind === 'car'
+                  ? rollStolenCar(s.countryCode, s.year)
+                  : rollStolenGoods(s.countryCode, s.year)
+              ownedItems = [...ownedItems, item]
+              lootLog.push(
+                `You made off with a ${item.name} ${item.emoji} — worth about $${Math.round(item.price / 2).toLocaleString()} at resale. Check your belongings.`,
+              )
+            }
+            set({ money, stats, ownedItems, relationships, partnerStatus })
+            if (payout > 0 || lootLog.length > 0) playSfx('cash')
             addLog([
+              ...deedLog.map((text) => ({ text, kind: 'death' as const })),
               {
                 text:
                   payout > 0
@@ -2731,6 +2785,7 @@ export const useGameStore = create<GameState>()(
                     : `You committed ${crime.name.toLowerCase()} and slipped away into the night.`,
                 kind: 'event',
               },
+              ...lootLog.map((text) => ({ text, kind: 'money' as const })),
             ])
           }
         },

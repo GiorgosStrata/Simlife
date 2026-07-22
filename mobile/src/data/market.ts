@@ -103,3 +103,53 @@ export function rollJewelryListings(code: string | null, count = 6): MarketItem[
   }
   return items.sort((a, b) => a.price - b.price).slice(0, count)
 }
+
+// ---------------------------------------------------------------- stolen goods
+// Some crimes net you an actual belonging rather than just cash: grand theft
+// auto hands you a car you can drive or sell, and pickpocketing / burglary
+// turns up phones, watches, handbags and jewelry you can pawn. These return a
+// ready-to-own item (already stamped with the year) so the store can drop it
+// straight into your belongings.
+
+/** A car lifted off the street — mostly everyday rides, rarely an exotic. */
+export function rollStolenCar(code: string | null, year = 2026): OwnedItem {
+  const roll = Math.random()
+  const idx = roll < 0.55 ? randInt(1, 2) : roll < 0.85 ? randInt(3, 4) : roll < 0.97 ? 5 : randInt(6, 7)
+  const t = CAR_TIERS[idx]
+  const price = scaleByCountry(randInt(t.min, t.max), code)
+  const yr = `'${String((year + randInt(-3, 0)) % 100).padStart(2, '0')}`
+  const name = `Stolen ${pick(t.names)}${maybe(CAR_TRIMS, 0.6)} ${yr}`
+  return {
+    id: `car-${counter++}-${randInt(1000, 9999)}`,
+    name,
+    emoji: t.emoji,
+    price,
+    joy: randInt(t.joy[0], t.joy[1]),
+    category: 'car',
+    boughtYear: year,
+  }
+}
+
+const STOLEN_VALUABLES = [
+  { emoji: '📱', min: 300, max: 1400, names: ['iThing 15 Pro', 'Galassy S24', 'Pixil 8 Phone'] },
+  { emoji: '💻', min: 500, max: 3000, names: ['MacroBook Pro', 'Thinkpod Laptop', 'Gaming Laptop'] },
+  { emoji: '👜', min: 400, max: 6000, names: ['Louie V. Handbag', 'Gukki Purse', 'Chanelle Clutch'] },
+  { emoji: '⌚', min: 800, max: 12000, names: ['Rollex Watch', 'Omego Seamaster', 'Diamond Watch'] },
+  { emoji: '💍', min: 1500, max: 40000, names: ['Diamond Ring', 'Gold Necklace', 'Ruby Earrings'] },
+  { emoji: '🎮', min: 200, max: 900, names: ['Games Console', 'VR Headset'] },
+]
+
+/** A valuable lifted from a pocket or a house — sellable at the pawn shop. */
+export function rollStolenGoods(code: string | null, year = 2026): OwnedItem {
+  const t = pick(STOLEN_VALUABLES)
+  const price = scaleByCountry(randInt(t.min, t.max), code)
+  return {
+    id: `lux-${counter++}-${randInt(1000, 9999)}`,
+    name: `Stolen ${pick(t.names)}`,
+    emoji: t.emoji,
+    price,
+    joy: Math.max(1, Math.round(price / 4000)),
+    category: 'luxury',
+    boughtYear: year,
+  }
+}
