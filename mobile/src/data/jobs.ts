@@ -452,7 +452,10 @@ export const SPECIAL_JOBS: Job[] = [
     tiers: ['Bar Singer', 'Recording Artist', 'Chart-Topper', 'Music Icon'],
   },
   {
-    id: 'actor',
+    // NB: distinct from the everyday 'actor' (Stage Actor) job — a shared id
+    // used to leak this fame career onto the normal job board (where its empty
+    // question list crashed the interview screen).
+    id: 'actor-star',
     title: 'Actor',
     emoji: '🎬',
     salary: 90000,

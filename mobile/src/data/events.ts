@@ -172,15 +172,10 @@ export const EVENTS: GameEvent[] = [
     maxAge: 90,
     choices: [
       {
-        label: 'Buy one ticket',
-        outcome: 'You won a small prize! Not the jackpot, but drinks are on you.',
-        effects: { money: 150, happiness: 5 },
-        unlocks: 'lottery-win',
-      },
-      {
-        label: 'Buy ten tickets',
-        outcome: 'All ten tickets lost. The shop owner offered a sympathetic nod.',
-        effects: { money: -100, happiness: -4 },
+        label: 'Buy a ticket',
+        outcome: 'You buy a ticket and wait for the draw…',
+        effects: { money: -20 },
+        action: 'playLottery',
       },
       {
         label: 'Save your money',
@@ -1181,7 +1176,7 @@ export const EVENTS: GameEvent[] = [
     minAge: 18,
     maxAge: 90,
     choices: [
-      { label: 'Scratch it now', outcome: 'Three matching symbols — a small win! Not retirement money, but a nice surprise.', effects: { happiness: 6, money: 500 }, sfx: 'cash', unlocks: 'lottery-win' },
+      { label: 'Scratch it now', outcome: 'You scratch off the panel, one square at a time…', effects: {}, action: 'playLottery' },
       { label: 'Save it for later', outcome: 'You tucked it in a drawer and forgot about it. It was a loser anyway.', effects: {} },
     ],
   },

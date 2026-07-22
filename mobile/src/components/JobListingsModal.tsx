@@ -36,10 +36,20 @@ export function JobListingsModal({ onClose }: JobListingsModalProps) {
     playSfx('pop')
   }, [])
 
-  const openings = JOBS.filter((j) => jobOpenings.includes(j.id))
+  // Only everyday jobs belong on the board — fame careers (which carry no
+  // interview questions) live in Special Careers and must never leak here.
+  const openings = JOBS.filter((j) => !j.special && jobOpenings.includes(j.id))
 
   const startInterview = (job: Job) => {
     playSfx('click')
+    // A job with no interview questions just hires you — never open an empty
+    // interview (which would render an undefined question and crash).
+    if (!job.questions || job.questions.length === 0) {
+      playSfx('success')
+      applyForJob(job.id)
+      onClose()
+      return
+    }
     const question = job.questions[Math.floor(Math.random() * job.questions.length)]
     setInterview({ job, question })
   }

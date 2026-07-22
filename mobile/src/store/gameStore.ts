@@ -101,6 +101,8 @@ export {
 
 const START_YEAR_BASE = 2026
 const MAX_AGE = 122
+/** US-baseline average yearly salary; scaled by country for lottery payouts. */
+const AVG_SALARY_BASE = 60000
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -2107,6 +2109,31 @@ export const useGameStore = create<GameState>()(
               })
               addLog([{ text: `You made a new friend: ${friend.name}! 🤝`, kind: 'relationship' }])
             }
+          }
+          // Play the lottery: mostly you lose, but a win pays the country's
+          // average yearly salary — and a rare jackpot pays 100× that.
+          if (!died && choice.action === 'playLottery') {
+            const avgSalary = scaleByCountry(AVG_SALARY_BASE, s.countryCode)
+            const roll = Math.random()
+            let winnings = 0
+            let text = 'You checked the numbers… nothing this time. Maybe next draw. 🎟️'
+            if (roll < 0.03) {
+              winnings = avgSalary * 100
+              text = `💰 JACKPOT!! You hit the big one and won $${winnings.toLocaleString()}! Your life just changed forever. 🎉`
+            } else if (roll < 0.28) {
+              winnings = avgSalary
+              text = `🎉 A winning ticket! You won $${winnings.toLocaleString()}.`
+            }
+            if (winnings > 0) {
+              set({
+                money: get().money + winnings,
+                stats: { ...get().stats, happiness: clampStat(get().stats.happiness + (winnings >= avgSalary * 100 ? 25 : 8)) },
+              })
+              unlock('lottery-win')
+              playSfx('cash')
+            }
+            addLog([{ text, kind: winnings > 0 ? 'money' : 'event' }])
+            checkMilestones()
           }
           if (!died && choice.action === 'parentsDivorce') {
             set({

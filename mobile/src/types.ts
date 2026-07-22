@@ -55,7 +55,7 @@ export interface EventChoice {
   /** Achievement id(s) this choice unlocks (e.g. trying drugs, winning the lottery). */
   unlocks?: string | string[]
   /** Optional game action triggered on top of the stat effects. */
-  action?: 'enrollUniversity' | 'parentsDivorce' | 'makeEnemy' | 'reconcile'
+  action?: 'enrollUniversity' | 'parentsDivorce' | 'makeEnemy' | 'reconcile' | 'playLottery'
   /** Bond change applied to the person this event involves (see GameEvent.personId). */
   bond?: number
   /** Optional sound to play on this outcome (overrides the auto sting). */
