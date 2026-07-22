@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Simlife",
-    "slug": "simlife",
+    "name": "GitLife",
+    "slug": "gitlife",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -9,10 +9,10 @@
     "backgroundColor": "#f1f5f9",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.giorgosstrata.simlife"
+      "bundleIdentifier": "com.giorgosstrata.gitlife"
     },
     "android": {
-      "package": "com.giorgosstrata.simlife",
+      "package": "com.giorgosstrata.gitlife",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

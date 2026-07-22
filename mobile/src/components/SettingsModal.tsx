@@ -150,7 +150,7 @@ export function SettingsModal({ onClose, onOpenLives, onOpenPremium }: SettingsM
             <View style={styles.group}>
               <SectionHeading color={colors.emerald700}>ABOUT</SectionHeading>
               <View style={styles.aboutRow}>
-                <Text style={styles.aboutKey}>Simlife</Text>
+                <Text style={styles.aboutKey}>GitLife</Text>
                 <Text style={styles.aboutVal}>v{APP_VERSION}</Text>
               </View>
               <View style={styles.aboutRow}>

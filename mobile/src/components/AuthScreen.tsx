@@ -57,7 +57,7 @@ export function AuthScreen() {
       >
         <View style={styles.brand}>
           <Text style={styles.logo}>🌱</Text>
-          <Text style={styles.title}>Simlife</Text>
+          <Text style={styles.title}>GitLife</Text>
           <Text style={styles.tagline}>A life, one year at a time.</Text>
         </View>
 

@@ -20,7 +20,7 @@ export function AdBanner() {
       </View>
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={1}>
-          🌱 Enjoying Simlife?
+          🌱 Enjoying GitLife?
         </Text>
         <Text style={styles.sub} numberOfLines={1}>
           Your ad could be here — go ad-free with Premium.

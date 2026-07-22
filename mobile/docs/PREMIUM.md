@@ -1,6 +1,6 @@
 # Premium & save slots — shipping notes
 
-Simlife has a one-time **Premium** unlock and a **save-slot** system.
+GitLife has a one-time **Premium** unlock and a **save-slot** system.
 
 ## What premium gives (already wired)
 

@@ -21,7 +21,7 @@ const PERKS: { emoji: string; title: string; sub: string }[] = [
   { emoji: '🎚️', title: 'Edit stats before birth', sub: 'Shape your character’s starting stats.' },
 ]
 
-/** One-time purchase paywall for Simlife Premium. */
+/** One-time purchase paywall for GitLife Premium. */
 export function PremiumModal({ onClose }: PremiumModalProps) {
   const premium = usePremiumStore((s) => s.premium)
   const purchase = usePremiumStore((s) => s.purchase)
@@ -53,7 +53,7 @@ export function PremiumModal({ onClose }: PremiumModalProps) {
 
           <View style={styles.header}>
             <Text style={styles.crown}>👑</Text>
-            <Text style={styles.title}>Simlife Premium</Text>
+            <Text style={styles.title}>GitLife Premium</Text>
             <Text style={styles.tagline}>Everything, unlocked. One payment.</Text>
           </View>
 
