@@ -119,22 +119,31 @@ export function faceSvg(o: FaceOpts): string {
   parts.push(brc(cx - s.eyeDX, 1))
   parts.push(brc(cx + s.eyeDX, 1))
 
+  // Beard (men, adult+): a clean shape hugging the jaw. Drawn before the
+  // nose/mouth so those still read on top of it.
+  if (o.beard && o.gender === 'male' && (o.stage === 'young' || o.stage === 'adult' || o.stage === 'senior')) {
+    const bx = s.rx * 0.9 // how far up the cheeks it reaches
+    const topY = s.mouthY - 4 // beard's inner (upper) edge sits just under the lip
+    parts.push(
+      `<path d="M${R(cx - bx)},${R(cy)} ` +
+        `C${R(cx - s.rx)},${R(cy + s.ry * 0.5)} ${R(cx - s.rx * 0.55)},${R(cy + s.ry)} ${cx},${R(cy + s.ry + 1)} ` +
+        `C${R(cx + s.rx * 0.55)},${R(cy + s.ry)} ${R(cx + s.rx)},${R(cy + s.ry * 0.5)} ${R(cx + bx)},${R(cy)} ` +
+        `C${R(cx + s.rx * 0.5)},${R(cy + 4)} ${R(cx + 6)},${topY} ${cx},${topY} ` +
+        `C${R(cx - 6)},${topY} ${R(cx - s.rx * 0.5)},${R(cy + 4)} ${R(cx - bx)},${R(cy)} Z" fill="${hair}"/>`,
+    )
+    // Moustache over the top lip.
+    parts.push(
+      `<path d="M${R(cx - 7)},${R(s.mouthY - 4)} Q${cx},${R(s.mouthY - 7)} ${R(cx + 7)},${R(s.mouthY - 4)} Q${cx},${R(s.mouthY - 1.5)} ${R(cx - 7)},${R(s.mouthY - 4)} Z" fill="${hair}"/>`,
+    )
+  }
+
   // Nose.
   parts.push(`<path d="M${R(cx)},${R(eyeY + 4)} q1.6,3 -1.4,3.6" stroke="${line}" stroke-width="1.3" fill="none" stroke-linecap="round"/>`)
 
-  // Mouth (a friendly smile).
+  // Mouth (a friendly smile), on top of any beard.
   parts.push(
     `<path d="M${R(cx - s.mouthW)},${s.mouthY} Q${cx},${R(s.mouthY + 4.5)} ${R(cx + s.mouthW)},${s.mouthY}" stroke="#a34a52" stroke-width="2" fill="none" stroke-linecap="round"/>`,
   )
-
-  // Beard (men, adult+).
-  if (o.beard && o.gender === 'male' && (o.stage === 'young' || o.stage === 'adult' || o.stage === 'senior')) {
-    parts.push(
-      `<path d="M${R(cx - s.rx + 3)},${R(cy + 2)} C${R(cx - s.rx + 2)},${R(cy + s.ry - 2)} ${cx},${R(cy + s.ry + 3)} ${cx},${R(cy + s.ry + 3)} C${cx},${R(cy + s.ry + 3)} ${R(cx + s.rx - 2)},${R(cy + s.ry - 2)} ${R(cx + s.rx - 3)},${R(cy + 2)} C${R(cx + s.rx - 8)},${R(cy + 10)} ${R(cx - s.rx + 8)},${R(cy + 10)} ${R(cx - s.rx + 3)},${R(cy + 2)} Z" fill="${hair}"/>`,
-    )
-    // Moustache above the lip.
-    parts.push(`<path d="M${R(cx - 6)},${R(s.mouthY - 2)} Q${cx},${R(s.mouthY)} ${R(cx + 6)},${R(s.mouthY - 2)}" stroke="${hair}" stroke-width="3" fill="none" stroke-linecap="round"/>`)
-  }
 
   // Hair on top. Baby = wispy tuft; recede pulls the hairline back.
   const topY = cy - s.ry
