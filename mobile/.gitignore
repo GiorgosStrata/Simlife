@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# scratch simulation harness (temporary, never committed)
+_sim.*
+_report.*
+_peek.*
