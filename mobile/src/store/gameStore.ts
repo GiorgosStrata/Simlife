@@ -100,7 +100,7 @@ export {
 }
 
 const START_YEAR_BASE = 2026
-const MAX_AGE = 100
+const MAX_AGE = 122
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
@@ -474,6 +474,9 @@ interface GameState {
   money: number
   /** Illnesses the character currently has (colds, STDs, cancers…). */
   conditions: ActiveCondition[]
+  /** Age at the player's last doctor visit — a recent check-up lowers the odds
+   * of a sudden fatal event. -99 means "never / long ago". */
+  lastCheckupAge: number
   /** Current unit price of each investable asset (see data/investments.ts). */
   investPrices: Record<string, number>
   /** The player's holdings: units owned and total cash invested, per asset. */
@@ -787,6 +790,7 @@ function newLifeState() {
     stats: rollStats(),
     money: 0,
     conditions: [] as ActiveCondition[],
+    lastCheckupAge: -99,
     investPrices: initialInvestPrices(),
     investments: {} as Record<string, { units: number; invested: number }>,
     currentEvent: null,
@@ -875,10 +879,14 @@ function drawEvent(
  * Once past the frailty age, risk climbs steeply year over year.
  */
 function oldAgeDeathRoll(age: number, health: number): boolean {
-  const frailtyAge = 58 + health * 0.28 // health 88 → ~83, health 20 → ~64
+  // Health decides WHEN frailty sets in — and it's the whole ballgame for
+  // longevity. A robust body (90+) stays out of the danger zone into its late
+  // 90s and can genuinely reach 100+, while a neglected one (health ~30) grows
+  // frail by its mid-60s. Once past the frailty age, risk climbs year on year.
+  const frailtyAge = 48 + health * 0.56 // health 95 → ~101, 50 → 76, 20 → ~59
   if (age < frailtyAge) return false
   const over = age - frailtyAge
-  return Math.random() < 0.02 + over * over * 0.006
+  return Math.random() < 0.015 + over * over * 0.0045
 }
 
 /**
@@ -887,11 +895,15 @@ function oldAgeDeathRoll(age: number, health: number): boolean {
  * with age and are multiplied by poor health. Returns the cause of death, or
  * null. This is the *only* way a healthy elder dies before their frailty age.
  */
-function catastropheRoll(age: number, health: number): string | null {
+function catastropheRoll(age: number, health: number, recentCheckup: boolean): string | null {
   if (age < 35) return null
   const ageFactor = (age - 35) * 0.0003 // ~2% a year by age 100
   const healthFactor = 0.35 + ((100 - health) / 100) * 1.8 // 0.35–2.15
-  if (Math.random() >= ageFactor * healthFactor) return null
+  let risk = ageFactor * healthFactor
+  // A recent doctor's visit catches silent problems (blood pressure, heart)
+  // early, meaningfully cutting the odds of a sudden fatal event.
+  if (recentCheckup) risk *= 0.55
+  if (Math.random() >= risk) return null
   return pick([
     'a sudden heart attack',
     'a stroke',
@@ -1277,9 +1289,16 @@ export const useGameStore = create<GameState>()(
           let athletics = s.athletics
           let schoolSport = s.schoolSport
 
-          // Gentle wear and tear in later life.
-          if (age > 50) {
-            stats.health = clampStat(stats.health - randomInt(0, 2))
+          // The body wears down with age — barely noticeable in your 30s,
+          // steeper each decade past 60. This is fightable: a fit body (an
+          // Activities sport) and regular doctor visits push back, so late-life
+          // health is something you *maintain*, not just watch slip away.
+          if (age >= 30) {
+            const wear = age < 45 ? 0.8 : age < 60 ? 1.6 : age < 75 ? 2.6 : 3.6
+            stats.health = clampStat(stats.health - Math.max(0, wear + (Math.random() - 0.5)))
+            // Staying active preserves the body — a flat top-up (not subject to
+            // diminishing returns) that offsets much of the year's wear.
+            if (s.pursuits.sport) stats.health = clampStat(stats.health + 1.6)
           }
 
           // Serve a year of any prison sentence. Released when it runs out.
@@ -1825,7 +1844,8 @@ export const useGameStore = create<GameState>()(
           }
 
           const naturalDeath = oldAgeDeathRoll(age, stats.health)
-          const catastrophe = naturalDeath ? null : catastropheRoll(age, stats.health)
+          const recentCheckup = age - (s.lastCheckupAge ?? -99) <= 3
+          const catastrophe = naturalDeath ? null : catastropheRoll(age, stats.health, recentCheckup)
           const illnessDeath = !naturalDeath && !catastrophe ? illnessDeathCause : null
           if (
             stats.health <= 0 ||
@@ -2268,17 +2288,24 @@ export const useGameStore = create<GameState>()(
           const cost = outOfPocket(s.age, scaleByCountry(150, s.countryCode))
           if (s.money < cost) return
           if (!useYearlyAction('doctor')) return
-          const healthy = s.stats.health >= 85
+          const h = s.stats.health
+          // Preventive care keeps a healthy body ticking; a real work-up when
+          // you're run-down does more. These are FLAT gains (capped at 95 like
+          // any natural stat), so a yearly check-up genuinely offsets aging —
+          // and logging the visit cuts your odds of a sudden heart attack.
+          const gain = h >= 85 ? randomInt(2, 4) : h >= 55 ? randomInt(4, 8) : randomInt(8, 14)
           set({
             money: s.money - cost,
-            stats: { ...s.stats, health: gainStat(s.stats.health, randomInt(healthy ? 1 : 5, healthy ? 3 : 10)) },
+            lastCheckupAge: s.age,
+            stats: { ...s.stats, health: clampStat(s.stats.health + gain) },
           })
           playSfx('success')
           addLog([
             {
-              text: healthy
-                ? 'The doctor gave you a clean bill of health. Keep it up.'
-                : 'A checkup and some treatment left you feeling much better.',
+              text:
+                h >= 85
+                  ? 'A check-up confirmed you’re in great shape — the doctor says keep it up. 🩺'
+                  : 'A check-up and some treatment left you feeling much better. 🩺',
               kind: 'event',
             },
           ])
@@ -4378,7 +4405,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 35,
+      version: 36,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({
         hasHydrated: _hasHydrated,
@@ -4669,6 +4696,10 @@ export const useGameStore = create<GameState>()(
           state.ownedItems = moved
           state.carListings = rollCarListings(code, state.year ?? START_YEAR_BASE)
           state.jewelryListings = rollJewelryListings(code)
+        }
+        // v35 saves predate the health/longevity rework's check-up tracking.
+        if (version < 36) {
+          state.lastCheckupAge = -99
         }
         return state as GameState
       },

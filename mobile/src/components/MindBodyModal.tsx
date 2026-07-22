@@ -33,6 +33,7 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
   const spaDay = useGameStore((s) => s.spaDay)
   const conditions = useGameStore((s) => s.conditions)
   const treatIllness = useGameStore((s) => s.treatIllness)
+  const lastCheckupAge = useGameStore((s) => s.lastCheckupAge)
 
   useEffect(() => {
     playSfx('pop')
@@ -59,6 +60,28 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
     (opts.minAge ? age < opts.minAge : false) ||
     (opts.cost ? money < price(opts.cost) : false)
 
+  // Physical condition, in plain words — health is what decides how long you
+  // live, so the game says so out loud.
+  const h = Math.round(stats.health)
+  const shape =
+    h >= 85
+      ? { text: 'In peak condition — set for a long life 💪', color: colors.emerald700 }
+      : h >= 65
+        ? { text: 'Fit and healthy', color: colors.emerald700 }
+        : h >= 45
+          ? { text: 'In average shape — stay active', color: colors.amber400 }
+          : h >= 25
+            ? { text: 'Out of shape — this is shortening your life', color: colors.orange500 }
+            : { text: 'Frail — your body is failing', color: colors.rose500 }
+  // From mid-life, a recent check-up cuts the odds of a sudden heart attack.
+  const checkupDue = age >= 35 && age - lastCheckupAge > 3
+  const checkupNote =
+    age < 35
+      ? null
+      : checkupDue
+        ? { text: '⚠ No recent check-up — a visit lowers your risk of a sudden heart attack', color: colors.orange500 }
+        : { text: '✓ Recent check-up — heart-attack risk reduced', color: colors.emerald700 }
+
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -79,6 +102,13 @@ export function MindBodyModal({ onClose }: MindBodyModalProps) {
               <Text style={styles.badgeNum}>{Math.round(stats.looks)}</Text>
               <Text style={styles.badgeCap}>✨ Looks</Text>
             </View>
+          </View>
+
+          <View style={[styles.vitality, { borderLeftColor: shape.color }]}>
+            <Text style={[styles.vitalityText, { color: shape.color }]}>{shape.text}</Text>
+            {checkupNote && (
+              <Text style={[styles.checkupText, { color: checkupNote.color }]}>{checkupNote.text}</Text>
+            )}
           </View>
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
@@ -184,6 +214,17 @@ const styles = StyleSheet.create({
   },
   badgeNum: { fontSize: 18, fontWeight: '800', color: colors.slate800 },
   badgeCap: { fontSize: 11, color: colors.slate500, marginTop: 1 },
+  vitality: {
+    marginTop: 10,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    gap: 3,
+  },
+  vitalityText: { fontSize: 13, fontWeight: '700' },
+  checkupText: { fontSize: 12, fontWeight: '600' },
   list: { marginTop: 12 },
   listContent: { gap: 8, paddingBottom: 8 },
   cancel: { marginTop: 8, alignItems: 'center', paddingVertical: 8 },
