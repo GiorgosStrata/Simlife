@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
-import { ASSET_CATEGORIES, ASSETS, type AssetCategory } from '../data/assets'
+import { ASSET_CATEGORIES, type AssetCategory } from '../data/assets'
 import { phonesForYear } from '../data/phones'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
@@ -19,8 +19,11 @@ export function StoreModal({ onClose }: StoreModalProps) {
   const year = useGameStore((s) => s.year)
   const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
   const homeListings = useGameStore((s) => s.homeListings)
+  const carListings = useGameStore((s) => s.carListings)
+  const jewelryListings = useGameStore((s) => s.jewelryListings)
   const buyAsset = useGameStore((s) => s.buyAsset)
   const buyHome = useGameStore((s) => s.buyHome)
+  const buyMarketItem = useGameStore((s) => s.buyMarketItem)
 
   const [category, setCategory] = useState<AssetCategory>('car')
   useCloseOnAction(onClose)
@@ -30,14 +33,16 @@ export function StoreModal({ onClose }: StoreModalProps) {
     playSfx('pop')
   }, [])
 
-  // Homes are a rotating, randomly-named market; other categories are fixed
-  // (phones flagship-per-year).
+  // Cars, jewelry and homes are rotating, randomly-generated markets that
+  // refresh each year; phones show the flagship line for the current year.
   const items =
     category === 'home'
       ? homeListings
-      : category === 'phone'
-        ? phonesForYear(year)
-        : ASSETS.filter((a) => a.category === category)
+      : category === 'car'
+        ? carListings
+        : category === 'luxury'
+          ? jewelryListings
+          : phonesForYear(year)
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -68,25 +73,27 @@ export function StoreModal({ onClose }: StoreModalProps) {
 
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {items.map((asset) => {
-              const isHome = category === 'home'
-              const owned = !isHome && ownedAssetIds.includes(asset.id)
+              // Phones are the only fixed catalogue left, so they can be "owned".
+              const owned = category === 'phone' && ownedAssetIds.includes(asset.id)
               const tooPoor = money < asset.price
               const size = 'size' in asset ? asset.size : undefined
+              const buy =
+                category === 'home'
+                  ? act(() => buyHome(asset.id), null)
+                  : category === 'car' || category === 'luxury'
+                    ? act(() => buyMarketItem(asset.id), null)
+                    : act(() => buyAsset(asset.id), null)
               return (
                 <Row
                   key={asset.id}
                   emoji={asset.emoji}
                   title={asset.name}
                   subtitle={
-                    isHome && size
+                    size
                       ? `$${asset.price.toLocaleString()} · houses ${size}`
                       : `$${asset.price.toLocaleString()}`
                   }
-                  onPress={
-                    isHome
-                      ? act(() => buyHome(asset.id), null)
-                      : act(() => buyAsset(asset.id), null)
-                  }
+                  onPress={buy}
                   disabled={owned || tooPoor}
                   right={
                     <View style={[styles.pill, (owned || tooPoor) && styles.pillOff]}>

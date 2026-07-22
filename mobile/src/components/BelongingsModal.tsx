@@ -17,9 +17,11 @@ interface BelongingsModalProps {
 /** Everything you own, tucked into a sheet so it doesn't fill the screen. */
 export function BelongingsModal({ onClose }: BelongingsModalProps) {
   const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
+  const ownedItems = useGameStore((s) => s.ownedItems)
   const homes = useGameStore((s) => s.homes)
   const residenceId = useGameStore((s) => s.residenceId)
   const sellAsset = useGameStore((s) => s.sellAsset)
+  const sellMarketItem = useGameStore((s) => s.sellMarketItem)
   const [homeId, setHomeId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -28,17 +30,19 @@ export function BelongingsModal({ onClose }: BelongingsModalProps) {
 
   useCloseOnAction(onClose)
 
-  const owned = ownedAssetIds
+  // Phones live in ownedAssetIds; cars & jewelry are self-contained ownedItems.
+  const phones = ownedAssetIds
     .map((id) => getAsset(id))
     .filter((a): a is NonNullable<typeof a> => !!a)
   const netWorth =
-    owned.reduce((sum, a) => sum + resaleValue(a), 0) +
+    phones.reduce((sum, a) => sum + resaleValue(a), 0) +
+    ownedItems.reduce((sum, i) => sum + Math.round(i.price / 2), 0) +
     homes.reduce((sum, h) => sum + Math.round(h.price / 2), 0)
   const rentTotal = homes.reduce(
     (sum, h) => (h.id !== residenceId ? sum + homeRent(h.price) : sum),
     0,
   )
-  const hasStuff = owned.length > 0 || homes.length > 0
+  const hasStuff = phones.length > 0 || ownedItems.length > 0 || homes.length > 0
 
   const tap = (fn: () => void) => () => {
     playSfx('click')
@@ -73,20 +77,32 @@ export function BelongingsModal({ onClose }: BelongingsModalProps) {
               />
             ))}
 
-            {owned.length > 0 && <SectionHeading color={colors.amber400}>ITEMS</SectionHeading>}
-            {owned.map((asset) => {
-              const upkeep = assetUpkeep(asset.price, asset.category)
+            {(ownedItems.length > 0 || phones.length > 0) && (
+              <SectionHeading color={colors.amber400}>ITEMS</SectionHeading>
+            )}
+            {ownedItems.map((item) => {
+              const upkeep = assetUpkeep(item.price, item.category)
               return (
                 <Row
-                  key={asset.id}
-                  emoji={asset.emoji}
-                  title={asset.name}
-                  subtitle={`Sell for $${resaleValue(asset).toLocaleString()}${upkeep > 0 ? ` · upkeep $${upkeep.toLocaleString()}/yr` : ''}`}
-                  onPress={tap(() => sellAsset(asset.id))}
+                  key={item.id}
+                  emoji={item.emoji}
+                  title={item.name}
+                  subtitle={`Sell for $${Math.round(item.price / 2).toLocaleString()}${upkeep > 0 ? ` · upkeep $${upkeep.toLocaleString()}/yr` : ''}`}
+                  onPress={tap(() => sellMarketItem(item.id))}
                   right={<Text style={styles.sell}>Sell</Text>}
                 />
               )
             })}
+            {phones.map((asset) => (
+              <Row
+                key={asset.id}
+                emoji={asset.emoji}
+                title={asset.name}
+                subtitle={`Sell for $${resaleValue(asset).toLocaleString()}`}
+                onPress={tap(() => sellAsset(asset.id))}
+                right={<Text style={styles.sell}>Sell</Text>}
+              />
+            ))}
 
             {!hasStuff && (
               <Row emoji="📭" title="Nothing yet" subtitle="Buy something from the shop" />

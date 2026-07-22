@@ -41,6 +41,12 @@ import {
   stepInvestmentPrice,
 } from '../data/investments'
 import { rollHomeListings, type HomeListing, type OwnedHome } from '../data/homes'
+import {
+  rollCarListings,
+  rollJewelryListings,
+  type MarketItem,
+  type OwnedItem,
+} from '../data/market'
 import { COUNTRIES, countrySalary, getCountry, scaleByCountry } from '../data/countries'
 import {
   DEBT_INTEREST,
@@ -539,8 +545,15 @@ interface GameState {
   /** 1 for the founder, +1 each time you continue as your child. */
   generation: number
 
-  // Belongings (cars, phones, luxury — not houses)
+  // Belongings. Phones stay as static asset ids; cars and jewelry are
+  // self-contained items bought from a rotating market (like houses).
   ownedAssetIds: string[]
+  /** Cars and jewelry you own (bought from the yearly rotating markets). */
+  ownedItems: OwnedItem[]
+  /** This year's rotating market of randomly-generated cars for sale. */
+  carListings: MarketItem[]
+  /** This year's rotating market of randomly-generated jewelry for sale. */
+  jewelryListings: MarketItem[]
   /** Houses you own; one is your residence, the rest are rented out. */
   homes: OwnedHome[]
   /** This year's rotating market of randomly-named houses for sale. */
@@ -684,6 +697,10 @@ interface GameState {
   sellAsset: (assetId: string) => void
 
   // Houses
+  /** Buy a car or jewelry from this year's rotating market. */
+  buyMarketItem: (listingId: string) => void
+  /** Sell an owned car or jewelry back for ~half. */
+  sellMarketItem: (itemId: string) => void
   buyHome: (listingId: string) => void
   sellHome: (homeId: string) => void
   /** Choose which owned home to live in (the rest are rented out). */
@@ -801,6 +818,9 @@ function newLifeState() {
     ancestors: [] as Ancestor[],
     generation: 1,
     ownedAssetIds: [] as string[],
+    ownedItems: [] as OwnedItem[],
+    carListings: rollCarListings(countryCode, START_YEAR_BASE),
+    jewelryListings: rollJewelryListings(countryCode),
     homes: [] as OwnedHome[],
     homeListings: rollHomeListings(countryCode),
     residenceId: null as string | null,
@@ -1955,6 +1975,8 @@ export const useGameStore = create<GameState>()(
             usedActions: [],
             jobOpenings: rollJobOpenings(s.major, hasDegree),
             homeListings: rollHomeListings(s.countryCode),
+            carListings: rollCarListings(s.countryCode, year),
+            jewelryListings: rollJewelryListings(s.countryCode),
             log: [...s.log, ...entries],
             nextLogId: logId,
           })
@@ -2843,6 +2865,44 @@ export const useGameStore = create<GameState>()(
           addLog([
             { text: `You sold your ${asset.name} for $${value.toLocaleString()}.`, kind: 'event' },
           ])
+        },
+
+        // ----- Cars & jewelry (rotating markets) -----
+
+        buyMarketItem: (listingId: string) => {
+          const s = get()
+          const listing =
+            s.carListings.find((l) => l.id === listingId) ??
+            s.jewelryListings.find((l) => l.id === listingId)
+          if (!listing || !s.alive || s.money < listing.price) return
+          const owned: OwnedItem = { ...listing, boughtYear: s.year }
+          set({
+            money: s.money - listing.price,
+            ownedItems: [...s.ownedItems, owned],
+            // The bought listing leaves this year's market (like a sold house).
+            carListings: s.carListings.filter((l) => l.id !== listingId),
+            jewelryListings: s.jewelryListings.filter((l) => l.id !== listingId),
+            stats: { ...s.stats, happiness: clampStat(s.stats.happiness + listing.joy) },
+          })
+          playSfx(listing.category === 'car' ? 'honk' : 'cash')
+          addLog([
+            { text: `You bought a ${listing.name} ${listing.emoji} for $${listing.price.toLocaleString()}!`, kind: 'money' },
+          ])
+          unlock(listing.category === 'car' ? 'buy-car' : 'buy-luxury')
+          checkMilestones()
+        },
+
+        sellMarketItem: (itemId: string) => {
+          const s = get()
+          const item = s.ownedItems.find((i) => i.id === itemId)
+          if (!item || !s.alive) return
+          const value = Math.round(item.price / 2)
+          set({
+            money: s.money + value,
+            ownedItems: s.ownedItems.filter((i) => i.id !== itemId),
+          })
+          playSfx('cash')
+          addLog([{ text: `You sold your ${item.name} for $${value.toLocaleString()}.`, kind: 'money' }])
         },
 
         // ----- Houses -----
@@ -4263,7 +4323,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 34,
+      version: 35,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({
         hasHydrated: _hasHydrated,
@@ -4526,6 +4586,34 @@ export const useGameStore = create<GameState>()(
           // Count children already born this life so progress isn't lost.
           state.runChildren = (state.relationships ?? []).filter((p) => p.role === 'child').length
           state.runLanguages = 0
+        }
+        // v34 saves predate the rotating car/jewelry markets — move any owned
+        // cars & luxury out of ownedAssetIds into the new self-contained list.
+        if (version < 35) {
+          const code = state.countryCode ?? 'US'
+          const ids = state.ownedAssetIds ?? []
+          const moved: OwnedItem[] = []
+          const keep: string[] = []
+          for (const id of ids) {
+            const a = getAsset(id)
+            if (a && (a.category === 'car' || a.category === 'luxury')) {
+              moved.push({
+                id: `${a.category}-legacy-${id}`,
+                name: a.name,
+                emoji: a.emoji,
+                price: a.price,
+                joy: a.joy,
+                category: a.category,
+                boughtYear: state.year ?? START_YEAR_BASE,
+              })
+            } else {
+              keep.push(id)
+            }
+          }
+          state.ownedAssetIds = keep
+          state.ownedItems = moved
+          state.carListings = rollCarListings(code, state.year ?? START_YEAR_BASE)
+          state.jewelryListings = rollJewelryListings(code)
         }
         return state as GameState
       },

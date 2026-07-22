@@ -168,7 +168,9 @@ function configToOptions(c: AvatarConfig, stage: AgeStage, hair: string): Record
   return {
     seed: 'player',
     top: [c.top],
-    topProbability: baby ? 0 : 100, // babies are bald
+    // Babies keep their hair too, so growing from baby → kid is seamless
+    // (no jarring bald-then-hair jump).
+    topProbability: 100,
     hairColor: [hair],
     skinColor: [c.skinColor],
     eyebrows: c.eyebrows ? [c.eyebrows] : EYEBROWS,
@@ -199,7 +201,7 @@ function seedToOptions(seed: string, gender: Gender, age: number): Record<string
   return {
     seed,
     top: male ? MALE_TOPS : FEMALE_TOPS,
-    topProbability: baby ? 0 : 100, // babies are bald
+    topProbability: 100, // hair from birth — seamless baby → kid
     hairColor,
     skinColor: SKIN_TONES,
     eyebrows: EYEBROWS,
