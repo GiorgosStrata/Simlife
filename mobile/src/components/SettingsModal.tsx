@@ -37,7 +37,7 @@ export function SettingsModal({ onClose, onOpenLives, onOpenPremium }: SettingsM
   const startNewLife = useGameStore((s) => s.startNewLife)
   const generation = useGameStore((s) => s.generation)
   const currentEmail = useAuthStore((s) => s.currentEmail)
-  const accountName = useAuthStore((s) => (s.currentEmail ? s.users[s.currentEmail]?.name : null))
+  const accountName = useAuthStore((s) => s.currentName)
   const logOut = useAuthStore((s) => s.logOut)
   const [confirmingReset, setConfirmingReset] = useState(false)
 

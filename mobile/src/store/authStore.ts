@@ -1,93 +1,96 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { supabase } from '../lib/supabase'
 
 /**
- * A lightweight, on-device account system so players sign up / log in before
- * playing. This is a client-only store (accounts live in local storage on this
- * device) — enough for a real sign-up/login flow and to gate the game. When we
- * wire a real backend, swap the signUp/logIn bodies for API calls; the rest of
- * the app only cares about `currentEmail`.
+ * Real accounts, backed by Supabase Auth. Sign-up / log-in / reset all hit the
+ * server, so an account works across devices and browsers, and Supabase owns
+ * the users table, password hashing, email confirmation and password resets.
  *
- * NOTE: passwords are stored as a lightweight hash on-device only. Do not treat
- * this as secure auth — a production release should authenticate against a
- * server (see docs/ADS_AND_AUTH.md).
+ * This store just mirrors the current session (who's logged in) for the UI —
+ * the session itself is persisted by the Supabase client, not here.
  */
-
-interface Account {
-  name: string
-  email: string
-  /** Lightweight hash of the password (not secure — client-side only). */
-  hash: string
-  createdAt: number
-}
 
 interface AuthResult {
   ok: boolean
   error?: string
+  /** True when sign-up succeeded but the email must be confirmed before login. */
+  needsConfirm?: boolean
 }
 
 interface AuthState {
-  users: Record<string, Account>
   currentEmail: string | null
+  currentName: string | null
   hasHydrated: boolean
-  signUp: (name: string, email: string, password: string) => AuthResult
-  logIn: (email: string, password: string) => AuthResult
-  logOut: () => void
-}
-
-/** FNV-1a string hash → hex. Deterministic, tiny; NOT cryptographically secure. */
-function hashPassword(password: string): string {
-  let h = 2166136261
-  for (let i = 0; i < password.length; i++) {
-    h ^= password.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  // Fold in the length so trivial collisions are less likely.
-  h ^= password.length
-  return (h >>> 0).toString(16)
+  signUp: (name: string, email: string, password: string) => Promise<AuthResult>
+  logIn: (email: string, password: string) => Promise<AuthResult>
+  logOut: () => Promise<void>
+  resetPassword: (email: string) => Promise<AuthResult>
 }
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase()
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+/** Where Supabase should send users back to after a confirm / reset link. */
+const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      users: {},
-      currentEmail: null,
-      hasHydrated: false,
+export const useAuthStore = create<AuthState>()(() => ({
+  currentEmail: null,
+  currentName: null,
+  hasHydrated: false,
 
-      signUp: (name, email, password) => {
-        const e = normalizeEmail(email)
-        if (!name.trim()) return { ok: false, error: 'Please enter your name.' }
-        if (!EMAIL_RE.test(e)) return { ok: false, error: 'Enter a valid email address.' }
-        if (password.length < 6) return { ok: false, error: 'Password must be at least 6 characters.' }
-        if (get().users[e]) return { ok: false, error: 'An account with that email already exists.' }
-        const account: Account = { name: name.trim(), email: e, hash: hashPassword(password), createdAt: Date.now() }
-        set({ users: { ...get().users, [e]: account }, currentEmail: e })
-        return { ok: true }
-      },
+  signUp: async (name, email, password) => {
+    const e = normalizeEmail(email)
+    if (!name.trim()) return { ok: false, error: 'Please enter your name.' }
+    if (!EMAIL_RE.test(e)) return { ok: false, error: 'Enter a valid email address.' }
+    if (password.length < 6) return { ok: false, error: 'Password must be at least 6 characters.' }
+    const { data, error } = await supabase.auth.signUp({
+      email: e,
+      password,
+      options: { data: { name: name.trim() }, emailRedirectTo: redirectTo },
+    })
+    if (error) return { ok: false, error: error.message }
+    // With email confirmation ON, sign-up creates the user but no session yet.
+    if (!data.session) return { ok: true, needsConfirm: true }
+    return { ok: true }
+  },
 
-      logIn: (email, password) => {
-        const e = normalizeEmail(email)
-        const account = get().users[e]
-        if (!account) return { ok: false, error: 'No account found for that email.' }
-        if (account.hash !== hashPassword(password)) return { ok: false, error: 'Incorrect password.' }
-        set({ currentEmail: e })
-        return { ok: true }
-      },
+  logIn: async (email, password) => {
+    const e = normalizeEmail(email)
+    if (!EMAIL_RE.test(e)) return { ok: false, error: 'Enter a valid email address.' }
+    const { error } = await supabase.auth.signInWithPassword({ email: e, password })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  },
 
-      logOut: () => set({ currentEmail: null }),
-    }),
-    {
-      name: 'simlife-auth',
-      version: 1,
-      storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ hasHydrated: _hasHydrated, ...rest }) => rest,
-      onRehydrateStorage: () => () => {
-        useAuthStore.setState({ hasHydrated: true })
-      },
-    },
-  ),
-)
+  logOut: async () => {
+    await supabase.auth.signOut()
+  },
+
+  resetPassword: async (email) => {
+    const e = normalizeEmail(email)
+    if (!EMAIL_RE.test(e)) return { ok: false, error: 'Enter your email first, then tap reset.' }
+    const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  },
+}))
+
+/** Push the current session's user into the store (or clear it). */
+function syncSession(
+  user: { email?: string | null; user_metadata?: { name?: string } } | null,
+) {
+  useAuthStore.setState({
+    currentEmail: user?.email ?? null,
+    currentName: user?.user_metadata?.name ?? null,
+  })
+}
+
+// Restore any existing session on startup, then flag the app as ready.
+supabase.auth.getSession().then(({ data }) => {
+  syncSession(data.session?.user ?? null)
+  useAuthStore.setState({ hasHydrated: true })
+})
+
+// Keep the store in step with logins, logouts and token refreshes.
+supabase.auth.onAuthStateChange((_event, session) => {
+  syncSession(session?.user ?? null)
+})

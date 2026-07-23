@@ -21,28 +21,68 @@ type Mode = 'login' | 'signup'
 export function AuthScreen() {
   const signUp = useAuthStore((s) => s.signUp)
   const logIn = useAuthStore((s) => s.logIn)
+  const resetPassword = useAuthStore((s) => s.resetPassword)
 
   const [mode, setMode] = useState<Mode>('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  const submit = () => {
+  const submit = async () => {
+    if (busy) return
+    setError(null)
+    setNotice(null)
     playSfx('click')
-    const result =
-      mode === 'signup' ? signUp(name, email, password) : logIn(email, password)
-    if (!result.ok) {
-      setError(result.error ?? 'Something went wrong.')
-      playSfx('fail')
-      return
+    setBusy(true)
+    try {
+      const result =
+        mode === 'signup'
+          ? await signUp(name, email, password)
+          : await logIn(email, password)
+      if (!result.ok) {
+        setError(result.error ?? 'Something went wrong.')
+        playSfx('fail')
+        return
+      }
+      // Sign-up with email confirmation on: the session comes after they click
+      // the link, so show a heads-up rather than dropping them into the game.
+      if (result.needsConfirm) {
+        setNotice(`Almost there! Check ${email.trim()} for a confirmation link, then log in.`)
+        setMode('login')
+        setPassword('')
+      }
+      playSfx('success')
+    } finally {
+      setBusy(false)
     }
-    playSfx('success')
+  }
+
+  const forgotPassword = async () => {
+    if (busy) return
+    setError(null)
+    setNotice(null)
+    setBusy(true)
+    try {
+      const result = await resetPassword(email)
+      if (!result.ok) {
+        setError(result.error ?? 'Could not send a reset email.')
+        playSfx('fail')
+        return
+      }
+      setNotice(`If an account exists for ${email.trim()}, a password-reset link is on its way.`)
+      playSfx('success')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const switchMode = (m: Mode) => {
     setMode(m)
     setError(null)
+    setNotice(null)
   }
 
   return (
@@ -147,16 +187,36 @@ export function AuthScreen() {
           </View>
 
           {error && <Text style={styles.error}>{error}</Text>}
+          {notice && <Text style={styles.notice}>{notice}</Text>}
 
           <Pressable
             accessibilityRole="button"
             onPress={submit}
-            style={({ pressed }) => [styles.submit, pressed && styles.submitPressed]}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.submit,
+              pressed && styles.submitPressed,
+              busy && styles.submitPressed,
+            ]}
           >
             <Text style={styles.submitText}>
-              {mode === 'signup' ? 'Create account' : 'Log in'}
+              {busy
+                ? 'Please wait…'
+                : mode === 'signup'
+                  ? 'Create account'
+                  : 'Log in'}
             </Text>
           </Pressable>
+
+          {mode === 'login' && (
+            <Text
+              accessibilityRole="button"
+              style={styles.forgot}
+              onPress={forgotPassword}
+            >
+              Forgot your password?
+            </Text>
+          )}
 
           <Text style={styles.switchLine}>
             {mode === 'signup' ? 'Already have an account? ' : 'New here? '}
@@ -170,7 +230,8 @@ export function AuthScreen() {
         </View>
 
         <Text style={styles.legal}>
-          Accounts are stored on this device. By continuing you agree to play responsibly. 🎮
+          Your account syncs securely so you can play on any device. By continuing you agree to
+          play responsibly. 🎮
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -242,6 +303,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   error: { fontSize: 13, color: colors.rose500, fontWeight: '600' },
+  notice: { fontSize: 13, color: colors.emerald700, fontWeight: '600' },
+  forgot: {
+    fontSize: 13,
+    color: colors.cyan600,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 2,
+  },
   submit: {
     backgroundColor: colors.cyan500,
     borderRadius: 14,
