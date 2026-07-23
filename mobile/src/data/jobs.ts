@@ -152,6 +152,25 @@ const SOCIAL_Q: JobQuestion[] = [
   q('A press release should be...', ['Clear and accurate', 'Full of jargon', 'A surprise']),
 ]
 
+/**
+ * General workplace questions mixed into EVERY job's pool, so each interview
+ * draws from at least a dozen options and you rarely see the same one twice.
+ */
+const GENERAL_Q: JobQuestion[] = [
+  q('Your shift starts at 9am. You arrive...', ['A few minutes early', 'An hour late', 'Whenever you feel like it']),
+  q('You need a day off. You...', ['Ask your manager in advance', 'Just don’t show up', 'Text a stranger']),
+  q('A coworker is struggling with a task. You...', ['Offer to help', 'Film it', 'Report them for fun']),
+  q('You made a mistake at work. You should...', ['Own it and fix it', 'Blame the intern', 'Deny everything']),
+  q('Confidential company information should be...', ['Kept private', 'Posted online', 'Sold to rivals']),
+  q('Your manager gives you feedback. You...', ['Listen and improve', 'Argue for an hour', 'Storm out']),
+  q('The best way to earn a promotion is to...', ['Do good work consistently', 'Nap at your desk', 'Bribe the CEO']),
+  q('A customer or client is rude. You stay...', ['Calm and professional', 'Even ruder', 'Silent forever']),
+  q('You finish your tasks early. You...', ['Ask what else needs doing', 'Sneak out', 'Start a nap']),
+  q('Workplace safety rules are...', ['There to protect everyone', 'Optional suggestions', 'A prank']),
+  q('You disagree with a teammate’s idea. You...', ['Say so respectfully', 'Yell over them', 'Sabotage it quietly']),
+  q('Getting paid depends on...', ['Doing your job and logging hours', 'Pure luck', 'Complaining loudly']),
+]
+
 // [id, title, emoji, salary, minAge, minSmarts, questions, requiresDegree?, requiredMajor?, tiers?]
 type Row = [string, string, string, number, number, number, JobQuestion[], boolean?, string?, string[]?]
 
@@ -356,6 +375,33 @@ const ROWS: Row[] = [
   ['nutritionist', 'Nutritionist', '🥗', 52000, 22, 58, SPORT_Q, true, 'sports-science', ['Junior Nutritionist', 'Nutritionist', 'Senior Nutritionist', 'Lead Nutritionist']],
   ['music-teacher', 'Music Teacher', '🎼', 45000, 22, 50, EDU_Q, true, 'music', ['Trainee Tutor', 'Music Teacher', 'Senior Music Teacher', 'Head of Music']],
   ['composer', 'Composer', '🎹', 60000, 22, 62, CREATIVE_Q, true, 'music', ['Aspiring Composer', 'Composer', 'Renowned Composer', 'Maestro']],
+
+  // ----- More everyday (no-degree) jobs -----
+  ['nanny', 'Nanny', '👶', 31000, 18, 20, CARE_Q],
+  ['tour-guide', 'Tour Guide', '🗺️', 28000, 18, 25, SERVICE_Q],
+  ['locksmith', 'Locksmith', '🔐', 41000, 18, 30, TRADE_Q],
+  ['pest-control', 'Pest Control Tech', '🐜', 36000, 18, 20, TRADE_Q],
+  ['event-planner', 'Event Planner', '🎉', 44000, 18, 35, OFFICE_Q],
+  ['sommelier', 'Sommelier', '🍷', 50000, 21, 40, SERVICE_Q],
+  ['massage-therapist', 'Massage Therapist', '💆', 38000, 18, 30, CARE_Q],
+  ['tailor', 'Tailor', '🧵', 34000, 18, 25, TRADE_Q],
+
+  // ----- More degree careers (new majors below) -----
+  ['pilot', 'Airline Pilot', '👨‍✈️', 115000, 22, 72, TRANSPORT_Q, true, 'aviation', ['First Officer', 'Captain', 'Senior Captain', 'Chief Pilot']],
+  ['helicopter-pilot', 'Helicopter Pilot', '🚁', 82000, 22, 68, TRANSPORT_Q, true, 'aviation', ['Trainee Pilot', 'Helicopter Pilot', 'Senior Pilot', 'Chief Pilot']],
+  ['detective', 'Detective', '🕵️', 66000, 22, 66, LAW_Q, true, 'criminology', ['Junior Detective', 'Detective', 'Senior Detective', 'Chief Detective']],
+  ['forensic-scientist', 'Forensic Scientist', '🔬', 62000, 22, 70, SCIENCE_Q, true, 'criminology', ['Lab Assistant', 'Forensic Scientist', 'Senior Forensic Scientist', 'Head of Forensics']],
+  ['environmental-scientist', 'Environmental Scientist', '🌍', 64000, 22, 68, SCIENCE_Q, true, 'environmental-science', ['Field Researcher', 'Environmental Scientist', 'Senior Scientist', 'Chief Scientist']],
+  ['conservationist', 'Conservationist', '🌲', 50000, 22, 60, OUTDOOR_Q, true, 'environmental-science', ['Park Ranger', 'Conservationist', 'Senior Conservationist', 'Reserve Director']],
+  ['marine-biologist', 'Marine Biologist', '🐬', 70000, 22, 74, SCIENCE_Q, true, 'marine-biology', ['Research Assistant', 'Marine Biologist', 'Senior Marine Biologist', 'Lead Scientist']],
+  ['wildlife-vet', 'Wildlife Vet', '🦓', 88000, 22, 80, CARE_Q, true, 'veterinary', ['Junior Vet', 'Wildlife Vet', 'Senior Wildlife Vet', 'Chief Vet']],
+  ['vet-surgeon', 'Veterinary Surgeon', '🐾', 100000, 22, 82, CARE_Q, true, 'veterinary', ['Surgical Resident', 'Veterinary Surgeon', 'Senior Surgeon', 'Chief Surgeon']],
+  ['executive-chef', 'Executive Chef', '👨‍🍳', 74000, 22, 55, FOOD_Q, true, 'culinary', ['Sous Chef', 'Executive Chef', 'Celebrity Chef', 'Culinary Legend']],
+  ['pastry-chef', 'Pastry Chef', '🧁', 52000, 22, 48, FOOD_Q, true, 'culinary', ['Junior Pastry Chef', 'Pastry Chef', 'Head Pastry Chef', 'Master Pâtissier']],
+  ['fashion-designer', 'Fashion Designer', '👗', 60000, 22, 52, CREATIVE_Q, true, 'fashion', ['Junior Designer', 'Fashion Designer', 'Lead Designer', 'Fashion Icon']],
+  ['stylist', 'Fashion Stylist', '🧥', 48000, 22, 45, CREATIVE_Q, true, 'fashion', ['Assistant Stylist', 'Stylist', 'Senior Stylist', 'Celebrity Stylist']],
+  ['translator', 'Translator', '🈯', 55000, 22, 65, SOCIAL_Q, true, 'linguistics', ['Junior Translator', 'Translator', 'Senior Translator', 'Chief Translator']],
+  ['interpreter', 'Interpreter', '🎙️', 58000, 22, 68, SOCIAL_Q, true, 'linguistics', ['Junior Interpreter', 'Interpreter', 'Senior Interpreter', 'Lead Interpreter']],
 ]
 
 /**
@@ -478,12 +524,16 @@ export const JOBS: Job[] = [
       salary,
       minAge,
       minSmarts,
-      questions,
+      // Every job's own questions plus the shared general pool (≥10 total),
+      // so interviews rarely repeat.
+      questions: [...questions, ...GENERAL_Q],
       ...(requiresDegree ? { requiresDegree } : {}),
       ...(requiredMajor ? { requiredMajor } : {}),
       ...(tiers ? { tiers } : {}),
     }),
   ),
-  ...ADULT_JOBS,
+  // Adult careers keep their own questions plus the general pool.
+  ...ADULT_JOBS.map((job) => ({ ...job, questions: [...job.questions, ...GENERAL_Q] })),
+  // Fame careers use a talent tryout, not an interview — no questions.
   ...SPECIAL_JOBS,
 ]

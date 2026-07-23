@@ -20,6 +20,7 @@ import { StoreModal } from './StoreModal'
 export function ActivitiesScreen() {
   const pursuits = useGameStore((s) => s.pursuits)
   const ownedAssetIds = useGameStore((s) => s.ownedAssetIds)
+  const ownedItems = useGameStore((s) => s.ownedItems)
   const homes = useGameStore((s) => s.homes)
   const unlockedCount = useGameStore((s) => s.unlockedAchievements.length)
   const [activities, setActivities] = useState(false)
@@ -31,7 +32,8 @@ export function ActivitiesScreen() {
   const [achievements, setAchievements] = useState(false)
 
   const hasPhone = ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')
-  const itemCount = ownedAssetIds.length + homes.length
+  // Cars & jewelry (incl. stolen loot) live in ownedItems — count them too.
+  const itemCount = ownedAssetIds.length + ownedItems.length + homes.length
 
   const activeCount = Object.values(pursuits).filter(Boolean).length
   const activitiesSub = (() => {

@@ -24,6 +24,15 @@ export const MAJORS: Major[] = [
   { id: 'communications', name: 'Communications', emoji: '📰', minSmarts: 50 },
   { id: 'arts', name: 'Arts & Media', emoji: '🎨', minSmarts: 40 },
   { id: 'music', name: 'Music', emoji: '🎼', minSmarts: 40 },
+  // ----- Additional fields of study -----
+  { id: 'veterinary', name: 'Veterinary Medicine', emoji: '🐾', minSmarts: 80 },
+  { id: 'aviation', name: 'Aviation', emoji: '✈️', minSmarts: 66 },
+  { id: 'marine-biology', name: 'Marine Biology', emoji: '🐬', minSmarts: 72 },
+  { id: 'environmental-science', name: 'Environmental Science', emoji: '🌍', minSmarts: 62 },
+  { id: 'criminology', name: 'Criminology', emoji: '🔍', minSmarts: 58 },
+  { id: 'linguistics', name: 'Linguistics', emoji: '🗣️', minSmarts: 60 },
+  { id: 'culinary', name: 'Culinary Arts', emoji: '🍳', minSmarts: 45 },
+  { id: 'fashion', name: 'Fashion Design', emoji: '👗', minSmarts: 46 },
 ]
 
 export function getMajor(majorId: string | null): Major | null {
