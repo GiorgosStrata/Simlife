@@ -16,6 +16,7 @@ export type AchievementCategory =
   | 'crime'
   | 'wealth'
   | 'property'
+  | 'pets'
   | 'fame'
   | 'health'
   | 'growth'
@@ -102,6 +103,60 @@ const otherAchievements: Achievement[] = [
   { id: 'max-all', emoji: '🌟', title: 'Perfect Specimen', description: 'Max out all four core stats at once.', category: 'growth' },
   { id: 'language-1', emoji: '🗣️', title: 'Bilingual', description: 'Learn a new language.', category: 'growth' },
   { id: 'language-5', emoji: '🌍', title: 'Polyglot', description: 'Learn 5 languages in a single life.', category: 'growth' },
+  { id: 'language-10', emoji: '🗺️', title: 'Renaissance Soul', description: 'Learn 10 languages in a single life.', category: 'growth' },
+
+  // Collectors — cars, homes, luxury
+  { id: 'cars-5', emoji: '🚗', title: 'Small Garage', description: 'Own 5 or more cars at once.', category: 'property' },
+  { id: 'cars-10', emoji: '🏎️', title: 'Car Collector', description: 'Own 10 or more cars at once.', category: 'property' },
+  { id: 'cars-50', emoji: '🏁', title: 'Auto Baron', description: 'Own 50 or more cars at once.', category: 'property' },
+  { id: 'homes-5', emoji: '🏘️', title: 'Landlord', description: 'Own 5 or more homes at once.', category: 'property' },
+  { id: 'homes-10', emoji: '🌆', title: 'Real Estate Empire', description: 'Own 10 or more homes at once.', category: 'property' },
+  { id: 'luxury-5', emoji: '💍', title: 'Jewelry Box', description: 'Own 5 or more luxury items at once.', category: 'property' },
+  { id: 'luxury-15', emoji: '👑', title: 'Treasure Hoard', description: 'Own 15 or more luxury items at once.', category: 'property' },
+  { id: 'own-yacht', emoji: '🛥️', title: 'Set Sail', description: 'Own a luxury yacht.', category: 'property' },
+  { id: 'own-jet', emoji: '✈️', title: 'Jet Setter', description: 'Own a private jet.', category: 'property' },
+
+  // Pets
+  { id: 'pets-5', emoji: '🐾', title: 'Animal Lover', description: 'Own 5 or more pets at once.', category: 'pets' },
+  { id: 'pets-10', emoji: '🐕', title: 'Full Menagerie', description: 'Own 10 or more pets at once.', category: 'pets' },
+  { id: 'pets-30', emoji: '🦁', title: 'Zoo Keeper', description: 'Own 30 or more pets at once.', category: 'pets' },
+  { id: 'pet-oldage', emoji: '❤️', title: 'Best Friend', description: 'Keep a pet until it passes of old age.', category: 'pets' },
+
+  // Rise from poverty (rich from a low-income country)
+  { id: 'poor-100k', emoji: '🌅', title: 'Rags to Riches', description: 'Reach $100,000 while living in a low-income country.', category: 'wealth' },
+  { id: 'poor-1m', emoji: '🌄', title: 'Local Legend', description: 'Become a millionaire from a low-income country.', category: 'wealth' },
+  { id: 'poor-10m', emoji: '🏆', title: 'Against All Odds', description: 'Reach $10,000,000 from a low-income country.', category: 'wealth' },
+  { id: 'poor-100m', emoji: '💎', title: 'Homegrown Tycoon', description: 'Reach $100,000,000 from a low-income country.', category: 'wealth' },
+  { id: 'comeback', emoji: '📈', title: 'Comeback', description: 'Climb from $100,000 in debt to millionaire in one life.', category: 'wealth' },
+  { id: 'invest-10x', emoji: '💠', title: 'Diamond Hands', description: 'Make 10× on a single investment.', category: 'wealth' },
+  { id: 'lottery-jackpot', emoji: '🎲', title: 'High Roller', description: 'Win the lottery jackpot.', category: 'wealth' },
+
+  // More career
+  { id: 'top-tier', emoji: '🪜', title: 'Top of the Ladder', description: 'Reach the highest rank at any job.', category: 'career' },
+  { id: 'work-50yr', emoji: '⏳', title: 'Lifer', description: 'Work 50 years across your life.', category: 'career' },
+  { id: 'fame-career', emoji: '🌟', title: 'Made It', description: 'Land a fame career — athlete, singer or actor.', category: 'career' },
+  { id: 'fired', emoji: '📄', title: 'Pink Slip', description: 'Get fired from a job.', category: 'career' },
+  { id: 'retired', emoji: '🌴', title: 'Golden Years', description: 'Retire with a pension.', category: 'career' },
+  { id: 'degree', emoji: '🎓', title: 'Overachiever', description: 'Earn a university degree.', category: 'career' },
+
+  // More family & love
+  { id: 'twins', emoji: '👯', title: 'Twins!', description: 'Have twins (or triplets).', category: 'family' },
+  { id: 'late-baby', emoji: '🍼', title: 'Late Bloomer', description: 'Have a child after the age of 50.', category: 'family' },
+  { id: 'generation-5', emoji: '🩸', title: 'Bloodline', description: 'Reach the 5th generation of a dynasty.', category: 'family' },
+  { id: 'married-50yr', emoji: '💛', title: 'Golden Anniversary', description: 'Stay married for 50 years.', category: 'love' },
+  { id: 'married-3', emoji: '💒', title: 'Serial Monogamist', description: 'Get married 3 times in one life.', category: 'love' },
+  { id: 'ex-and-partner', emoji: '🎭', title: 'It’s Complicated', description: 'Have an ex and a current partner at the same time.', category: 'love' },
+
+  // More crime
+  { id: 'bank-heist', emoji: '🏦', title: 'Big Score', description: 'Successfully rob a bank.', category: 'crime' },
+  { id: 'prison-escape', emoji: '🏃', title: 'Prison Break', description: 'Escape from prison.', category: 'crime' },
+  { id: 'jailed-3', emoji: '🚔', title: 'Repeat Offender', description: 'Go to prison 3 times.', category: 'crime' },
+  { id: 'kingpin', emoji: '😈', title: 'Kingpin', description: 'Commit every type of crime.', category: 'crime' },
+  { id: 'steal-car', emoji: '🚙', title: 'Grand Theft Auto', description: 'Steal a car and get away with it.', category: 'crime' },
+
+  // More health
+  { id: 'doctor-10', emoji: '🩺', title: 'Picture of Health', description: 'See the doctor 10 times in one life.', category: 'health' },
+  { id: 'survive-heart-attack', emoji: '🎗️', title: 'Nine Lives', description: 'Survive a heart attack or stroke.', category: 'health' },
 ]
 
 export const ACHIEVEMENTS: Achievement[] = [...otherAchievements, ...careerAchievements]
@@ -118,6 +173,7 @@ export const ACHIEVEMENT_GROUPS: { key: AchievementCategory; label: string }[] =
   { key: 'career', label: 'Careers' },
   { key: 'wealth', label: 'Wealth' },
   { key: 'property', label: 'Property' },
+  { key: 'pets', label: 'Pets' },
   { key: 'fame', label: 'Fame' },
   { key: 'crime', label: 'Crime' },
   { key: 'health', label: 'Health' },

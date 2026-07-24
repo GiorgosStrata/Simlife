@@ -30,7 +30,7 @@ import { ACHIEVEMENTS_BY_ID } from '../data/achievements'
 import { FREE_MAX_GENERATION, usePremiumStore } from './premiumStore'
 import { makeNpcLife, randomHobby } from '../data/npc'
 import { LEAGUES, getTeam, jobSport, leaguesForSport, teamName } from '../data/leagues'
-import { LANGUAGES, getActivity, getCrime } from '../data/activities'
+import { CRIMES, LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, homeRent, resaleValue } from '../data/assets'
 import { phonesForYear } from '../data/phones'
 import { getIllness, pickIllness } from '../data/illnesses'
@@ -602,6 +602,20 @@ interface GameState {
   runChildren: number
   /** Languages learned this life (for the polyglot achievement). */
   runLanguages: number
+  /** Years spent employed across this life (for the Lifer achievement). */
+  careerYears: number
+  /** Times married this life (for Serial Monogamist). */
+  marriageCount: number
+  /** Consecutive years married to the current spouse (for Golden Anniversary). */
+  yearsMarried: number
+  /** Doctor visits this life (for Picture of Health). */
+  doctorVisits: number
+  /** Times sent to prison this life (for Repeat Offender). */
+  timesJailed: number
+  /** Distinct crime types committed this life (for Kingpin). */
+  crimesCommitted: string[]
+  /** True once you've been $100k+ in debt (for the Comeback achievement). */
+  wasDeepInDebt: boolean
 
   setSfxVolume: (volume: number) => void
   setTheme: (theme: ThemeName) => void
@@ -857,6 +871,13 @@ function newLifeState() {
     runMurders: 0,
     runChildren: 0,
     runLanguages: 0,
+    careerYears: 0,
+    marriageCount: 0,
+    yearsMarried: 0,
+    doctorVisits: 0,
+    timesJailed: 0,
+    crimesCommitted: [] as string[],
+    wasDeepInDebt: false,
   }
 }
 
@@ -1190,6 +1211,49 @@ export const useGameStore = create<GameState>()(
         if (s.age >= 90) unlock('live-90')
         if (s.age >= 100) unlock('live-100')
         if (s.age >= 110) unlock('live-110')
+
+        // ----- Collections -----
+        const cars = s.ownedItems.filter((i) => i.category === 'car').length
+        if (cars >= 5) unlock('cars-5')
+        if (cars >= 10) unlock('cars-10')
+        if (cars >= 50) unlock('cars-50')
+        const luxuries = s.ownedItems.filter((i) => i.category === 'luxury')
+        if (luxuries.length >= 5) unlock('luxury-5')
+        if (luxuries.length >= 15) unlock('luxury-15')
+        if (luxuries.some((i) => /yacht/i.test(i.name))) unlock('own-yacht')
+        if (luxuries.some((i) => /jet/i.test(i.name))) unlock('own-jet')
+        if (s.homes.length >= 5) unlock('homes-5')
+        if (s.homes.length >= 10) unlock('homes-10')
+        const petCount = s.pets.filter((p) => p.alive).length
+        if (petCount >= 5) unlock('pets-5')
+        if (petCount >= 10) unlock('pets-10')
+        if (petCount >= 30) unlock('pets-30')
+
+        // ----- Rise from a low-income country -----
+        const poorCountry = (getCountry(s.countryCode)?.multiplier ?? 1) < 0.15
+        if (poorCountry) {
+          if (m >= 100_000) unlock('poor-100k')
+          if (m >= 1_000_000) unlock('poor-1m')
+          if (m >= 10_000_000) unlock('poor-10m')
+          if (m >= 100_000_000) unlock('poor-100m')
+        }
+        // Been deeply in debt, then a millionaire → a real comeback.
+        if (m <= -100_000 && !s.wasDeepInDebt) set({ wasDeepInDebt: true })
+        if (s.wasDeepInDebt && m >= 1_000_000) unlock('comeback')
+
+        // ----- Career state -----
+        const curJob = getJob(s.jobId)
+        if (curJob?.special) unlock('fame-career')
+        if (curJob && s.jobTier >= jobTierNames(curJob).length - 1) unlock('top-tier')
+
+        // ----- Family / love state -----
+        if (s.generation >= 5) unlock('generation-5')
+        if (
+          s.relationships.some((p) => p.role === 'ex') &&
+          s.relationships.some((p) => p.id === 'partner' && p.alive)
+        ) {
+          unlock('ex-and-partner')
+        }
       }
 
       /** New friend near the player's age, usually the same gender. */
@@ -1333,26 +1397,56 @@ export const useGameStore = create<GameState>()(
           let yearsInJob = s.yearsInJob
           let jobIdNext = s.jobId
           let raiseNext = s.raisePercent
+          let careerYears = s.careerYears
           let athleteRetired = false
           let grossIncome = 0
           if (job) {
             yearsInJob += 1
-            // Promotion every few years, up the job's ladder (every job now
-            // has one — see jobTierNames).
-            const maxTier = jobTierNames(job).length - 1
-            if (jobTier < maxTier && yearsInJob % YEARS_PER_PROMOTION === 0) {
-              jobTier += 1
+            careerYears += 1
+            if (careerYears >= 50) unlock('work-50yr')
+            // Firing: an established employee can be let go for poor performance
+            // (burnout or a checked-out attitude) or bad behaviour (a criminal
+            // record catching up). Fresh hires and pro athletes are exempt, and
+            // putting in the extra effort (Work Harder) shields you.
+            const workedHard = s.usedActions.includes('work-harder')
+            let fireChance = 0.015
+            if (stats.stress >= 80) fireChance += 0.05
+            if (stats.happiness <= 15) fireChance += 0.03
+            if (s.criminalRecord) fireChance += 0.03
+            if (workedHard) fireChance = Math.max(0, fireChance - 0.06)
+            if (yearsInJob >= 2 && !s.sport && Math.random() < fireChance) {
+              const behaviour = s.criminalRecord && Math.random() < 0.5
               entries.push({
                 id: logId++,
                 age,
                 year,
-                text: `You were promoted to ${jobTitle(job, jobTier)} ${job.emoji}!`,
+                text: `You were fired from your job as ${jobTitle(job, jobTier)}. ${behaviour ? 'Your conduct finally caught up with you.' : 'Your performance had slipped.'} 📄`,
                 kind: 'career',
               })
-              playSfx('levelup')
+              playSfx('fail')
+              unlock('fired')
+              jobIdNext = null
+              jobTier = 0
+              yearsInJob = 0
+              raiseNext = 0
+            } else {
+              // Promotion every few years, up the job's ladder (every job now
+              // has one — see jobTierNames).
+              const maxTier = jobTierNames(job).length - 1
+              if (jobTier < maxTier && yearsInJob % YEARS_PER_PROMOTION === 0) {
+                jobTier += 1
+                entries.push({
+                  id: logId++,
+                  age,
+                  year,
+                  text: `You were promoted to ${jobTitle(job, jobTier)} ${job.emoji}!`,
+                  kind: 'career',
+                })
+                playSfx('levelup')
+              }
+              grossIncome = annualSalary(job, jobTier, s.raisePercent, s.countryCode)
+              money += grossIncome
             }
-            grossIncome = annualSalary(job, jobTier, s.raisePercent, s.countryCode)
-            money += grossIncome
           }
 
           // Retirement pension lands every year once you've stopped working.
@@ -1429,6 +1523,7 @@ export const useGameStore = create<GameState>()(
             if (uniYearsLeft <= 0) {
               inUniversity = false
               hasDegree = true
+              unlock('degree')
               stats.smarts = gainStat(stats.smarts, 10)
               const majorName = getMajor(s.major)?.name ?? 'your field'
               entries.push({
@@ -1555,6 +1650,11 @@ export const useGameStore = create<GameState>()(
             ? withoutWorkPeople(relationshipsBase)
             : relationshipsBase
 
+          // Track a marriage's length for the Golden Anniversary; resets if the
+          // marriage ends (divorce, a spouse's death, or you're not married).
+          const yearsMarried = partnerStatus === 'married' ? s.yearsMarried + 1 : 0
+          if (yearsMarried >= 50) unlock('married-50yr')
+
           // Every house that isn't your residence is rented out for income.
           const rentIncome = s.homes.reduce(
             (sum, h) => (h.id !== s.residenceId ? sum + homeRent(h.price) : sum),
@@ -1660,6 +1760,8 @@ export const useGameStore = create<GameState>()(
               })
               stats.happiness = clampStat(stats.happiness - 8)
               if (!funeralFor) funeralFor = { name: pet.name, isPet: true }
+              // A pet that reached a ripe old age → you gave it a full life.
+              if (petAge >= maxAge * 0.75) unlock('pet-oldage')
               continue // drops from the list
             }
             pets.push({
@@ -1859,7 +1961,29 @@ export const useGameStore = create<GameState>()(
 
           const naturalDeath = oldAgeDeathRoll(age, stats.health)
           const recentCheckup = age - (s.lastCheckupAge ?? -99) <= 3
-          const catastrophe = naturalDeath ? null : catastropheRoll(age, stats.health, recentCheckup)
+          let catastrophe = naturalDeath ? null : catastropheRoll(age, stats.health, recentCheckup)
+          // A catastrophe isn't always the end — a fit body, a younger one, or
+          // one under recent medical care can pull through a heart attack or
+          // stroke. Surviving costs a big chunk of health (a genuine scare).
+          if (catastrophe) {
+            const surviveChance = Math.min(
+              0.65,
+              0.12 + stats.health / 320 + (recentCheckup ? 0.15 : 0) + Math.max(0, 70 - age) / 500,
+            )
+            if (Math.random() < surviveChance) {
+              stats.health = Math.max(1, clampStat(stats.health - randomInt(18, 34)))
+              entries.push({
+                id: logId++,
+                age,
+                year,
+                text: `You suffered ${catastrophe} — but you pulled through. A terrifying wake-up call. 🏥`,
+                kind: 'event',
+              })
+              playSfx('hurt')
+              if (/heart attack|stroke|cardiac/i.test(catastrophe)) unlock('survive-heart-attack')
+              catastrophe = null
+            }
+          }
           const illnessDeath = !naturalDeath && !catastrophe ? illnessDeathCause : null
           if (
             stats.health <= 0 ||
@@ -1989,6 +2113,7 @@ export const useGameStore = create<GameState>()(
             jobId: jobIdNext,
             jobTier,
             yearsInJob,
+            careerYears,
             raisePercent: raiseNext,
             pension,
             sport,
@@ -1997,6 +2122,7 @@ export const useGameStore = create<GameState>()(
             uniYearsLeft,
             relationships,
             partnerStatus,
+            yearsMarried,
             schoolName,
             athletics,
             schoolSport,
@@ -2028,6 +2154,7 @@ export const useGameStore = create<GameState>()(
             set({ runLanguages: total })
             unlock('language-1')
             if (total >= 5) unlock('language-5')
+            if (total >= 10) unlock('language-10')
           }
           // Age, stats, money and any passive income may have crossed a line.
           checkMilestones()
@@ -2147,6 +2274,7 @@ export const useGameStore = create<GameState>()(
                 stats: { ...get().stats, happiness: clampStat(get().stats.happiness + (winnings >= avgSalary * 100 ? 25 : 8)) },
               })
               unlock('lottery-win')
+              if (winnings >= avgSalary * 100) unlock('lottery-jackpot')
               playSfx('cash')
             }
             addLog([{ text, kind: winnings > 0 ? 'money' : 'event' }])
@@ -2338,11 +2466,14 @@ export const useGameStore = create<GameState>()(
           // any natural stat), so a yearly check-up genuinely offsets aging —
           // and logging the visit cuts your odds of a sudden heart attack.
           const gain = h >= 85 ? randomInt(2, 4) : h >= 55 ? randomInt(4, 8) : randomInt(8, 14)
+          const doctorVisits = s.doctorVisits + 1
           set({
             money: s.money - cost,
             lastCheckupAge: s.age,
+            doctorVisits,
             stats: { ...s.stats, health: clampStat(s.stats.health + gain) },
           })
+          if (doctorVisits >= 10) unlock('doctor-10')
           playSfx('success')
           addLog([
             {
@@ -2485,6 +2616,7 @@ export const useGameStore = create<GameState>()(
           ])
           // Doubling your money on a position (proceeds ≥ 2× what you put in).
           if (costSold > 0 && proceeds >= costSold * 2) unlock('invest-2x')
+          if (costSold > 0 && proceeds >= costSold * 10) unlock('invest-10x')
           checkMilestones()
         },
 
@@ -2734,6 +2866,15 @@ export const useGameStore = create<GameState>()(
           if (!crime || !s.alive || s.age < crime.minAge) return
           if (!useYearlyAction(`crime-${crimeId}`)) return
 
+          // Track distinct crime types — pull off one of each for Kingpin.
+          const crimesCommitted = s.crimesCommitted.includes(crimeId)
+            ? s.crimesCommitted
+            : [...s.crimesCommitted, crimeId]
+          if (crimesCommitted !== s.crimesCommitted) {
+            set({ crimesCommitted })
+            if (CRIMES.every((c) => crimesCommitted.includes(c.id))) unlock('kingpin')
+          }
+
           const stats = { ...s.stats }
           let money = s.money
           const apply = (e: typeof crime.success) => {
@@ -2811,6 +2952,7 @@ export const useGameStore = create<GameState>()(
               stats,
               criminalRecord: true,
               timesArrested,
+              timesJailed: s.timesJailed + 1,
               partnerStatus,
               prison: { crime: crime.name, sentence, yearsLeft: sentence, behavior: 50 },
               jobId: null,
@@ -2827,6 +2969,7 @@ export const useGameStore = create<GameState>()(
               { text: `You were convicted of ${crime.name.toLowerCase()} and sentenced to ${sentence} year${sentence === 1 ? '' : 's'} in prison. 🚔`, kind: 'death' },
             ])
             unlock('jail')
+            if (s.timesJailed + 1 >= 3) unlock('jailed-3')
           } else {
             const payout = crime.reward > 0 ? randomInt(Math.round(crime.reward * 0.5), Math.round(crime.reward * 1.5)) : 0
             money += payout
@@ -2847,6 +2990,8 @@ export const useGameStore = create<GameState>()(
             }
             set({ money, stats, ownedItems, relationships, partnerStatus })
             if (payout > 0 || lootLog.length > 0) playSfx('cash')
+            if (crimeId === 'bank-heist') unlock('bank-heist')
+            if (crimeId === 'gta') unlock('steal-car')
             addLog([
               ...deedLog.map((text) => ({ text, kind: 'death' as const })),
               {
@@ -2874,6 +3019,7 @@ export const useGameStore = create<GameState>()(
               stats: { ...s.stats, happiness: clampStat(s.stats.happiness + 8) },
             })
             playSfx('success')
+            unlock('prison-escape')
             addLog([
               { text: 'You broke out of prison and vanished into the night! Freedom — for now. 🏃', kind: 'event' },
             ])
@@ -3111,6 +3257,7 @@ export const useGameStore = create<GameState>()(
           addLog([
             { text: `You adopted ${pet.name} the ${opt.breed} ${opt.emoji}!`, kind: 'relationship' },
           ])
+          checkMilestones()
         },
 
         playWithPet: (petId: string) => {
@@ -3603,6 +3750,7 @@ export const useGameStore = create<GameState>()(
               kind: 'career',
             },
           ])
+          unlock('retired')
           // Retiring from a degree-gated career earns that career's badge.
           if (job.requiresDegree || job.requiredMajor) unlock(`career-${job.id}`)
           checkMilestones()
@@ -4123,14 +4271,18 @@ export const useGameStore = create<GameState>()(
           updatePerson('partner', {
             relationship: clampRelationship(partner.relationship + 10),
           })
+          const marriageCount = s.marriageCount + 1
           set({
             partnerStatus: 'married',
             money: get().money - WEDDING_COST,
+            marriageCount,
+            yearsMarried: 0,
             stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 15) },
           })
           playSfx('wedding')
           addLog([{ text: `You married ${partner.name}! 💒`, kind: 'relationship' }])
           unlock('married')
+          if (marriageCount >= 3) unlock('married-3')
         },
 
         breakUp: () => {
@@ -4216,6 +4368,8 @@ export const useGameStore = create<GameState>()(
             if (total >= 3) unlock('children-3')
             if (total >= 10) unlock('children-10')
             if (total >= 50) unlock('children-50')
+            if (litter > 1) unlock('twins')
+            if (s.age >= 50) unlock('late-baby')
           } else {
             playSfx('fail')
             addLog([{ text: 'You tried for a baby this year, but it wasn’t meant to be.', kind: 'relationship' }])
@@ -4449,7 +4603,7 @@ export const useGameStore = create<GameState>()(
     },
     {
       name: 'simlife-save',
-      version: 36,
+      version: 37,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({
         hasHydrated: _hasHydrated,
@@ -4744,6 +4898,16 @@ export const useGameStore = create<GameState>()(
         // v35 saves predate the health/longevity rework's check-up tracking.
         if (version < 36) {
           state.lastCheckupAge = -99
+        }
+        // v36 saves predate the new achievement counters.
+        if (version < 37) {
+          state.careerYears = 0
+          state.marriageCount = 0
+          state.yearsMarried = 0
+          state.doctorVisits = 0
+          state.timesJailed = 0
+          state.crimesCommitted = []
+          state.wasDeepInDebt = false
         }
         return state as GameState
       },
