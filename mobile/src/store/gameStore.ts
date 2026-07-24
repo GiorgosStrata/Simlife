@@ -2260,6 +2260,34 @@ export const useGameStore = create<GameState>()(
               addLog([{ text: `You made a new friend: ${friend.name}! 🤝`, kind: 'relationship' }])
             }
           }
+          // "Ask them out" — you actually start dating a new person (works at
+          // any age, so teens can have a first boyfriend/girlfriend). The
+          // event's own outcome line narrates the moment.
+          if (!died && choice.action === 'startDating') {
+            const cur = get()
+            const hasPartner = cur.relationships.some((p) => p.id === 'partner' && p.alive)
+            if (!hasPartner) {
+              const g: Gender = cur.gender === 'male' ? 'female' : 'male'
+              const dateName = `${randomFirstName(cur.countryCode, g)} ${randomLastName(cur.countryCode)}`
+              const partner: Person = {
+                id: 'partner',
+                role: 'partner',
+                gender: g,
+                name: dateName,
+                age: Math.max(12, cur.age + randomInt(-2, 2)),
+                alive: true,
+                relationship: randomInt(45, 65),
+                ...makeNpcLife(),
+              }
+              set({
+                relationships: [...cur.relationships.filter((p) => p.id !== 'partner'), partner],
+                partnerStatus: 'dating',
+                stats: { ...get().stats, happiness: clampStat(get().stats.happiness + 5) },
+              })
+              playSfx('match')
+              addLog([{ text: `You and ${dateName} are dating now! 💕`, kind: 'relationship' }])
+            }
+          }
           // Play the lottery: mostly you lose, but a win pays the country's
           // average yearly salary — and a rare jackpot pays 100× that.
           if (!died && choice.action === 'playLottery') {

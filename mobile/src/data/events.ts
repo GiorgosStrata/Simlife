@@ -2275,6 +2275,253 @@ export const EVENTS: GameEvent[] = [
       { label: 'Too busy', outcome: 'The wind flew other people’s kites today.', effects: { stress: 1 } },
     ],
   },
+
+  // ---------------- Interactive social / dating events ----------------
+  {
+    id: 'school-dance',
+    emoji: '🪩',
+    title: 'The School Dance',
+    description:
+      'The gym is decked out in fairy lights and there’s a slow song coming up. Your crush is standing by the punch bowl, alone.',
+    minAge: 12,
+    maxAge: 18,
+    requires: ['inSchool', 'single'],
+    choices: [
+      {
+        label: 'Ask your crush to dance 💃',
+        outcome: 'Heart pounding, you asked — and they said yes! You swayed to the whole song.',
+        effects: { happiness: 14, looks: 2 },
+        action: 'startDating',
+        sfx: 'match',
+      },
+      {
+        label: 'Dance with your friends',
+        outcome: 'You and your friends owned the dance floor. No romance, but zero regrets.',
+        effects: { happiness: 8 },
+        grantsFriend: true,
+      },
+      {
+        label: 'Hide by the snacks',
+        outcome: 'You guarded the snack table all night. The mini quiches were, at least, excellent.',
+        effects: { happiness: -3, stress: 2 },
+      },
+    ],
+  },
+  {
+    id: 'house-party',
+    emoji: '🎉',
+    title: 'A House Party',
+    description:
+      'Music, a crowded kitchen, and someone across the room keeps catching your eye and smiling.',
+    minAge: 15,
+    maxAge: 32,
+    requires: ['single'],
+    choices: [
+      {
+        label: 'Go talk to them 😏',
+        outcome: 'You struck up a conversation and totally hit it off. Numbers were exchanged.',
+        effects: { happiness: 12 },
+        action: 'startDating',
+        sfx: 'match',
+      },
+      {
+        label: 'Mingle and make friends',
+        outcome: 'You worked the room and clicked with someone cool. New friend unlocked.',
+        effects: { happiness: 7 },
+        grantsFriend: true,
+      },
+      {
+        label: 'Leave early',
+        outcome: 'Parties aren’t really your scene. You were home in pajamas by ten.',
+        effects: { happiness: 1, stress: -3 },
+      },
+    ],
+  },
+  {
+    id: 'coffee-shop-crush',
+    emoji: '☕',
+    title: 'Cute Barista',
+    description:
+      'The barista drew a little smiley face on your cup — and, you’re fairly sure, held eye contact a beat too long.',
+    minAge: 18,
+    maxAge: 45,
+    requires: ['single'],
+    choices: [
+      {
+        label: 'Ask for their number',
+        outcome: 'You went for it. They laughed, scribbled their number on a napkin, and winked.',
+        effects: { happiness: 12, looks: 1 },
+        action: 'startDating',
+        sfx: 'match',
+      },
+      {
+        label: 'Just smile and leave',
+        outcome: 'You smiled, said thanks, and spent the walk home wondering “what if.”',
+        effects: { happiness: -1 },
+      },
+      {
+        label: 'Panic and spill your coffee',
+        outcome: 'You knocked the whole cup over trying to be smooth. Iconic, honestly.',
+        effects: { happiness: -3, looks: -1 },
+      },
+    ],
+  },
+  {
+    id: 'blind-date-dinner',
+    emoji: '🌹',
+    title: 'A Blind Date',
+    description:
+      'A friend swears they’ve found “the one” for you and set up a dinner. You’re nervous and the reservation is in an hour.',
+    minAge: 18,
+    maxAge: 55,
+    requires: ['single'],
+    choices: [
+      {
+        label: 'Go and give it a shot',
+        outcome: 'The conversation flowed for hours. Your friend, for once, was right.',
+        effects: { happiness: 11 },
+        action: 'startDating',
+        sfx: 'match',
+      },
+      {
+        label: 'Go, but keep it casual',
+        outcome: 'Lovely dinner, no spark — but you parted as friends.',
+        effects: { happiness: 4 },
+        grantsFriend: true,
+      },
+      {
+        label: 'Cancel last minute',
+        outcome: 'You bailed with a fake headache. Your friend is not impressed.',
+        effects: { happiness: -2, stress: 3 },
+      },
+    ],
+  },
+  {
+    id: 'gym-crush',
+    emoji: '🏋️',
+    title: 'Someone’s Watching',
+    description:
+      'The person on the treadmill next to yours keeps glancing over and finally offers to spot you.',
+    minAge: 16,
+    maxAge: 40,
+    requires: ['single'],
+    choices: [
+      {
+        label: 'Ask them out afterward',
+        outcome: 'Post-workout smoothies turned into a two-hour chat. You’re seeing them Friday.',
+        effects: { happiness: 11, health: 2 },
+        action: 'startDating',
+        sfx: 'match',
+      },
+      {
+        label: 'Just say thanks',
+        outcome: 'You accepted the spot, nodded politely, and went back to your reps.',
+        effects: { health: 3 },
+      },
+    ],
+  },
+  {
+    id: 'wedding-plus-one',
+    emoji: '💒',
+    title: 'A Wedding Invite',
+    description:
+      'You’re invited to a cousin’s wedding — open bar, a live band, and a whole room of strangers dressed to impress.',
+    minAge: 18,
+    maxAge: 70,
+    requires: ['single'],
+    choices: [
+      {
+        label: 'Chat up a fellow guest',
+        outcome: 'You met someone at the dessert table and danced till the band packed up. 💕',
+        effects: { happiness: 12 },
+        action: 'startDating',
+        sfx: 'match',
+      },
+      {
+        label: 'Hit the dance floor solo',
+        outcome: 'You out-danced the groomsmen and made a few friends in the process.',
+        effects: { happiness: 8 },
+        grantsFriend: true,
+      },
+      {
+        label: 'Camp at the open bar',
+        outcome: 'You befriended the bartender and every canapé that passed. A fine night.',
+        effects: { happiness: 4, health: -2 },
+      },
+    ],
+  },
+  {
+    id: 'confession-rejected',
+    emoji: '💔',
+    title: 'A Confession',
+    description:
+      'You’ve had feelings for a close friend for months. Today they asked why you’ve been acting weird. It’s now or never.',
+    minAge: 13,
+    maxAge: 40,
+    requires: ['single'],
+    choices: [
+      {
+        label: 'Tell them how you feel',
+        outcome: 'They said they just see you as a friend. It stings — but at least you know.',
+        effects: { happiness: -8, stress: 4 },
+      },
+      {
+        label: 'Play it cool and deny it',
+        outcome: 'You laughed it off. The feelings didn’t go anywhere, but neither did the friendship.',
+        effects: { happiness: -3, smarts: 1 },
+      },
+    ],
+  },
+  {
+    id: 'group-project-partner',
+    emoji: '📚',
+    title: 'Group Project',
+    description:
+      'The teacher is assigning a big group project. You can pick your partner — or fly solo.',
+    minAge: 10,
+    maxAge: 22,
+    requires: ['inSchool'],
+    choices: [
+      {
+        label: 'Team up with a classmate',
+        outcome: 'You split the work, pulled an all-nighter, and aced it together. New friend earned.',
+        effects: { smarts: 6, happiness: 5 },
+        grantsFriend: true,
+      },
+      {
+        label: 'Do the whole thing yourself',
+        outcome: 'You trusted no one and carried the project alone. Exhausting, but flawless.',
+        effects: { smarts: 8, stress: 6, happiness: -2 },
+      },
+      {
+        label: 'Coast and let others carry it',
+        outcome: 'You did the bare minimum. The grade was fine; your groupmates remember.',
+        effects: { smarts: 1, happiness: 1 },
+      },
+    ],
+  },
+  {
+    id: 'new-neighbor',
+    emoji: '📦',
+    title: 'New Neighbors',
+    description:
+      'A moving truck pulls up next door and someone your age is wrestling a couch up the driveway.',
+    minAge: 8,
+    maxAge: 80,
+    choices: [
+      {
+        label: 'Go help them move in',
+        outcome: 'You lifted boxes, cracked jokes, and made a genuine new friend next door.',
+        effects: { happiness: 7, health: -1 },
+        grantsFriend: true,
+      },
+      {
+        label: 'Wave from your window',
+        outcome: 'You gave a friendly wave and went back to your day.',
+        effects: { happiness: 1 },
+      },
+    ],
+  },
 ]
 
 /**
