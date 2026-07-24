@@ -29,6 +29,8 @@ import { AuthScreen } from './src/components/AuthScreen'
 import { InterstitialAd } from './src/components/InterstitialAd'
 import { PremiumModal } from './src/components/PremiumModal'
 import { SaveSlotsModal } from './src/components/SaveSlotsModal'
+import { TutorialModal } from './src/components/TutorialModal'
+import { useTutorialStore } from './src/store/tutorialStore'
 import { Toast } from './src/components/Toast'
 import { getMajor } from './src/data/majors'
 import { ensureSeeded } from './src/saves'
@@ -53,6 +55,9 @@ function Game() {
 
   const premium = usePremiumStore((s) => s.premium)
   const slotsHydrated = useSlotsStore((s) => s.hasHydrated)
+  const tutorialSeen = useTutorialStore((s) => s.seen)
+  const tutorialHydrated = useTutorialStore((s) => s.hasHydrated)
+  const markTutorialSeen = useTutorialStore((s) => s.markSeen)
 
   // Show a full-screen interstitial ad roughly every 10 minutes of play, but
   // never for premium players or on top of a pending life event.
@@ -284,6 +289,8 @@ function Game() {
         />
       )}
       {premiumOpen && <PremiumModal onClose={() => setPremiumOpen(false)} />}
+      {/* First-ever play: a short, skippable intro (shows once, device-wide). */}
+      {tutorialHydrated && !tutorialSeen && <TutorialModal onClose={markTutorialSeen} />}
       {livesOpen && (
         <SaveSlotsModal
           onClose={() => setLivesOpen(false)}

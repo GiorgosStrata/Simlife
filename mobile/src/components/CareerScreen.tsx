@@ -4,11 +4,13 @@ import { playSfx } from '../audio/sfx'
 import { tuitionPerYear } from '../data/economy'
 import { jobSport } from '../data/leagues'
 import { getMajor } from '../data/majors'
+import { YEARS_PER_PROMOTION } from '../data/economy'
 import {
   UNIVERSITY_YEARS,
   annualSalary,
   getJob,
   isInSchool,
+  jobTierNames,
   jobTitle,
   useGameStore,
 } from '../store/gameStore'
@@ -63,6 +65,7 @@ export function CareerScreen() {
   const countryCode = useGameStore((s) => s.countryCode)
   const jobOpenings = useGameStore((s) => s.jobOpenings)
   const jobTier = useGameStore((s) => s.jobTier)
+  const yearsInJob = useGameStore((s) => s.yearsInJob)
   const raisePercent = useGameStore((s) => s.raisePercent)
   const pension = useGameStore((s) => s.pension)
   const quitJob = useGameStore((s) => s.quitJob)
@@ -80,6 +83,18 @@ export function CareerScreen() {
 
   const currentJob = getJob(jobId)
   const isSport = jobSport(jobId) !== null
+  // A little "next promotion" nudge so a career shows momentum, not a dead end.
+  // (Sports careers progress by on-field performance, so we skip it there.)
+  let promoHint = ''
+  if (currentJob && !isSport) {
+    const ladder = jobTierNames(currentJob)
+    if (jobTier >= ladder.length - 1) {
+      promoHint = ' · 🏆 Top of the ladder'
+    } else {
+      const yrs = YEARS_PER_PROMOTION - (yearsInJob % YEARS_PER_PROMOTION)
+      promoHint = ` · ↑ ${ladder[jobTier + 1]} in ${yrs} yr${yrs === 1 ? '' : 's'}`
+    }
+  }
   const inSchool = isInSchool(age) || inUniversity
   const edu = educationRow({ age, hasDegree, inUniversity, uniYearsLeft, major, schoolName })
   const workingAge = age >= 16
@@ -134,7 +149,7 @@ export function CareerScreen() {
           <Row
             emoji={currentJob.emoji}
             title={jobTitle(currentJob, jobTier)}
-            subtitle={`$${annualSalary(currentJob, jobTier, raisePercent, countryCode).toLocaleString()}/year · Tap to visit your ${isSport ? 'team' : 'workplace'}`}
+            subtitle={`$${annualSalary(currentJob, jobTier, raisePercent, countryCode).toLocaleString()}/yr${promoHint}`}
             onPress={action(() => (isSport ? setVisitingTeam(true) : setVisitingWork(true)))}
             chevron
           />

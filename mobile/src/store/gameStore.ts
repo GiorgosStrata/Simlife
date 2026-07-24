@@ -311,9 +311,20 @@ export function annualSalary(
   )
 }
 
+/**
+ * The promotion ladder for a job: its hand-authored tiers, or a sensible
+ * default (entry → Senior → Lead → Head) so EVERY career can climb, not just
+ * the degree-locked ones. Keeps title display and promotion logic in sync.
+ */
+export function jobTierNames(job: Job): string[] {
+  if (job.tiers && job.tiers.length > 1) return job.tiers
+  return [job.title, `Senior ${job.title}`, `Lead ${job.title}`, `Head ${job.title}`]
+}
+
 /** Job title at the character's current promotion tier. */
 export function jobTitle(job: Job, tier: number): string {
-  return job.tiers?.[tier] ?? job.title
+  const names = jobTierNames(job)
+  return names[Math.min(tier, names.length - 1)] ?? job.title
 }
 
 /**
@@ -1326,8 +1337,9 @@ export const useGameStore = create<GameState>()(
           let grossIncome = 0
           if (job) {
             yearsInJob += 1
-            // Promotion every few years, up the job's ladder.
-            const maxTier = (job.tiers?.length ?? 1) - 1
+            // Promotion every few years, up the job's ladder (every job now
+            // has one — see jobTierNames).
+            const maxTier = jobTierNames(job).length - 1
             if (jobTier < maxTier && yearsInJob % YEARS_PER_PROMOTION === 0) {
               jobTier += 1
               entries.push({
@@ -4295,7 +4307,7 @@ export const useGameStore = create<GameState>()(
               heirJobId = heirJob.id
               heirDegree = !!(heirJob.requiresDegree || heirJob.requiredMajor)
               heirMajor = heirJob.requiredMajor ?? null
-              const maxTier = (heirJob.tiers?.length ?? 1) - 1
+              const maxTier = jobTierNames(heirJob).length - 1
               heirYears = Math.max(0, heir.age - 22)
               heirTier = Math.min(maxTier, Math.floor(heirYears / YEARS_PER_PROMOTION))
               const crew = rollWorkplacePeople(s.countryCode, heir.age, nextFriendId)
