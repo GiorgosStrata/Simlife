@@ -2209,6 +2209,12 @@ export const useGameStore = create<GameState>()(
             else if (hpDelta <= -6) playSfx('hurt')
             else if (moneyDelta >= 40) playSfx('cash')
           }
+          // Finding money or being gifted it? Pop a little bubble with the
+          // amount. (The lottery adds its winnings in playLottery below and
+          // pops its own bubble there.)
+          if (!died && moneyDelta > 0 && choice.action !== 'playLottery') {
+            set({ toast: { text: `💰 You gained $${moneyDelta.toLocaleString()}!` } })
+          }
 
           if (!died && choice.action === 'enrollUniversity' && canApplyToUniversity()) {
             set({ applyingToUniversity: true })
@@ -2276,6 +2282,14 @@ export const useGameStore = create<GameState>()(
               unlock('lottery-win')
               if (winnings >= avgSalary * 100) unlock('lottery-jackpot')
               playSfx('cash')
+              set({
+                toast: {
+                  text:
+                    winnings >= avgSalary * 100
+                      ? `💰 JACKPOT! You won $${winnings.toLocaleString()}!`
+                      : `🎉 You won $${winnings.toLocaleString()} on the lottery!`,
+                },
+              })
             }
             addLog([{ text, kind: winnings > 0 ? 'money' : 'event' }])
             checkMilestones()
@@ -2810,8 +2824,13 @@ export const useGameStore = create<GameState>()(
           const patch: Partial<GameState> = {
             stats: { ...cur.stats, happiness: clampStat(cur.stats.happiness + payload.happiness) },
           }
-          // A parent handing over allowance.
-          if (payload.money) patch.money = cur.money + scaleByCountry(payload.money, cur.countryCode)
+          // A parent handing over allowance — pop a bubble with the amount.
+          let gifted = 0
+          if (payload.money) {
+            gifted = scaleByCountry(payload.money, cur.countryCode)
+            patch.money = cur.money + gifted
+            patch.toast = { text: `💰 ${person.name} sent you $${gifted.toLocaleString()}!` }
+          }
           // A parent buying you a phone — the cheapest current model, if you
           // don't already own one.
           if (payload.grantsPhone && !cur.ownedAssetIds.some((id) => getAsset(id)?.category === 'phone')) {

@@ -31,7 +31,9 @@ export function MajorPickerModal() {
             {tuition.toLocaleString()}/yr × {UNIVERSITY_YEARS} years.
           </Text>
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-            {MAJORS.map((major) => {
+            {[...MAJORS]
+              .sort((a, b) => b.minSmarts - a.minSmarts)
+              .map((major) => {
               const qualified = smarts >= major.minSmarts
               return (
                 <Row
