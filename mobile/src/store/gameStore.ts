@@ -33,7 +33,7 @@ import { LEAGUES, getTeam, jobSport, leaguesForSport, teamName } from '../data/l
 import { CRIMES, LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, homeRent, resaleValue } from '../data/assets'
 import { phonesForYear } from '../data/phones'
-import { getIllness, pickIllness } from '../data/illnesses'
+import { getIllness, pickIllness, type Illness } from '../data/illnesses'
 import {
   INVESTMENTS,
   getInvestment,
@@ -73,6 +73,7 @@ import {
   PRISON_EVENTS,
   RELEASE_EVENT,
   arrestEvent,
+  diagnosisEvent,
   funeralEvent,
   languageCompleteEvent,
 } from '../data/specialEvents'
@@ -1878,6 +1879,8 @@ export const useGameStore = create<GameState>()(
           // ----- Illness: run current conditions, then maybe catch something -----
           let illnessDeathCause: string | null = null
           const conditions: ActiveCondition[] = []
+          // Illnesses caught THIS year — surfaced as a pop-up so you always know.
+          const newIllnesses: Illness[] = []
           for (const c of s.conditions ?? []) {
             const ill = getIllness(c.id)
             if (!ill) continue
@@ -1907,6 +1910,7 @@ export const useGameStore = create<GameState>()(
             const ill = pickIllness('minor', age)
             if (ill && !conditions.some((c) => c.id === ill.id)) {
               conditions.push({ id: ill.id, years: 0 })
+              newIllnesses.push(ill)
               entries.push({
                 id: logId++,
                 age,
@@ -1927,6 +1931,7 @@ export const useGameStore = create<GameState>()(
             const ill = pickIllness('serious', age, s.gender)
             if (ill) {
               conditions.push({ id: ill.id, years: 0 })
+              newIllnesses.push(ill)
               entries.push({
                 id: logId++,
                 age,
@@ -1939,6 +1944,8 @@ export const useGameStore = create<GameState>()(
           // Chronic high stress can bring on high blood pressure.
           if (stats.stress >= 80 && !hasHypertension && age >= 25 && Math.random() < 0.14) {
             conditions.push({ id: 'hypertension', years: 0 })
+            const hyp = getIllness('hypertension')
+            if (hyp) newIllnesses.push(hyp)
             entries.push({
               id: logId++,
               age,
@@ -1950,6 +1957,8 @@ export const useGameStore = create<GameState>()(
           // A sustained low mood can tip into depression.
           if (stats.happiness <= 18 && !conditions.some((c) => c.id === 'depression') && Math.random() < 0.16) {
             conditions.push({ id: 'depression', years: 0 })
+            const dep = getIllness('depression')
+            if (dep) newIllnesses.push(dep)
             entries.push({
               id: logId++,
               age,
@@ -1958,6 +1967,14 @@ export const useGameStore = create<GameState>()(
               kind: 'event',
             })
           }
+
+          // Surface this year's illnesses as a pop-up so nothing goes unnoticed:
+          // a serious/chronic/STD diagnosis takes priority (it can be treated),
+          // while a minor bug pops a lighter notice below.
+          const seriousNew = newIllnesses.find((i) => i.kind !== 'minor')
+          const minorNew = newIllnesses.find((i) => i.kind === 'minor')
+          const seriousDiagEvent = seriousNew ? diagnosisEvent(seriousNew) : null
+          const minorDiagEvent = minorNew ? diagnosisEvent(minorNew) : null
 
           const naturalDeath = oldAgeDeathRoll(age, stats.health)
           const recentCheckup = age - (s.lastCheckupAge ?? -99) <= 3
@@ -2089,20 +2106,26 @@ export const useGameStore = create<GameState>()(
                 : null
               : age === 18 && !hasDegree && !inUniversity
                 ? GRADUATION_EVENT
-                : funeralFor
-                  ? funeralEvent(funeralFor.name, funeralFor.isPet, s.countryCode, funeralFor.role)
-                  : pursuitPopEvent
-                    ? pursuitPopEvent
-                    : divorceRolls
-                      ? DIVORCE_EVENT
-                      : relEvent
-                        ? relEvent
-                        : drawEvent(
-                            age,
-                            s.usedEventIds,
-                            isInSchool(age) || inUniversity,
-                            eventFlags,
-                          )
+                : // A serious diagnosis is unmissable — it can kill you.
+                  seriousDiagEvent
+                  ? seriousDiagEvent
+                  : funeralFor
+                    ? funeralEvent(funeralFor.name, funeralFor.isPet, s.countryCode, funeralFor.role)
+                    : pursuitPopEvent
+                      ? pursuitPopEvent
+                      : divorceRolls
+                        ? DIVORCE_EVENT
+                        : relEvent
+                          ? relEvent
+                          : // A minor bug still pops a quick notice.
+                            minorDiagEvent
+                            ? minorDiagEvent
+                            : drawEvent(
+                                age,
+                                s.usedEventIds,
+                                isInSchool(age) || inUniversity,
+                                eventFlags,
+                              )
           set({
             age,
             year,

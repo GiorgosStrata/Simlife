@@ -1,6 +1,7 @@
 import type { GameEvent } from '../types'
 import { scaleByCountry } from './countries'
 import { UNIVERSITY_YEARS } from '../store/constants'
+import type { Illness } from './illnesses'
 
 /**
  * Scripted events fired by the engine at fixed moments,
@@ -101,6 +102,48 @@ export function languageCompleteEvent(label: string): GameEvent {
         effects: { smarts: 12, happiness: 8 },
       },
     ],
+  }
+}
+
+/**
+ * Pops the year you're diagnosed with something, so an illness never slips by
+ * unnoticed. Serious/chronic/STD conditions can be treated, so they offer a
+ * jump straight to the doctor; a minor bug just gets an acknowledgement. The
+ * illness's stat toll is applied yearly by the engine, not here.
+ */
+export function diagnosisEvent(ill: Illness): GameEvent {
+  const treatable = ill.kind !== 'minor'
+  return {
+    id: 'special-diagnosis',
+    emoji: ill.emoji,
+    title: treatable ? '🩺 A Diagnosis' : 'Feeling Unwell',
+    description: treatable
+      ? `The doctor sits you down with the results: you have ${ill.name}. ${ill.desc} The sooner you get treatment, the better your odds.`
+      : `You've come down with ${ill.name.toLowerCase()}. ${ill.desc}`,
+    minAge: 0,
+    maxAge: 120,
+    choices: treatable
+      ? [
+          {
+            label: 'See a doctor now 🏥',
+            outcome: `You're facing ${ill.name.toLowerCase()} head-on.`,
+            effects: {},
+            opens: 'health',
+            sfx: 'hurt',
+          },
+          {
+            label: 'Deal with it later',
+            outcome: `You put off treating your ${ill.name.toLowerCase()}. The clock is ticking.`,
+            effects: { happiness: -4 },
+          },
+        ]
+      : [
+          {
+            label: 'Rest up',
+            outcome: `You're getting over ${ill.name.toLowerCase()}.`,
+            effects: {},
+          },
+        ],
   }
 }
 
