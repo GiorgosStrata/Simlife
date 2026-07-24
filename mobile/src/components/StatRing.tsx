@@ -7,11 +7,24 @@ interface StatRingProps {
   value: number
   color: string
   size?: number
+  /**
+   * For stats where a HIGH value is *bad* (stress), colour the ring by level —
+   * calm green when low, amber in the middle, red when it's running hot — so a
+   * full ring reads as a warning instead of an achievement.
+   */
+  dangerHigh?: boolean
 }
 
 /** A circular progress ring with the value in the middle and a label below. */
-export function StatRing({ label, value, color, size = 62 }: StatRingProps) {
+export function StatRing({ label, value, color, size = 62, dangerHigh = false }: StatRingProps) {
   const v = Math.max(0, Math.min(100, value))
+  const ringColor = dangerHigh
+    ? v >= 70
+      ? colors.rose500
+      : v >= 40
+        ? colors.orange500
+        : colors.emerald700
+    : color
   const stroke = 6
   const r = (size - stroke) / 2
   const circumference = 2 * Math.PI * r
@@ -33,7 +46,7 @@ export function StatRing({ label, value, color, size = 62 }: StatRingProps) {
             cx={size / 2}
             cy={size / 2}
             r={r}
-            stroke={color}
+            stroke={ringColor}
             strokeWidth={stroke}
             strokeLinecap="round"
             fill="none"

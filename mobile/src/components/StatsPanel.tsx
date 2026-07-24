@@ -13,7 +13,7 @@ export function StatsPanel() {
       <StatRing label="Mood" value={stats.happiness} color={colors.amber400} size={54} />
       <StatRing label="Smarts" value={stats.smarts} color={colors.sky500} size={54} />
       <StatRing label="Looks" value={stats.looks} color={colors.violet500} size={54} />
-      <StatRing label="Stress" value={stats.stress} color={colors.orange500} size={54} />
+      <StatRing label="Stress" value={stats.stress} color={colors.orange500} size={54} dangerHigh />
     </View>
   )
 }

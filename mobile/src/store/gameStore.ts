@@ -1906,6 +1906,11 @@ export const useGameStore = create<GameState>()(
               log: [...s.log, ...entries],
               nextLogId: logId,
             })
+            // Long-life achievements must fire even when you die *at* the
+            // milestone — checkMilestones only runs on the surviving path below.
+            if (age >= 90) unlock('live-90')
+            if (age >= 100) unlock('live-100')
+            if (age >= 110) unlock('live-110')
             return
           }
 
