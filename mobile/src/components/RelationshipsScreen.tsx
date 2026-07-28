@@ -15,7 +15,8 @@ import { SectionHeading } from './SectionHeading'
 const GROUPS: Array<{ title: string; color: string; roles: PersonRole[] }> = [
   { title: 'RELATIONSHIPS', color: colors.pink600, roles: ['partner', 'ex', 'fling'] },
   { title: 'FAMILY', color: colors.sky500, roles: ['mother', 'father', 'sibling', 'child'] },
-  { title: 'FRIENDS', color: colors.emerald700, roles: ['friend', 'enemy'] },
+  { title: 'FRIENDS', color: colors.emerald700, roles: ['friend'] },
+  { title: 'ENEMIES', color: colors.rose700, roles: ['enemy'] },
 ]
 
 /** Clean BitLife-style list: tap a person to open their interaction sheet. */
