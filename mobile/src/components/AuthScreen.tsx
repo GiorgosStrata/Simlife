@@ -22,6 +22,7 @@ export function AuthScreen() {
   const signUp = useAuthStore((s) => s.signUp)
   const logIn = useAuthStore((s) => s.logIn)
   const resetPassword = useAuthStore((s) => s.resetPassword)
+  const signInWithProvider = useAuthStore((s) => s.signInWithProvider)
 
   const [mode, setMode] = useState<Mode>('login')
   const [name, setName] = useState('')
@@ -79,11 +80,34 @@ export function AuthScreen() {
     }
   }
 
+  const oauth = async (provider: 'google' | 'apple') => {
+    if (busy) return
+    setError(null)
+    setNotice(null)
+    playSfx('click')
+    setBusy(true)
+    try {
+      const result = await signInWithProvider(provider)
+      if (!result.ok) {
+        setError(result.error ?? 'Could not sign in.')
+        playSfx('fail')
+        return
+      }
+      playSfx('success')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const switchMode = (m: Mode) => {
     setMode(m)
     setError(null)
     setNotice(null)
   }
+
+  // Apple requires "Sign in with Apple" wherever other social logins appear on
+  // iOS; we show it on iOS and web, and hide it on Android (Google covers it).
+  const showApple = Platform.OS !== 'android'
 
   return (
     <KeyboardAvoidingView
@@ -218,6 +242,38 @@ export function AuthScreen() {
             </Text>
           )}
 
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Google"
+            onPress={() => oauth('google')}
+            disabled={busy}
+            style={({ pressed }) => [styles.oauthBtn, styles.googleBtn, pressed && styles.submitPressed]}
+          >
+            <View style={styles.googleG}>
+              <Text style={styles.googleGText}>G</Text>
+            </View>
+            <Text style={styles.googleText}>Continue with Google</Text>
+          </Pressable>
+
+          {showApple && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Continue with Apple"
+              onPress={() => oauth('apple')}
+              disabled={busy}
+              style={({ pressed }) => [styles.oauthBtn, styles.appleBtn, pressed && styles.submitPressed]}
+            >
+              {Platform.OS === 'ios' && <Text style={styles.appleLogo}></Text>}
+              <Text style={styles.appleText}>Continue with Apple</Text>
+            </Pressable>
+          )}
+
           <Text style={styles.switchLine}>
             {mode === 'signup' ? 'Already have an account? ' : 'New here? '}
             <Text
@@ -320,6 +376,33 @@ const styles = StyleSheet.create({
   },
   submitPressed: { opacity: 0.88 },
   submitText: { fontSize: 16, fontWeight: '800', color: colors.onColor },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.slate200 },
+  dividerText: { fontSize: 12, fontWeight: '700', color: colors.slate400 },
+  oauthBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  googleBtn: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.slate200 },
+  googleG: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleGText: { fontSize: 15, fontWeight: '900', color: '#4285F4' },
+  googleText: { fontSize: 15, fontWeight: '800', color: colors.slate800 },
+  appleBtn: { backgroundColor: '#000000' },
+  appleLogo: { fontSize: 18, color: '#ffffff', marginTop: -2 },
+  appleText: { fontSize: 15, fontWeight: '800', color: '#ffffff' },
   switchLine: { fontSize: 13, color: colors.slate500, textAlign: 'center' },
   switchLink: { color: colors.cyan600, fontWeight: '800' },
   legal: {

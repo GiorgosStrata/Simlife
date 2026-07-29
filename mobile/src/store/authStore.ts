@@ -1,5 +1,10 @@
+import { Platform } from 'react-native'
 import { create } from 'zustand'
+import * as WebBrowser from 'expo-web-browser'
+import { makeRedirectUri } from 'expo-auth-session'
 import { supabase } from '../lib/supabase'
+
+export type OAuthProvider = 'google' | 'apple'
 
 /**
  * Real accounts, backed by Supabase Auth. Sign-up / log-in / reset all hit the
@@ -23,6 +28,8 @@ interface AuthState {
   hasHydrated: boolean
   signUp: (name: string, email: string, password: string) => Promise<AuthResult>
   logIn: (email: string, password: string) => Promise<AuthResult>
+  /** Sign in with Google or Apple via OAuth (redirect on web, in-app browser on native). */
+  signInWithProvider: (provider: OAuthProvider) => Promise<AuthResult>
   logOut: () => Promise<void>
   resetPassword: (email: string) => Promise<AuthResult>
 }
@@ -59,6 +66,37 @@ export const useAuthStore = create<AuthState>()(() => ({
     const { error } = await supabase.auth.signInWithPassword({ email: e, password })
     if (error) return { ok: false, error: error.message }
     return { ok: true }
+  },
+
+  signInWithProvider: async (provider) => {
+    try {
+      // Web: hand off to a full-page redirect; the session is picked up on the
+      // way back by detectSessionInUrl.
+      if (Platform.OS === 'web') {
+        const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } })
+        if (error) return { ok: false, error: error.message }
+        return { ok: true }
+      }
+      // Native: open the provider in a secure in-app browser, then swap the
+      // returned auth code for a session (PKCE).
+      const redirect = makeRedirectUri({ scheme: 'gitlife', path: 'auth-callback' })
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: redirect, skipBrowserRedirect: true },
+      })
+      if (error) return { ok: false, error: error.message }
+      if (!data?.url) return { ok: false, error: 'Could not start sign-in.' }
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirect)
+      if (result.type !== 'success' || !result.url) return { ok: false, error: 'Sign-in cancelled.' }
+      const match = result.url.match(/[?&]code=([^&#]+)/)
+      const code = match ? decodeURIComponent(match[1]) : null
+      if (!code) return { ok: false, error: 'Sign-in failed — no code returned.' }
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+      if (exchangeError) return { ok: false, error: exchangeError.message }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Sign-in failed.' }
+    }
   },
 
   logOut: async () => {
