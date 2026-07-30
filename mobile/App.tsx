@@ -318,6 +318,7 @@ function Game() {
 function Root() {
   const authHydrated = useAuthStore((s) => s.hasHydrated)
   const loggedIn = useAuthStore((s) => s.currentEmail !== null)
+  const isGuest = useAuthStore((s) => s.isGuest)
   const theme = useGameStore((s) => s.theme)
 
   // Apply the theme up here so the auth screen is themed too (Game re-applies).
@@ -332,7 +333,7 @@ function Root() {
       </View>
     )
   }
-  if (!loggedIn) {
+  if (!loggedIn && !isGuest) {
     return (
       <SafeAreaView style={styles.authScreen} edges={['top', 'bottom']}>
         <AuthScreen />

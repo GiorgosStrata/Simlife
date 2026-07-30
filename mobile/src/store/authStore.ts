@@ -1,10 +1,14 @@
 import { Platform } from 'react-native'
 import { create } from 'zustand'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as WebBrowser from 'expo-web-browser'
 import { makeRedirectUri } from 'expo-auth-session'
 import { supabase } from '../lib/supabase'
 
 export type OAuthProvider = 'google' | 'apple'
+
+/** Local flag so a guest (no account) can keep playing across reloads. */
+const GUEST_KEY = 'gitlife-guest'
 
 /**
  * Real accounts, backed by Supabase Auth. Sign-up / log-in / reset all hit the
@@ -25,11 +29,17 @@ interface AuthResult {
 interface AuthState {
   currentEmail: string | null
   currentName: string | null
+  /** Playing without an account: progress saves locally, but no purchases. */
+  isGuest: boolean
   hasHydrated: boolean
   signUp: (name: string, email: string, password: string) => Promise<AuthResult>
   logIn: (email: string, password: string) => Promise<AuthResult>
   /** Sign in with Google or Apple via OAuth (redirect on web, in-app browser on native). */
   signInWithProvider: (provider: OAuthProvider) => Promise<AuthResult>
+  /** Skip the account and play locally. */
+  continueAsGuest: () => void
+  /** Leave guest mode and show the sign-in screen (e.g. to buy Premium). */
+  exitGuest: () => void
   logOut: () => Promise<void>
   resetPassword: (email: string) => Promise<AuthResult>
 }
@@ -42,7 +52,18 @@ const redirectTo = typeof window !== 'undefined' ? window.location.origin : unde
 export const useAuthStore = create<AuthState>()(() => ({
   currentEmail: null,
   currentName: null,
+  isGuest: false,
   hasHydrated: false,
+
+  continueAsGuest: () => {
+    AsyncStorage.setItem(GUEST_KEY, '1')
+    useAuthStore.setState({ isGuest: true })
+  },
+
+  exitGuest: () => {
+    AsyncStorage.removeItem(GUEST_KEY)
+    useAuthStore.setState({ isGuest: false })
+  },
 
   signUp: async (name, email, password) => {
     const e = normalizeEmail(email)
@@ -122,13 +143,24 @@ function syncSession(
   })
 }
 
-// Restore any existing session on startup, then flag the app as ready.
-supabase.auth.getSession().then(({ data }) => {
-  syncSession(data.session?.user ?? null)
-  useAuthStore.setState({ hasHydrated: true })
-})
+// Restore any existing session (and guest flag) on startup, then flag ready.
+Promise.all([supabase.auth.getSession(), AsyncStorage.getItem(GUEST_KEY)]).then(
+  ([{ data }, guestFlag]) => {
+    syncSession(data.session?.user ?? null)
+    useAuthStore.setState({
+      // A real session always wins; otherwise honour a saved guest choice.
+      isGuest: !data.session && guestFlag === '1',
+      hasHydrated: true,
+    })
+  },
+)
 
-// Keep the store in step with logins, logouts and token refreshes.
+// Keep the store in step with logins, logouts and token refreshes. Signing in
+// for real supersedes guest mode.
 supabase.auth.onAuthStateChange((_event, session) => {
   syncSession(session?.user ?? null)
+  if (session) {
+    AsyncStorage.removeItem(GUEST_KEY)
+    useAuthStore.setState({ isGuest: false })
+  }
 })

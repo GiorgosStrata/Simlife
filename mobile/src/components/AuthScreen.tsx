@@ -23,6 +23,7 @@ export function AuthScreen() {
   const logIn = useAuthStore((s) => s.logIn)
   const resetPassword = useAuthStore((s) => s.resetPassword)
   const signInWithProvider = useAuthStore((s) => s.signInWithProvider)
+  const continueAsGuest = useAuthStore((s) => s.continueAsGuest)
 
   const [mode, setMode] = useState<Mode>('login')
   const [name, setName] = useState('')
@@ -285,6 +286,19 @@ export function AuthScreen() {
           </Text>
         </View>
 
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            playSfx('click')
+            continueAsGuest()
+          }}
+          disabled={busy}
+          style={styles.guestBtn}
+        >
+          <Text style={styles.guestText}>Continue as guest →</Text>
+          <Text style={styles.guestSub}>Play now, save on this device. Make an account anytime to sync and unlock Premium.</Text>
+        </Pressable>
+
         <Text style={styles.legal}>
           Your account syncs securely so you can play on any device. By continuing you agree to
           play responsibly. 🎮
@@ -403,6 +417,14 @@ const styles = StyleSheet.create({
   appleBtn: { backgroundColor: '#000000' },
   appleLogo: { fontSize: 18, color: '#ffffff', marginTop: -2 },
   appleText: { fontSize: 15, fontWeight: '800', color: '#ffffff' },
+  guestBtn: { alignItems: 'center', gap: 4, paddingHorizontal: 12 },
+  guestText: { fontSize: 15, fontWeight: '800', color: '#ffffff' },
+  guestSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
   switchLine: { fontSize: 13, color: colors.slate500, textAlign: 'center' },
   switchLink: { color: colors.cyan600, fontWeight: '800' },
   legal: {

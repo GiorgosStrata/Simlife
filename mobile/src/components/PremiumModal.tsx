@@ -6,6 +6,7 @@ import {
   PREMIUM_SAVE_SLOTS,
   usePremiumStore,
 } from '../store/premiumStore'
+import { useAuthStore } from '../store/authStore'
 import { colors } from '../theme'
 import { GRADIENTS, GradientFill } from './Gradient'
 
@@ -27,6 +28,10 @@ export function PremiumModal({ onClose }: PremiumModalProps) {
   const premium = usePremiumStore((s) => s.premium)
   const purchase = usePremiumStore((s) => s.purchase)
   const restorePurchase = usePremiumStore((s) => s.restorePurchase)
+  // Guests (no account) can play, but purchases need a real account so the
+  // entitlement can follow them across devices.
+  const hasAccount = useAuthStore((s) => s.currentEmail !== null)
+  const exitGuest = useAuthStore((s) => s.exitGuest)
 
   useEffect(() => {
     playSfx('pop')
@@ -35,6 +40,12 @@ export function PremiumModal({ onClose }: PremiumModalProps) {
   const buy = () => {
     playSfx('cash')
     purchase()
+  }
+
+  const createAccount = () => {
+    playSfx('click')
+    onClose()
+    exitGuest()
   }
 
   return (
@@ -74,7 +85,7 @@ export function PremiumModal({ onClose }: PremiumModalProps) {
             <View style={styles.ownedBox}>
               <Text style={styles.ownedText}>✓ Premium unlocked — thank you! 💜</Text>
             </View>
-          ) : (
+          ) : hasAccount ? (
             <>
               <Pressable
                 accessibilityRole="button"
@@ -85,6 +96,19 @@ export function PremiumModal({ onClose }: PremiumModalProps) {
               </Pressable>
               <Text style={styles.restore} onPress={restorePurchase}>
                 Restore purchase
+              </Text>
+            </>
+          ) : (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                onPress={createAccount}
+                style={({ pressed }) => [styles.buy, pressed && styles.buyPressed]}
+              >
+                <Text style={styles.buyText}>Create a free account to unlock</Text>
+              </Pressable>
+              <Text style={styles.restore}>
+                Premium follows your account across devices — your progress is saved.
               </Text>
             </>
           )}
