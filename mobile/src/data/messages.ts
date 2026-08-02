@@ -13,9 +13,10 @@ import type { PartnerStatus, PersonRole } from '../types'
  *     inside jokes, big favours.
  *
  * So as a bond grows, brand-new texts unlock — investing in someone visibly
- * changes what you can say to them. Each line can only be sent once per life,
- * so conversations always move forward. Replies are chosen by what you said
- * and coloured by how close you are.
+ * changes what you can say to them. You can send up to THREE texts to a given
+ * person each year, choosing from a fresh menu that refreshes every year.
+ * Replies are chosen by what you said and coloured by how close you are, and
+ * every text nudges your mood and the bond up or down depending on the message.
  */
 
 /** What a message is *doing*, so the reply can actually fit it. */
@@ -44,8 +45,6 @@ export interface TextOption {
   tone: TextTone
   /** Bond tiers this line is appropriate for. */
   tiers?: Tier[]
-  /** Utility lines (asking a parent for allowance) are never consumed. */
-  consumable?: boolean
 }
 
 /**
@@ -401,17 +400,17 @@ const MESSAGE_POOL: Record<MsgGroup, TextOption[]> = Object.fromEntries(
   (Object.keys(GROUPS) as MsgGroup[]).map((k) => [k, buildPool(GROUPS[k])]),
 ) as Record<MsgGroup, TextOption[]>
 
-/** Kid-only utility line for parents — asking for allowance, never used up. */
+/** Kid-only utility line for parents — asking for allowance. */
 const ASK_ALLOWANCE: TextOption = {
   id: 'ask-money',
   label: 'Can I have some allowance? 🙏',
   tone: 'ask-money',
-  consumable: false,
 }
 
-/** How many fresh lines are offered — you have more to say to closer people. */
-function optionsPerYear(tier: Tier): number {
-  return tier === 'high' ? 5 : tier === 'mid' ? 4 : 3
+/** You can send 3 texts a year; offer a generous menu to choose them from. */
+export const TEXTS_PER_YEAR = 3
+function optionsOffered(tier: Tier): number {
+  return tier === 'high' ? 7 : tier === 'mid' ? 6 : 5
 }
 
 /** A short, human label for a bond tier — shown in the UI so the player sees
@@ -423,9 +422,9 @@ export function bondWarmth(role: PersonRole, bond: number): string {
 }
 
 /**
- * The texts on offer for a contact this year: a small random set drawn from
- * the lines that fit BOTH who they are and how close you are, minus anything
- * you've already said this life. Stable within a year, refreshed each year.
+ * The texts on offer for a contact this year: a random menu drawn from the
+ * lines that fit BOTH who they are and how close you are. Stable within a year,
+ * refreshed each year — you choose up to three to actually send.
  */
 export function textOptionsFor(
   role: PersonRole,
@@ -433,18 +432,14 @@ export function textOptionsFor(
   bond: number,
   personId: string,
   year: number,
-  usedTexts: string[],
   partnerStatus?: PartnerStatus | null,
 ): TextOption[] {
   const group = groupFor(role, partnerStatus)
   const tier = tierFor(bond)
-  const used = new Set(usedTexts)
 
-  const eligible = MESSAGE_POOL[group].filter(
-    (o) => (!o.tiers || o.tiers.includes(tier)) && !used.has(`${personId}:${o.id}`),
-  )
+  const eligible = MESSAGE_POOL[group].filter((o) => !o.tiers || o.tiers.includes(tier))
   const rng = mulberry32(hashStr(`${personId}:${year}`))
-  const picks = seededShuffle(eligible, rng).slice(0, optionsPerYear(tier))
+  const picks = seededShuffle(eligible, rng).slice(0, optionsOffered(tier))
 
   // A kid can always ask a parent for allowance, on top of the chit-chat.
   if (group === 'parent' && age < 18) return [ASK_ALLOWANCE, ...picks]
@@ -611,8 +606,12 @@ export function textReply(role: PersonRole, bond: number, tone: TextTone): TextR
   // Enemies only ever get rude or truce lines.
   if (tone === 'rude' || tone === 'truce') {
     const text = pick(ENEMY_REPLIES[tone][tier])
-    const bondDelta = tone === 'truce' ? (tier === 'high' ? 5 : tier === 'mid' ? 2 : -1) : -2
-    return { text, bond: bondDelta, happiness: bondDelta > 0 ? 1 : -1 }
+    if (tone === 'truce') {
+      const bond = tier === 'high' ? 6 : tier === 'mid' ? 3 : -1
+      return { text, bond, happiness: bond > 0 ? 2 : -2 }
+    }
+    // Being rude to an enemy: satisfying in the moment, but burns the bridge.
+    return { text, bond: -3, happiness: 1 }
   }
 
   const intent = tone as Intent
@@ -626,12 +625,16 @@ export function textReply(role: PersonRole, bond: number, tone: TextTone): TextR
   const text = pick(table[intent][tier])
 
   // Bond moves by the intent's warmth, nudged by how close you already are.
+  // Warm words to someone distant can land awkwardly and backfire.
   let bondDelta: number
-  if (tier === 'low' && intent === 'love') {
-    bondDelta = -1 // a big "I love you" to someone distant lands awkwardly
+  if (tier === 'low' && (intent === 'love' || intent === 'flirt')) {
+    bondDelta = -2 // too much, too soon
   } else {
     bondDelta = WEIGHT[intent] + (tier === 'high' ? 1 : tier === 'low' ? -1 : 0)
   }
-  const happiness = bondDelta > 0 ? 1 : bondDelta < 0 ? -1 : 0
+  // Mood tracks how the exchange went — a warm reply lifts you, an awkward
+  // or cold one stings.
+  const happiness =
+    bondDelta >= 3 ? 3 : bondDelta === 2 ? 2 : bondDelta >= 1 ? 1 : bondDelta === 0 ? 0 : -2
   return { text, bond: bondDelta, happiness }
 }

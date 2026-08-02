@@ -29,6 +29,7 @@ import { PET_NAMES, getPetOption, randomPetOfSpecies } from '../data/pets'
 import { ACHIEVEMENTS_BY_ID } from '../data/achievements'
 import { FREE_MAX_GENERATION, usePremiumStore } from './premiumStore'
 import { makeNpcLife, randomHobby } from '../data/npc'
+import { TEXTS_PER_YEAR } from '../data/messages'
 import { LEAGUES, getTeam, jobSport, leaguesForSport, teamName } from '../data/leagues'
 import { CRIMES, LANGUAGES, getActivity, getCrime } from '../data/activities'
 import { getAsset, homeRent, resaleValue } from '../data/assets'
@@ -712,9 +713,8 @@ interface GameState {
       happiness: number
       money?: number
       grantsPhone?: boolean
-      /** The message id sent, and whether it's consumed for the rest of this life. */
+      /** The message id sent (used to cap texts per person per year). */
       messageId?: string
-      consumable?: boolean
     },
   ) => void
 
@@ -2857,17 +2857,15 @@ export const useGameStore = create<GameState>()(
           const s = get()
           const person = s.relationships.find((p) => p.id === personId)
           if (!person?.alive || !s.alive) return
-          const isUtility = payload.consumable === false
-          if (isUtility) {
-            // Asking a parent for allowance is capped once per year, so it
-            // can't be farmed for cash.
-            if (!useYearlyAction(`text-util-${personId}`)) return
-          } else {
-            // Conversational lines: send as many different ones as you like,
-            // but never the same line twice — it's spent for the rest of life.
-            if (!payload.messageId || s.usedTexts.includes(`${personId}:${payload.messageId}`)) return
-            set({ usedTexts: [...s.usedTexts, `${personId}:${payload.messageId}`] })
-          }
+          if (!payload.messageId) return
+          // Up to THREE texts per person per year, each specific line at most
+          // once a year. Tracked in usedActions, which clears every Age Up.
+          const prefix = `txt-${personId}-`
+          const sentThisYear = s.usedActions.filter((k) => k.startsWith(prefix)).length
+          const lineKey = `${prefix}${payload.messageId}`
+          if (s.usedActions.includes(lineKey)) return
+          if (sentThisYear >= TEXTS_PER_YEAR) return
+          set({ usedActions: [...s.usedActions, lineKey] })
           updatePerson(personId, {
             relationship: clampRelationship(person.relationship + payload.bond),
           })

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { playSfx } from '../audio/sfx'
-import { bondWarmth, textOptionsFor, textReply, type TextReply } from '../data/messages'
+import { bondWarmth, textOptionsFor, textReply, TEXTS_PER_YEAR, type TextReply } from '../data/messages'
 import { useGameStore } from '../store/gameStore'
 import { colors } from '../theme'
 import type { Person, PersonRole } from '../types'
@@ -33,7 +33,6 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
   const partnerStatus = useGameStore((s) => s.partnerStatus)
   const age = useGameStore((s) => s.age)
   const year = useGameStore((s) => s.year)
-  const usedTexts = useGameStore((s) => s.usedTexts)
   const usedActions = useGameStore((s) => s.usedActions)
   const sendText = useGameStore((s) => s.sendText)
   const [openId, setOpenId] = useState<string | null>(null)
@@ -56,37 +55,35 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
     setOpenId(person.id)
   }
 
-  // This year's slate is fixed once the chat opens (it doesn't reshuffle as
-  // you send), then we simply drop any line you've already used this life.
-  const slate = useMemo(
+  // The year's menu is fixed once the chat opens (it doesn't reshuffle as you
+  // send). You can send up to three of them a year; each line at most once.
+  const options = useMemo(
     () =>
       open
-        ? textOptionsFor(open.role, age, open.relationship, open.id, year, usedTexts, partnerStatus)
+        ? textOptionsFor(open.role, age, open.relationship, open.id, year, partnerStatus)
         : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [open?.id, year, partnerStatus],
   )
-  const options = open
-    ? slate.filter((o) => o.consumable === false || !usedTexts.includes(`${open.id}:${o.id}`))
-    : []
-  // The allowance ask is capped once a year; chit-chat isn't.
-  const askedThisYear = open ? usedActions.includes(`text-util-${open.id}`) : false
+  const sentThisYear = open
+    ? usedActions.filter((k) => k.startsWith(`txt-${open.id}-`)).length
+    : 0
+  const textsLeft = Math.max(0, TEXTS_PER_YEAR - sentThisYear)
+  const isSent = (optId: string) => (open ? usedActions.includes(`txt-${open.id}-${optId}`) : false)
 
   const send = (opt: (typeof options)[number]) => {
     if (!open) return
-    if (opt.consumable === false && askedThisYear) return
+    if (isSent(opt.id) || textsLeft <= 0) return
     const reply: TextReply = textReply(open.role, open.relationship, opt.tone)
     setThread((t) => [...t, { from: 'me', text: opt.label }])
     playSfx('click')
-    // Apply the reply's bond/mood nudge, and spend this line for the rest of
-    // the life unless it's a utility ask (allowance).
+    // Apply the reply's bond/mood nudge and count it toward this year's three.
     sendText(open.id, {
       bond: reply.bond,
       happiness: reply.happiness,
       money: reply.money,
       grantsPhone: reply.grantsPhone,
       messageId: opt.id,
-      consumable: opt.consumable !== false,
     })
     // Their reply lands a beat later.
     setTimeout(() => {
@@ -162,33 +159,33 @@ export function MessagesModal({ onClose }: MessagesModalProps) {
               </ScrollView>
 
               <View style={styles.options}>
-                {options.length === 0 ? (
-                  <Text style={styles.sentNote}>
-                    You’ve said it all to {open.name.split(' ')[0]} — check back next year.
-                  </Text>
-                ) : (
-                  options.map((opt) => {
-                    const disabled = opt.consumable === false && askedThisYear
-                    return (
-                      <Pressable
-                        key={opt.id}
-                        accessibilityRole="button"
-                        disabled={disabled}
-                        onPress={() => send(opt)}
-                        style={({ pressed }) => [
-                          styles.optBtn,
-                          pressed && styles.optBtnPressed,
-                          disabled && styles.optBtnDisabled,
-                        ]}
-                      >
-                        <Text style={[styles.optText, disabled && styles.optTextDisabled]}>
-                          {opt.label}
-                          {disabled ? '  · asked this year' : ''}
-                        </Text>
-                      </Pressable>
-                    )
-                  })
-                )}
+                <Text style={styles.counter}>
+                  {textsLeft > 0
+                    ? `${textsLeft} of ${TEXTS_PER_YEAR} texts left this year`
+                    : `You’ve texted ${open.name.split(' ')[0]} ${TEXTS_PER_YEAR}× this year — check back next year.`}
+                </Text>
+                {options.map((opt) => {
+                  const sent = isSent(opt.id)
+                  const disabled = sent || textsLeft <= 0
+                  return (
+                    <Pressable
+                      key={opt.id}
+                      accessibilityRole="button"
+                      disabled={disabled}
+                      onPress={() => send(opt)}
+                      style={({ pressed }) => [
+                        styles.optBtn,
+                        pressed && styles.optBtnPressed,
+                        disabled && styles.optBtnDisabled,
+                      ]}
+                    >
+                      <Text style={[styles.optText, disabled && styles.optTextDisabled]}>
+                        {opt.label}
+                        {sent ? '  · sent ✓' : ''}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
               </View>
 
               <Pressable accessibilityRole="button" onPress={onClose} style={styles.cancel}>
@@ -234,6 +231,13 @@ const styles = StyleSheet.create({
   bubbleMeText: { color: colors.onColor, fontSize: 14 },
   bubbleThemText: { color: colors.slate800, fontSize: 14 },
   options: { gap: 8, marginTop: 12 },
+  counter: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.slate500,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
   optBtn: {
     backgroundColor: colors.white,
     borderWidth: 1,
