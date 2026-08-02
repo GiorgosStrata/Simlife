@@ -17,6 +17,12 @@ import { GRADIENTS, GradientFill } from './Gradient'
 
 type Mode = 'login' | 'signup'
 
+/**
+ * Google / Apple sign-in is built but not live yet (OAuth providers still need
+ * configuring). Flip to `true` to show the buttons once the providers are on.
+ */
+const SHOW_SOCIAL_LOGIN = false
+
 /** Sign-up / log-in gate shown before the game. */
 export function AuthScreen() {
   const signUp = useAuthStore((s) => s.signUp)
@@ -243,36 +249,40 @@ export function AuthScreen() {
             </Text>
           )}
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
+          {SHOW_SOCIAL_LOGIN && (
+            <>
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or continue with</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Continue with Google"
-            onPress={() => oauth('google')}
-            disabled={busy}
-            style={({ pressed }) => [styles.oauthBtn, styles.googleBtn, pressed && styles.submitPressed]}
-          >
-            <View style={styles.googleG}>
-              <Text style={styles.googleGText}>G</Text>
-            </View>
-            <Text style={styles.googleText}>Continue with Google</Text>
-          </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Continue with Google"
+                onPress={() => oauth('google')}
+                disabled={busy}
+                style={({ pressed }) => [styles.oauthBtn, styles.googleBtn, pressed && styles.submitPressed]}
+              >
+                <View style={styles.googleG}>
+                  <Text style={styles.googleGText}>G</Text>
+                </View>
+                <Text style={styles.googleText}>Continue with Google</Text>
+              </Pressable>
 
-          {showApple && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Continue with Apple"
-              onPress={() => oauth('apple')}
-              disabled={busy}
-              style={({ pressed }) => [styles.oauthBtn, styles.appleBtn, pressed && styles.submitPressed]}
-            >
-              {Platform.OS === 'ios' && <Text style={styles.appleLogo}></Text>}
-              <Text style={styles.appleText}>Continue with Apple</Text>
-            </Pressable>
+              {showApple && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue with Apple"
+                  onPress={() => oauth('apple')}
+                  disabled={busy}
+                  style={({ pressed }) => [styles.oauthBtn, styles.appleBtn, pressed && styles.submitPressed]}
+                >
+                  {Platform.OS === 'ios' && <Text style={styles.appleLogo}></Text>}
+                  <Text style={styles.appleText}>Continue with Apple</Text>
+                </Pressable>
+              )}
+            </>
           )}
 
           <Text style={styles.switchLine}>
