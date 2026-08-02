@@ -407,11 +407,8 @@ const ASK_ALLOWANCE: TextOption = {
   tone: 'ask-money',
 }
 
-/** You can send 3 texts a year; offer a generous menu to choose them from. */
+/** Exactly three random messages are offered per person each year. */
 export const TEXTS_PER_YEAR = 3
-function optionsOffered(tier: Tier): number {
-  return tier === 'high' ? 7 : tier === 'mid' ? 6 : 5
-}
 
 /** A short, human label for a bond tier — shown in the UI so the player sees
  * why the options differ. */
@@ -439,10 +436,10 @@ export function textOptionsFor(
 
   const eligible = MESSAGE_POOL[group].filter((o) => !o.tiers || o.tiers.includes(tier))
   const rng = mulberry32(hashStr(`${personId}:${year}`))
-  const picks = seededShuffle(eligible, rng).slice(0, optionsOffered(tier))
+  const picks = seededShuffle(eligible, rng).slice(0, TEXTS_PER_YEAR)
 
-  // A kid can always ask a parent for allowance, on top of the chit-chat.
-  if (group === 'parent' && age < 18) return [ASK_ALLOWANCE, ...picks]
+  // A kid can always ask a parent for allowance — it takes one of the three slots.
+  if (group === 'parent' && age < 18) return [ASK_ALLOWANCE, ...picks.slice(0, TEXTS_PER_YEAR - 1)]
   return picks
 }
 
