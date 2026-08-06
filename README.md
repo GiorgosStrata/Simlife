@@ -6,6 +6,24 @@ A life-simulation game. **The full game lives in [`mobile/`](mobile/)** — a Re
 
 > 🧪 **Legacy Vite app (this directory, `src/`):** the original minimal scaffold (Age-Up loop + events only). It's kept for reference but is no longer what gets deployed. Run the real game from `mobile/`.
 
+## ⚠️ Building for iOS / Android — always run EAS from `mobile/`
+
+This repo root is **not** an Expo project (no `expo`/`react-native` dependency), so
+`eas build` here will build the legacy Vite app and the **iOS build fails immediately**.
+Every EAS command must run inside `mobile/`:
+
+```bash
+cd mobile
+npx eas build --platform ios --profile production
+npx eas submit --platform ios --latest
+```
+
+If you ever ran `eas init`/`eas build` from the repo root, delete the stray `app.json`,
+`eas.json` and `.expo/` it left **at the root** (the real ones live in `mobile/`) —
+otherwise EAS keeps picking up the wrong project. The mobile app is `GitLife`
+(slug `gitlife`, bundle id `com.giorgosstrata.gitlife`); a build log showing any
+other slug or bundle id means it ran from the wrong directory.
+
 ---
 
 ## Legacy Vite app
