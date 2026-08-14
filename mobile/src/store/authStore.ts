@@ -143,17 +143,51 @@ function syncSession(
   })
 }
 
-// Restore any existing session (and guest flag) on startup, then flag ready.
-Promise.all([supabase.auth.getSession(), AsyncStorage.getItem(GUEST_KEY)]).then(
-  ([{ data }, guestFlag]) => {
-    syncSession(data.session?.user ?? null)
-    useAuthStore.setState({
-      // A real session always wins; otherwise honour a saved guest choice.
-      isGuest: !data.session && guestFlag === '1',
-      hasHydrated: true,
-    })
-  },
-)
+/**
+ * Restore any existing session (and guest flag) on startup, then flag ready.
+ *
+ * The session lookup must never be able to hang the app: if Supabase is
+ * unreachable (a paused project, no signal, a locked-down network) we still
+ * have to finish hydrating, otherwise the UI sits on its loading spinner
+ * forever. So the lookup is raced against a timeout and any failure is treated
+ * as "no session" — the player lands on the sign-in screen and can still tap
+ * "Continue as guest" and play offline.
+ */
+const SESSION_LOOKUP_TIMEOUT_MS = 8000
+
+async function hydrateAuth() {
+  // Local, and always reliable — read it first so a dead network can't cost
+  // the player their saved guest choice.
+  let guestFlag: string | null = null
+  try {
+    guestFlag = await AsyncStorage.getItem(GUEST_KEY)
+  } catch {
+    guestFlag = null
+  }
+
+  let session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'] = null
+  try {
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('session lookup timed out')), SESSION_LOOKUP_TIMEOUT_MS),
+      ),
+    ])
+    session = result.data.session
+  } catch {
+    // Offline, or Supabase unreachable — carry on logged out.
+    session = null
+  }
+
+  syncSession(session?.user ?? null)
+  useAuthStore.setState({
+    // A real session always wins; otherwise honour a saved guest choice.
+    isGuest: !session && guestFlag === '1',
+    hasHydrated: true,
+  })
+}
+
+void hydrateAuth()
 
 // Keep the store in step with logins, logouts and token refreshes. Signing in
 // for real supersedes guest mode.
