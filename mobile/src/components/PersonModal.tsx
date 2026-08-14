@@ -1,0 +1,605 @@
+import { useEffect } from 'react'
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { playSfx } from '../audio/sfx'
+import {
+  DATE_COST,
+  GETAWAY_COST,
+  GIFT_COST,
+  LUNCH_COST,
+  MAX_FRIENDS,
+  MOVIE_COST,
+  PROPOSAL_MIN_RELATIONSHIP,
+  WEDDING_COST,
+  useGameStore,
+} from '../store/gameStore'
+import { getAsset } from '../data/assets'
+import { describeOccupation } from '../data/npc'
+import { saveActiveSlot } from '../saves'
+import { usePremiumStore } from '../store/premiumStore'
+import { colors } from '../theme'
+import type { PartnerStatus, Person } from '../types'
+import { confirmAction } from './actionRunner'
+import { PersonAvatar } from './Avatar'
+import { Row } from './Row'
+import { useCloseOnAction } from './useCloseOnAction'
+
+export function personEmoji(person: Person): string {
+  const male = person.gender === 'male'
+  switch (person.role) {
+    case 'mother':
+      return '👩'
+    case 'father':
+      return '👨'
+    case 'sibling':
+      return male ? '👦' : '👧'
+    case 'child':
+      return male ? '👦' : '👧'
+    case 'partner':
+      return male ? '👨' : '👩'
+    case 'friend':
+      return male ? '🙋‍♂️' : '🙋‍♀️'
+    case 'classmate':
+      return male ? '👨‍🎓' : '👩‍🎓'
+    case 'teacher':
+      return male ? '👨‍🏫' : '👩‍🏫'
+    case 'coworker':
+      return male ? '👨‍💼' : '👩‍💼'
+    case 'boss':
+      return male ? '🤵' : '🤵‍♀️'
+    case 'enemy':
+      return '😠'
+    case 'ex':
+      return male ? '🙎‍♂️' : '🙎‍♀️'
+    case 'fling':
+      return male ? '😏' : '😏'
+  }
+}
+
+export function roleLabel(person: Person, partnerStatus: PartnerStatus | null): string {
+  const male = person.gender === 'male'
+  if (person.role === 'partner') {
+    if (partnerStatus === 'married') return male ? 'Husband' : 'Wife'
+    if (partnerStatus === 'engaged') return male ? 'Fiancé' : 'Fiancée'
+    return male ? 'Boyfriend' : 'Girlfriend'
+  }
+  if (person.role === 'sibling') return male ? 'Brother' : 'Sister'
+  if (person.role === 'child') return male ? 'Son' : 'Daughter'
+  if (person.role === 'enemy') return 'Enemy'
+  if (person.role === 'ex') return male ? 'Ex-boyfriend' : 'Ex-girlfriend'
+  if (person.role === 'fling') return 'Fling'
+  return person.role.charAt(0).toUpperCase() + person.role.slice(1)
+}
+
+interface PersonModalProps {
+  personId: string
+  onClose: () => void
+}
+
+/** BitLife-style person sheet: tap a person, then pick an interaction. */
+export function PersonModal({ personId, onClose }: PersonModalProps) {
+  const person = useGameStore((s) => s.relationships.find((p) => p.id === personId))
+  const age = useGameStore((s) => s.age)
+  const playerGender = useGameStore((s) => s.gender)
+  const money = useGameStore((s) => s.money)
+  const ownsPhone = useGameStore((s) =>
+    s.ownedAssetIds.some((id) => getAsset(id)?.category === 'phone'),
+  )
+  const usedActions = useGameStore((s) => s.usedActions)
+  const partnerStatus = useGameStore((s) => s.partnerStatus)
+  const relationships = useGameStore((s) => s.relationships)
+  const spendTime = useGameStore((s) => s.spendTime)
+  const giveGift = useGameStore((s) => s.giveGift)
+  const compliment = useGameStore((s) => s.compliment)
+  const insult = useGameStore((s) => s.insult)
+  const askForMoney = useGameStore((s) => s.askForMoney)
+  const askForPhone = useGameStore((s) => s.askForPhone)
+  const askForAdvice = useGameStore((s) => s.askForAdvice)
+  const continueAsChild = useGameStore((s) => s.continueAsChild)
+  const prankSibling = useGameStore((s) => s.prankSibling)
+  const watchMovie = useGameStore((s) => s.watchMovie)
+  const studyTogether = useGameStore((s) => s.studyTogether)
+  const grabLunch = useGameStore((s) => s.grabLunch)
+  const weekendGetaway = useGameStore((s) => s.weekendGetaway)
+  const askTeacherHelp = useGameStore((s) => s.askTeacherHelp)
+  const befriend = useGameStore((s) => s.befriend)
+  const askOut = useGameStore((s) => s.askOut)
+  const hookUp = useGameStore((s) => s.hookUp)
+  const goOnDate = useGameStore((s) => s.goOnDate)
+  const propose = useGameStore((s) => s.propose)
+  const marry = useGameStore((s) => s.marry)
+  const breakUp = useGameStore((s) => s.breakUp)
+  const tryForBaby = useGameStore((s) => s.tryForBaby)
+  const makePeace = useGameStore((s) => s.makePeace)
+  // NB: every hook must run before the `!person` early-return below — an action
+  // like "Ask them out" re-ids the person (friend → partner), so `person` can
+  // become undefined on the next render. A hook called after the return would
+  // change the hook count and crash the app (React error #300).
+  const premium = usePremiumStore((s) => s.premium)
+
+  useEffect(() => {
+    playSfx('pop')
+  }, [])
+
+  useCloseOnAction(onClose)
+
+  if (!person) return null
+
+  const used = (key: string) => usedActions.includes(key)
+  const act = confirmAction(onClose)
+
+  const isParent = person.role === 'mother' || person.role === 'father'
+  const isPartner = person.role === 'partner'
+  const isSibling = person.role === 'sibling'
+  const isFriend = person.role === 'friend'
+  const isClassmate = person.role === 'classmate'
+  const isTeacher = person.role === 'teacher'
+  const isWorkPerson = person.role === 'coworker' || person.role === 'boss'
+  const isEnemy = person.role === 'enemy'
+  const isChild = person.role === 'child'
+  const livingFriends = relationships.filter((p) => p.role === 'friend' && p.alive).length
+  const canPropose =
+    isPartner && partnerStatus === 'dating' && person.relationship >= PROPOSAL_MIN_RELATIONSHIP
+  const canMarry = isPartner && partnerStatus === 'engaged' && money >= WEDDING_COST
+  const hasPartner = relationships.some((p) => p.id === 'partner' && p.alive)
+  // Acquaintances can be befriended (harder for authority figures) and, if
+  // you're single, asked out.
+  const befriendable = ['classmate', 'coworker', 'boss', 'teacher'].includes(person.role)
+  const befriendNeeded = person.role === 'boss' || person.role === 'teacher' ? 75 : 55
+  const askOutable =
+    ['friend', 'classmate', 'coworker', 'ex', 'fling'].includes(person.role) &&
+    !hasPartner &&
+    age >= 16
+  const hookUpable = (person.role === 'fling' || person.role === 'ex') && age >= 18
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.backdrop}>
+        <View style={styles.card}>
+          <View style={styles.header}>
+            <View style={styles.badge}>
+              <PersonAvatar person={person} size={52} />
+            </View>
+            <View style={styles.headerInfo}>
+              <Text style={styles.name}>{person.name}</Text>
+              <Text style={styles.meta}>
+                {roleLabel(person, partnerStatus)} ·{' '}
+                {person.alive ? `age ${person.age}` : `passed away at ${person.age}`}
+              </Text>
+              {person.alive && (
+                <Text style={styles.life} numberOfLines={1}>
+                  {describeOccupation(person)}
+                  {person.hobby && person.age >= 6 ? ` · 🎨 Loves ${person.hobby}` : ''}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.bondRow}>
+            <Text style={styles.bondLabel}>Bond</Text>
+            <View
+              style={styles.bondTrack}
+              accessibilityRole="progressbar"
+              accessibilityLabel={`Bond with ${person.name}`}
+              accessibilityValue={{ min: 0, max: 100, now: person.relationship }}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={person.relationship}
+            >
+              <View style={[styles.bondFill, { width: `${person.relationship}%` }]} />
+            </View>
+            <Text style={styles.bondValue}>{person.relationship}</Text>
+          </View>
+
+          {person.alive && (
+            <ScrollView style={styles.actions} contentContainerStyle={styles.actionsContent}>
+              <Row
+                emoji="🕰️"
+                title="Spend time together"
+                subtitle={used(`time-${person.id}`) ? 'Done this year' : '+ bond, + happiness'}
+                onPress={act(() => spendTime(person.id))}
+                disabled={used(`time-${person.id}`)}
+                chevron
+              />
+              <Row
+                emoji="😊"
+                title="Compliment"
+                subtitle={used(`compliment-${person.id}`) ? 'Done this year' : '+ bond'}
+                onPress={act(() => compliment(person.id))}
+                disabled={used(`compliment-${person.id}`)}
+                chevron
+              />
+              <Row
+                emoji="🎁"
+                title={`Give a gift ($${GIFT_COST})`}
+                subtitle={
+                  used(`gift-${person.id}`)
+                    ? 'Done this year'
+                    : money < GIFT_COST
+                      ? 'Not enough money'
+                      : '+ + bond'
+                }
+                onPress={act(() => giveGift(person.id))}
+                disabled={used(`gift-${person.id}`) || money < GIFT_COST}
+                chevron
+              />
+              {isParent && age < 18 && (
+                <Row
+                  emoji="🪙"
+                  title="Ask for pocket money"
+                  subtitle={used(`ask-money-${person.id}`) ? 'Done this year' : 'Works better with a good bond'}
+                  onPress={act(() => askForMoney(person.id))}
+                  disabled={used(`ask-money-${person.id}`)}
+                  chevron
+                />
+              )}
+              {isParent && age < 18 && !ownsPhone && (
+                <Row
+                  emoji="📱"
+                  title="Ask for a phone"
+                  subtitle={
+                    used(`ask-phone-${person.id}`)
+                      ? 'You asked this year'
+                      : age < 10
+                        ? 'They’ll say you’re too young'
+                        : 'They might cave if your bond is strong'
+                  }
+                  onPress={act(() => askForPhone(person.id))}
+                  disabled={used(`ask-phone-${person.id}`)}
+                  chevron
+                />
+              )}
+              {isParent && (
+                <Row
+                  emoji="🦉"
+                  title="Ask for life advice"
+                  subtitle={used(`advice-${person.id}`) ? 'Done this year' : '+ smarts, + bond'}
+                  onPress={act(() => askForAdvice(person.id))}
+                  disabled={used(`advice-${person.id}`)}
+                  chevron
+                />
+              )}
+              {isChild && person.alive && premium && (
+                <Row
+                  emoji="👑"
+                  title={`Take over as ${person.name.split(' ')[0]}`}
+                  subtitle="Continue the story as your child — you inherit the estate"
+                  onPress={() => {
+                    playSfx('baby')
+                    continueAsChild(person.id)
+                    saveActiveSlot()
+                    onClose()
+                  }}
+                  chevron
+                />
+              )}
+              {isSibling && (
+                <Row
+                  emoji="🪤"
+                  title="Pull a prank"
+                  subtitle={used(`prank-${person.id}`) ? 'Done this year' : '50/50 it lands or backfires'}
+                  onPress={act(() => prankSibling(person.id))}
+                  disabled={used(`prank-${person.id}`)}
+                  chevron
+                />
+              )}
+              {isFriend && (
+                <Row
+                  emoji="🎬"
+                  title={`Go to the movies ($${MOVIE_COST})`}
+                  subtitle={
+                    used(`movie-${person.id}`)
+                      ? 'Done this year'
+                      : money < MOVIE_COST
+                        ? 'Not enough money'
+                        : '+ bond, + happiness'
+                  }
+                  onPress={act(() => watchMovie(person.id))}
+                  disabled={used(`movie-${person.id}`) || money < MOVIE_COST}
+                  chevron
+                />
+              )}
+              {isClassmate && (
+                <Row
+                  emoji="📚"
+                  title="Study together"
+                  subtitle={used(`study-with-${person.id}`) ? 'Done this year' : '+ smarts, + bond'}
+                  onPress={act(() => studyTogether(person.id))}
+                  disabled={used(`study-with-${person.id}`)}
+                  chevron
+                />
+              )}
+              {isWorkPerson && (
+                <Row
+                  emoji="🥪"
+                  title={`Grab lunch ($${LUNCH_COST})`}
+                  subtitle={
+                    used(`lunch-${person.id}`)
+                      ? 'Done this year'
+                      : money < LUNCH_COST
+                        ? 'Not enough money'
+                        : '+ bond, + happiness'
+                  }
+                  onPress={act(() => grabLunch(person.id))}
+                  disabled={used(`lunch-${person.id}`) || money < LUNCH_COST}
+                  chevron
+                />
+              )}
+              {isTeacher && (
+                <Row
+                  emoji="🍎"
+                  title="Ask for extra help"
+                  subtitle={used(`teacher-help-${person.id}`) ? 'Done this year' : '+ smarts, + bond'}
+                  onPress={act(() => askTeacherHelp(person.id))}
+                  disabled={used(`teacher-help-${person.id}`)}
+                  chevron
+                />
+              )}
+              {hookUpable && (
+                <Row
+                  emoji="🔥"
+                  title={hasPartner ? 'Hook up (cheat)' : 'Hook up'}
+                  subtitle={
+                    used(`hookup-${person.id}`)
+                      ? 'Done this year'
+                      : hasPartner
+                        ? 'Cheat on your partner — they might find out 😬'
+                        : 'A casual night — a little risky'
+                  }
+                  onPress={act(() => hookUp(person.id), null)}
+                  disabled={used(`hookup-${person.id}`)}
+                  chevron
+                />
+              )}
+              {askOutable && (
+                <Row
+                  emoji="💘"
+                  title={person.role === 'ex' ? 'Rekindle things' : 'Ask them out'}
+                  subtitle={
+                    used(`askout-${person.id}`)
+                      ? 'You asked this year'
+                      : person.relationship < 30
+                        ? 'Grow your bond first'
+                        : person.role === 'ex'
+                          ? 'Give it another shot'
+                          : 'Shoot your shot — they might say yes'
+                  }
+                  onPress={act(() => askOut(person.id), null)}
+                  disabled={used(`askout-${person.id}`) || person.relationship < 30}
+                  chevron
+                />
+              )}
+              {befriendable && (
+                <Row
+                  emoji="🤝"
+                  title="Become friends"
+                  subtitle={
+                    person.relationship < befriendNeeded
+                      ? `Needs ${befriendNeeded}+ bond — spend time first`
+                      : livingFriends >= MAX_FRIENDS
+                        ? 'Your friend list is full'
+                        : 'Make it official'
+                  }
+                  onPress={act(() => befriend(person.id), null)}
+                  disabled={person.relationship < befriendNeeded || livingFriends >= MAX_FRIENDS}
+                  chevron
+                />
+              )}
+              {isPartner && (
+                <>
+                  <Row
+                    emoji="🌹"
+                    title={`Go on a date ($${DATE_COST})`}
+                    subtitle={used('date') ? 'Done this year' : '+ bond, + happiness'}
+                    onPress={act(goOnDate)}
+                    disabled={used('date') || money < DATE_COST}
+                    chevron
+                  />
+                  <Row
+                    emoji="🏝️"
+                    title={`Weekend getaway ($${GETAWAY_COST})`}
+                    subtitle={
+                      used('getaway')
+                        ? 'Done this year'
+                        : money < GETAWAY_COST
+                          ? 'Not enough money'
+                          : '+ + bond, + + happiness'
+                    }
+                    onPress={act(weekendGetaway)}
+                    disabled={used('getaway') || money < GETAWAY_COST}
+                    chevron
+                  />
+                  {(() => {
+                    const womanAge =
+                      playerGender === 'female'
+                        ? age
+                        : person.gender === 'female'
+                          ? person.age
+                          : null
+                    const canBear =
+                      womanAge !== null && womanAge <= 55 && age >= 18 && person.age >= 18
+                    return (
+                      <Row
+                        emoji="👶"
+                        title="Try for a baby"
+                        subtitle={
+                          used('try-baby')
+                            ? 'Done this year'
+                            : !canBear
+                              ? womanAge !== null && womanAge > 55
+                                ? 'Too old to have children now'
+                                : 'Not possible at your ages'
+                              : partnerStatus === 'married'
+                                ? 'Good odds'
+                                : 'Possible, but harder unmarried'
+                        }
+                        onPress={act(tryForBaby, 'baby')}
+                        disabled={used('try-baby') || !canBear}
+                        chevron
+                      />
+                    )
+                  })()}
+                  {partnerStatus === 'dating' && (
+                    <Row
+                      emoji="💍"
+                      title="Propose"
+                      subtitle={
+                        canPropose
+                          ? 'Pop the question'
+                          : `Needs ${PROPOSAL_MIN_RELATIONSHIP}+ bond`
+                      }
+                      onPress={act(propose, 'success')}
+                      disabled={!canPropose}
+                      chevron
+                    />
+                  )}
+                  {partnerStatus === 'engaged' && (
+                    <Row
+                      emoji="💒"
+                      title={`Get married ($${WEDDING_COST.toLocaleString()})`}
+                      subtitle={canMarry ? 'Tie the knot' : 'Save up for the wedding'}
+                      onPress={act(marry, 'wedding')}
+                      disabled={!canMarry}
+                      chevron
+                    />
+                  )}
+                  <Row
+                    emoji="💔"
+                    title={partnerStatus === 'married' ? 'Divorce' : 'Break up'}
+                    subtitle={partnerStatus === 'married' ? 'They take half of everything' : 'End it'}
+                    onPress={() => {
+                      playSfx('heartbreak')
+                      breakUp()
+                      onClose()
+                    }}
+                    chevron
+                  />
+                </>
+              )}
+              {isEnemy && (
+                <Row
+                  emoji="🕊️"
+                  title="Make peace"
+                  subtitle={used(`peace-${person.id}`) ? 'Done this year' : '55% chance to end the feud'}
+                  onPress={act(() => makePeace(person.id), 'success')}
+                  disabled={used(`peace-${person.id}`)}
+                  chevron
+                />
+              )}
+              <Row
+                emoji="🤬"
+                title="Insult"
+                subtitle={used(`insult-${person.id}`) ? 'Done this year' : '- - bond. They may clap back'}
+                onPress={act(() => insult(person.id), 'punch')}
+                disabled={used(`insult-${person.id}`)}
+                chevron
+              />
+            </ScrollView>
+          )}
+
+          <Pressable accessibilityRole="button" onPress={onClose} style={styles.cancel}>
+            <Text style={styles.cancelText}>Close</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: colors.backdrop,
+    justifyContent: 'flex-end',
+  },
+  card: {
+    backgroundColor: colors.slate100,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '85%',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  badge: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeEmoji: {
+    fontSize: 27,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.slate800,
+  },
+  meta: {
+    fontSize: 13,
+    color: colors.slate500,
+    marginTop: 1,
+  },
+  life: {
+    fontSize: 12,
+    color: colors.slate500,
+    marginTop: 2,
+  },
+  bondRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+  },
+  bondLabel: {
+    width: 36,
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.slate600,
+  },
+  bondTrack: {
+    flex: 1,
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: colors.slate200,
+    overflow: 'hidden',
+  },
+  bondFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: colors.pink600,
+  },
+  bondValue: {
+    width: 30,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'right',
+    color: colors.slate500,
+    fontVariant: ['tabular-nums'],
+  },
+  actions: {
+    marginTop: 14,
+  },
+  actionsContent: {
+    gap: 8,
+    paddingBottom: 4,
+  },
+  cancel: {
+    marginTop: 10,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  cancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.slate500,
+  },
+})
